@@ -31,6 +31,16 @@ home = os.environ.get("TRANSOM_HOME", default)
 
 sys.path.append(os.path.join(home, "python"))
 
+class _HelpFormatter(RawDescriptionHelpFormatter,
+                     ArgumentDefaultsHelpFormatter):
+    pass
+
 from transom import *
+
+def main():
+    description = "Transom renders website content from markdown source files"
+
+    parser = ArgumentParser(description=description, epilog=epilog,
+                            formatter_class=_HelpFormatter)
 
 print(Site)
