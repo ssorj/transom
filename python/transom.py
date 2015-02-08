@@ -54,8 +54,8 @@ class Site(object):
         self.input_dir = input_dir
         self.output_dir = output_dir
 
-        self.config_path = os.path.join(self.input_dir, "site.conf")
-        self.template_path = os.path.join(self.input_dir, "template.html")
+        self.config_path = os.path.join(self.input_dir, "_transom_variables.conf")
+        self.template_path = os.path.join(self.input_dir, "_transom_template.html")
 
         extras = {
             "code-friendly": True,
@@ -86,7 +86,7 @@ class Site(object):
         self.config.read(self.config_path)
         self.config_items = self.config.items("main", vars=overrides)
 
-        with codecs.open(self.template_path, "r", "utf8") as file:
+        with codecs.open(self.template_path, "r", "utf8", "replace") as file:
             self.template_content = file.read()
 
         self.traverse_input_pages(self.input_dir, None)
@@ -205,6 +205,8 @@ class Site(object):
     def traverse_input_pages(self, dir, page):
         names = set(os.listdir(dir))
 
+        # XXX Use "_transom_skip" instead
+
         if ".transom-skip" in names:
             return
 
@@ -218,7 +220,7 @@ class Site(object):
             path = os.path.join(dir, name)
 
             if os.path.isfile(path):
-                for extension in (".md", ".html.in", ".html"):
+                for extension in (".md", ".html.in", ".html", ".css", ".jss"):
                     if name.endswith(extension):
                         _Page(self, path, page)
                         break
@@ -276,20 +278,6 @@ class _Resource(_File):
 
     def save_output(self):
         _make_dirs(os.path.dirname(self.output_path))
-
-        root, ext = os.path.splitext(self.input_path)
-
-        if ext in (".js", ".css"):
-            with codecs.open(self.input_path, "r", "utf8") as file:
-                content = file.read()
-
-            content = self.replace_site_vars(content)
-
-            with codecs.open(self.output_path, "w", "utf8") as file:
-                file.write(content)
-
-            return
-
         _copy_file(self.input_path, self.output_path)
 
 class _Page(_File):
@@ -316,10 +304,14 @@ class _Page(_File):
         super(_Page, self).init()
 
     def load_input(self):
-        with codecs.open(self.input_path, "r", "utf8") as file:
+        # print("Loading {}".format(self.input_path))
+
+        with codecs.open(self.input_path, "r", "utf8", "replace") as file:
             self.content = file.read()
 
     def save_output(self, path=None):
+        # print("Saving {}".format(self.output_path))
+
         if path is None:
             path = self.output_path
 
@@ -356,7 +348,7 @@ class _Page(_File):
             self.title = "Home"
             return
 
-        self.title = os.path.split(self.output_path)[1]
+        self.title = os.path.split(self.output_path)[1].decode("utf8")
 
         match = _title_regex.search(self.content)
 
@@ -374,7 +366,7 @@ class _Page(_File):
         self.content = self.replace_site_vars(self.content)
 
     def render_link(self):
-        return "<a href=\"{}\">{}</a>".format(self.url, self.title)
+        return u"<a href=\"{}\">{}</a>".format(self.url, self.title)
 
     def render_path_navigation(self):
         links = list()
@@ -388,9 +380,9 @@ class _Page(_File):
 
         del links[-1]
 
-        links = "".join(("<li>{}</li>".format(x) for x in reversed(links)))
+        links = u"".join((u"<li>{}</li>".format(x) for x in reversed(links)))
 
-        return "<ul id=\"-path-navigation\">{}</ul>".format(links)
+        return u"<ul id=\"-path-navigation\">{}</ul>".format(links)
 
     def check_links(self):
         root = self.parse_xml(self.content)
