@@ -32,4 +32,4 @@ clean:
 
 devel: PREFIX := ${INSTALL_DIR}
 devel: clean install
-	transom
+	transom --help

@@ -40,7 +40,21 @@ from transom import *
 def main():
     description = "Transom renders website content from markdown source files"
 
-    parser = ArgumentParser(description=description, epilog=epilog,
+    parser = ArgumentParser(description=description,
                             formatter_class=_HelpFormatter)
 
-print(Site)
+    parser.add_argument("input_dir", metavar="INPUT-DIR")
+    parser.add_argument("output_dir", metavar="OUTPUT-DIR")
+    parser.add_argument("--site-url", metavar="URL", default="")
+
+    args = parser.parse_args()
+
+    site = Site(args.site_url, args.input_dir, args.output_dir)
+    site.init()
+    site.render()
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass

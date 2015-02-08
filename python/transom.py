@@ -17,18 +17,36 @@
 # under the License.
 #
 
+from __future__ import print_function
+
+import codecs
 import markdown2
-import cssmin
 import os
+import re
 import shutil
 import sys
 import tempfile
 
-from ConfigParser import SafeConfigParser
 from collections import defaultdict
-from urllib2 import urlopen
-from urlparse import urlsplit, urljoin
 from xml.etree.ElementTree import XML
+
+try:
+    from urllib.request import urlopen
+except:
+    from urllib2 import urlopen
+
+try:
+    from urllib.parse import urlsplit, urljoin
+except:
+    from urlparse import urlsplit, urljoin
+
+try:
+    from configparser import SafeConfigParser
+except:
+    from ConfigParser import SafeConfigParser
+
+_title_regex = re.compile(r"<([hH][12])\b[^>]*>(.*?)</\1>")
+_tag_regex = re.compile(r"<[^<]+?>")
 
 class Site(object):
     def __init__(self, url, input_dir, output_dir):
@@ -40,6 +58,7 @@ class Site(object):
         self.template_path = os.path.join(self.input_dir, "template.html")
 
         extras = {
+            "code-friendly": True,
             "tables": True,
             "header-ids": True,
             "markdown-in-html": True,
@@ -48,6 +67,8 @@ class Site(object):
         self.markdown = markdown2.Markdown(extras=extras)
 
         self.config = SafeConfigParser()
+        self.config_items = None
+
         self.template_content = None
 
         self.files = list()
@@ -59,12 +80,13 @@ class Site(object):
         self.links = defaultdict(set)
         self.targets = set()
 
-        self.last_rendered = None
-
     def init(self):
-        self.config.read(self.config_path)
+        overrides = {"site-url": self.url}
 
-        with open(self.template_path, "r") as file:
+        self.config.read(self.config_path)
+        self.config_items = self.config.items("main", vars=overrides)
+
+        with codecs.open(self.template_path, "r", "utf8") as file:
             self.template_content = file.read()
 
         self.traverse_input_pages(self.input_dir, None)
@@ -73,52 +95,20 @@ class Site(object):
         for file in self.files:
             file.init()
 
-    def render(self, force=False):
-        self.last_rendered = self.update_render_timestamp()
-
-        if force:
-            self.last_rendered = None
-
-        pages = list()
-        resources = [x for x in self.resources if x.is_modified()]
-
+    def render(self):
         for page in self.pages:
-            if not page.is_modified():
-                continue
-
-            pages.append(page)
-
-            # Parent pages must be processed for path navigation
-
-            parent = page.parent
-
-            while parent is not None:
-                pages.append(parent)
-
-                parent = parent.parent
-
-        for page in pages:
-            page.read_input()
+            page.load_input()
             page.convert()
 
-        for page in pages:
+        for page in self.pages:
             page.process()
 
-        for page in pages:
+        for page in self.pages:
             page.render()
-            page.write_output()
+            page.save_output()
 
-        for resource in resources:
-            resource.write_output()
-
-    def update_render_timestamp(self):
-        last = None
-
-        if os.path.exists(self.output_dir):
-            last = os.stat(self.output_dir).st_mtime
-            os.utime(self.output_dir, None)
-
-        return last
+        for resource in self.resources:
+            resource.save_output()
 
     def check_output_files(self):
         expected_files = set()
@@ -133,16 +123,16 @@ class Site(object):
         extra_files = found_files.difference(expected_files)
 
         if missing_files:
-            print "Missing files:"
+            print("Missing files:")
 
             for path in sorted(missing_files):
-                print "  {}".format(path)
+                print("  {}".format(path))
 
         if extra_files:
-            print "Extra files:"
+            print("Extra files:")
 
             for path in sorted(extra_files):
-                print "  {}".format(path)
+                print("  {}".format(path))
 
     def traverse_output_files(self, dir, files):
         names = set(os.listdir(dir))
@@ -157,7 +147,7 @@ class Site(object):
 
     def check_links(self, internal=True, external=False):
         for page in self.pages:
-            page.read_output()
+            page.load_output()
 
         for page in self.pages:
             if page.output_path.endswith("java-broker/book/index.html"):
@@ -187,16 +177,16 @@ class Site(object):
             sys.stdout.write(".")
             sys.stdout.flush()
 
-        print
+        print()
 
         for link in errors_by_link:
-            print "Link: {}".format(link)
+            print("Link: {}".format(link))
 
             for error in errors_by_link[link]:
-                print "  Error: {}".format(error)
+                print("  Error: {}".format(error))
 
             for source in self.links[link]:
-                print "  Source: {}".format(source)
+                print("  Source: {}".format(source))
 
     def check_external_link(self, link):
         sock, code, error = None, None, None
@@ -269,19 +259,8 @@ class _File(object):
     def init(self):
         self.site.targets.add(self.url)
 
-    def is_modified(self):
-        if self.site.last_rendered is None:
-            return True
-
-        mtime = os.stat(self.input_path).st_mtime
-
-        return mtime > self.site.last_rendered
-
     def replace_site_vars(self, content):
-        overrides = dict()
-        overrides["site-url"] = self.site.url
-
-        for name, value in self.site.config.items("main", vars=overrides):
+        for name, value in self.site.config_items:
             content = content.replace("@{}@".format(name), value)
 
         return content
@@ -295,26 +274,23 @@ class _Resource(_File):
 
         self.site.resources.append(self)
 
-    def write_output(self):
+    def save_output(self):
         _make_dirs(os.path.dirname(self.output_path))
 
         root, ext = os.path.splitext(self.input_path)
 
         if ext in (".js", ".css"):
-            with open(self.input_path, "r") as file:
+            with codecs.open(self.input_path, "r", "utf8") as file:
                 content = file.read()
 
             content = self.replace_site_vars(content)
 
-            if ext == ".css":
-                content = cssmin.cssmin(content)
-
-            with open(self.output_path, "w") as file:
+            with codecs.open(self.output_path, "w", "utf8") as file:
                 file.write(content)
 
             return
 
-        shutil.copy(self.input_path, self.output_path)
+        _copy_file(self.input_path, self.output_path)
 
 class _Page(_File):
     def __init__(self, site, input_path, parent):
@@ -339,21 +315,21 @@ class _Page(_File):
 
         super(_Page, self).init()
 
-    def read_input(self):
-        with open(self.input_path, "r") as file:
+    def load_input(self):
+        with codecs.open(self.input_path, "r", "utf8") as file:
             self.content = file.read()
 
-    def write_output(self, path=None):
+    def save_output(self, path=None):
         if path is None:
             path = self.output_path
 
         _make_dirs(os.path.dirname(path))
 
-        with open(path, "w") as file:
+        with codecs.open(path, "w", "utf8") as file:
             file.write(self.content)
 
-    def read_output(self):
-        with open(self.output_path, "r") as file:
+    def load_output(self):
+        with codecs.open(self.output_path, "r", "utf8") as file:
             self.content = file.read()
 
     def convert(self):
@@ -382,29 +358,13 @@ class _Page(_File):
 
         self.title = os.path.split(self.output_path)[1]
 
-        root = self.parse_xml(self.content)
-        elem = root.find(".//{http://www.w3.org/1999/xhtml}h1")
+        match = _title_regex.search(self.content)
 
-        if elem is None:
-            elem = root.find(".//{http://www.w3.org/1999/xhtml}h2")
+        if match:
+            self.title = match.group(2)
 
-        if elem is not None:
-            self.title = "".join(elem.itertext())
-
+        self.title = _tag_regex.sub("", self.title)
         self.title = self.title.strip()
-        self.title = _ascii(self.title)
-
-    def parse_xml(self, xml):
-        try:
-            return XML(xml)
-        except Exception as e:
-            path = tempfile.mkstemp(".xml")[1]
-            msg = "{} fails to parse; {}; see {}".format(self, str(e), path)
-
-            with open(path, "w") as file:
-                file.write(xml)
-
-            raise Exception(msg)
 
     def render(self):
         path_nav = self.render_path_navigation()
@@ -457,6 +417,18 @@ class _Page(_File):
 
         self.site.targets.update(targets)
 
+    def parse_xml(self, xml):
+        try:
+            return XML(xml)
+        except Exception as e:
+            path = tempfile.mkstemp(".xml")[1]
+            msg = "{} fails to parse; {}; see {}".format(self, str(e), path)
+
+            with open(path, "w") as file:
+                file.write(xml)
+
+            raise Exception(msg)
+
     def gather_links(self, root_elem):
         links = set()
 
@@ -488,12 +460,24 @@ class _Page(_File):
 
         return targets
 
-def _ascii(string):
-    if isinstance(string, unicode):
-        return string.encode("ascii", "xmlcharrefreplace")
-
-    return string
-
 def _make_dirs(dir):
     if not os.path.exists(dir):
         os.makedirs(dir)
+
+# Adapted from http://stackoverflow.com/questions/22078621/python-how-to-copy-files-fast
+
+_read_flags = os.O_RDONLY
+_write_flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+_buffer_size = 128 * 1024
+_eof = b""
+
+def _copy_file(src, dst):
+    try:
+        fin = os.open(src, _read_flags)
+        fout = os.open(dst, _write_flags)
+
+        for x in iter(lambda: os.read(fin, _buffer_size), _eof):
+            os.write(fout, x)
+    finally:
+        os.close(fin)
+        os.close(fout)
