@@ -45,8 +45,8 @@ try:
 except:
     from ConfigParser import SafeConfigParser
 
-_title_regex = re.compile(r"<([hH][12])\b[^>]*>(.*?)</\1>")
-_tag_regex = re.compile(r"<[^<]+?>")
+_title_regex = re.compile(r"<([hH][12]).*?>(.*?)</\1>")
+_tag_regex = re.compile(r"<.+?>")
 
 class Site(object):
     def __init__(self, url, input_dir, output_dir):
