@@ -62,8 +62,8 @@ class Site(object):
 
         self.verbose = False
 
-        self.config_path = _os.path.join(self.input_dir, "_transom_variables.conf")
-        self.template_path = _os.path.join(self.input_dir, "_transom_template.html")
+        self.config_path = _os.path.join(self.input_dir, "_config.ini")
+        self.template_path = _os.path.join(self.input_dir, "_template.html")
 
         extras = {
             "code-friendly": True,
@@ -213,8 +213,6 @@ class Site(object):
     def traverse_input_pages(self, dir, page):
         names = set(_os.listdir(dir))
 
-        # XXX Use "_transom_skip" instead
-
         if ".transom-skip" in names:
             return
 
@@ -226,6 +224,9 @@ class Site(object):
 
         for name in sorted(names):
             path = _os.path.join(dir, name)
+
+            if path in (self.config_path, self.template_path):
+                continue
 
             if _os.path.isfile(path):
                 for extension in _page_extensions:
@@ -240,6 +241,9 @@ class Site(object):
 
         for name in sorted(names):
             path = _os.path.join(dir, name)
+
+            if path in (self.config_path, self.template_path):
+                continue
 
             if _os.path.isfile(path):
                 if path not in self.files_by_input_path:
