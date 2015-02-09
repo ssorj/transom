@@ -91,8 +91,9 @@ class Site(object):
     def init(self):
         overrides = {"site-url": self.url}
 
-        self.config.read(self.config_path)
-        self.config_items = self.config.items("main", vars=overrides)
+        if _os.path.isfile(self.config_path):
+            self.config.read(self.config_path)
+            self.config_items = self.config.items("main", vars=overrides)
 
         with _open_file(self.template_path, "r") as file:
             self.template_content = file.read()
@@ -274,6 +275,9 @@ class _File(object):
         self.site.targets.add(self.url)
 
     def replace_site_vars(self, content):
+        if self.site.config_items is None:
+            return content
+
         for name, value in self.site.config_items:
             content = content.replace("@{}@".format(name), value)
 
@@ -394,8 +398,6 @@ class _Page(_File):
         while page:
             links.append(page.render_link())
             page = page.parent
-
-        del links[-1]
 
         links = u"".join((u"<li>{}</li>".format(x) for x in reversed(links)))
 
