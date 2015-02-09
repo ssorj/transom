@@ -31,25 +31,31 @@ home = os.environ.get("TRANSOM_HOME", default)
 
 sys.path.append(os.path.join(home, "python"))
 
-class _HelpFormatter(RawDescriptionHelpFormatter,
-                     ArgumentDefaultsHelpFormatter):
-    pass
-
 from transom import *
 
 def main():
     description = "Transom renders website content from markdown source files"
+    parser = ArgumentParser(description=description)
 
-    parser = ArgumentParser(description=description,
-                            formatter_class=_HelpFormatter)
-
-    parser.add_argument("input_dir", metavar="INPUT-DIR")
-    parser.add_argument("output_dir", metavar="OUTPUT-DIR")
-    parser.add_argument("--site-url", metavar="URL", default="")
+    parser.add_argument("input_dir", metavar="INPUT-DIR",
+                        help="read source files from INPUT-DIR")
+    parser.add_argument("output_dir", metavar="OUTPUT-DIR",
+                        help="render output files to OUTPUT-DIR")
+    parser.add_argument("--site-url", metavar="URL",
+                        help="prefix site links with URL")
+    parser.add_argument("--verbose", action="store_true",
+                        help="enable logging")
 
     args = parser.parse_args()
 
-    site = Site(args.site_url, args.input_dir, args.output_dir)
+    site_url = args.site_url
+
+    if site_url is None:
+        site_url = os.path.abspath(args.output_dir)
+
+    site = Site(site_url, args.input_dir, args.output_dir)
+    site.verbose = args.verbose
+
     site.init()
     site.render()
 

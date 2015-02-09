@@ -48,11 +48,15 @@ except:
 _title_regex = re.compile(r"<([hH][12]).*?>(.*?)</\1>")
 _tag_regex = re.compile(r"<.+?>")
 
+_page_extensions = ".md", ".html.in", ".html", ".css", ".jss"
+
 class Site(object):
     def __init__(self, url, input_dir, output_dir):
         self.url = url
         self.input_dir = input_dir
         self.output_dir = output_dir
+
+        self.verbose = False
 
         self.config_path = os.path.join(self.input_dir, "_transom_variables.conf")
         self.template_path = os.path.join(self.input_dir, "_transom_template.html")
@@ -220,7 +224,7 @@ class Site(object):
             path = os.path.join(dir, name)
 
             if os.path.isfile(path):
-                for extension in (".md", ".html.in", ".html", ".css", ".jss"):
+                for extension in _page_extensions:
                     if name.endswith(extension):
                         _Page(self, path, page)
                         break
@@ -304,13 +308,15 @@ class _Page(_File):
         super(_Page, self).init()
 
     def load_input(self):
-        # print("Loading {}".format(self.input_path))
+        if self.site.verbose:
+            print("Loading {}".format(self))
 
         with codecs.open(self.input_path, "r", "utf8", "replace") as file:
             self.content = file.read()
 
     def save_output(self, path=None):
-        # print("Saving {}".format(self.output_path))
+        if self.site.verbose:
+            print("Saving {} to {}".format(self, self.output_path))
 
         if path is None:
             path = self.output_path
@@ -348,7 +354,10 @@ class _Page(_File):
             self.title = "Home"
             return
 
-        self.title = os.path.split(self.output_path)[1].decode("utf8")
+        self.title = os.path.split(self.output_path)[1]
+
+        if isinstance(self.title, bytes):
+            self.title = self.title.decode("utf8")
 
         match = _title_regex.search(self.content)
 
