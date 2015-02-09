@@ -19,36 +19,40 @@
 
 from __future__ import print_function
 
-import codecs
-import markdown2
-import os
-import re
-import shutil
-import sys
-import tempfile
+import codecs as _codecs
+import markdown2 as _markdown2
+import os as _os
+import re as _re
+import sys as _sys
+import tempfile as _tempfile
 
-from collections import defaultdict
-from xml.etree.ElementTree import XML
-
-try:
-    from urllib.request import urlopen
-except:
-    from urllib2 import urlopen
+from collections import defaultdict as _defaultdict
+from xml.etree.ElementTree import XML as _XML
 
 try:
-    from urllib.parse import urlsplit, urljoin
+    from urllib.request import urlopen as _urlopen
 except:
-    from urlparse import urlsplit, urljoin
+    from urllib2 import urlopen as _urlopen
 
 try:
-    from configparser import SafeConfigParser
+    from urllib.parse import urlsplit as _urlsplit
 except:
-    from ConfigParser import SafeConfigParser
+    from urlparse import urlsplit as _urlsplit
 
-_title_regex = re.compile(r"<([hH][12]).*?>(.*?)</\1>")
-_tag_regex = re.compile(r"<.+?>")
+try:
+    from urllib.parse import urljoin as _urljoin
+except:
+    from urlparse import urljoin as _urljoin
 
+try:
+    from configparser import SafeConfigParser as _SafeConfigParser
+except:
+    from ConfigParser import SafeConfigParser as _SafeConfigParser
+
+_title_regex = _re.compile(r"<([hH][12]).*?>(.*?)</\1>")
+_tag_regex = _re.compile(r"<.+?>")
 _page_extensions = ".md", ".html.in", ".html", ".css", ".jss"
+_buffer_size = 128 * 1024
 
 class Site(object):
     def __init__(self, url, input_dir, output_dir):
@@ -58,8 +62,8 @@ class Site(object):
 
         self.verbose = False
 
-        self.config_path = os.path.join(self.input_dir, "_transom_variables.conf")
-        self.template_path = os.path.join(self.input_dir, "_transom_template.html")
+        self.config_path = _os.path.join(self.input_dir, "_transom_variables.conf")
+        self.template_path = _os.path.join(self.input_dir, "_transom_template.html")
 
         extras = {
             "code-friendly": True,
@@ -68,9 +72,9 @@ class Site(object):
             "markdown-in-html": True,
             }
 
-        self.markdown = markdown2.Markdown(extras=extras)
+        self.markdown = _markdown2.Markdown(extras=extras)
 
-        self.config = SafeConfigParser()
+        self.config = _SafeConfigParser()
         self.config_items = None
 
         self.template_content = None
@@ -81,7 +85,7 @@ class Site(object):
         self.resources = list()
         self.pages = list()
 
-        self.links = defaultdict(set)
+        self.links = _defaultdict(set)
         self.targets = set()
 
     def init(self):
@@ -90,7 +94,7 @@ class Site(object):
         self.config.read(self.config_path)
         self.config_items = self.config.items("main", vars=overrides)
 
-        with codecs.open(self.template_path, "r", "utf8", "replace") as file:
+        with _open_file(self.template_path, "r") as file:
             self.template_content = file.read()
 
         self.traverse_input_pages(self.input_dir, None)
@@ -139,14 +143,14 @@ class Site(object):
                 print("  {}".format(path))
 
     def traverse_output_files(self, dir, files):
-        names = set(os.listdir(dir))
+        names = set(_os.listdir(dir))
 
         for name in names:
-            path = os.path.join(dir, name)
+            path = _os.path.join(dir, name)
 
-            if os.path.isfile(path):
+            if _os.path.isfile(path):
                 files.add(path)
-            elif os.path.isdir(path) and name != ".svn":
+            elif _os.path.isdir(path) and name != ".svn":
                 self.traverse_output_files(path, files)
 
     def check_links(self, internal=True, external=False):
@@ -161,7 +165,7 @@ class Site(object):
 
             page.check_links()
 
-        errors_by_link = defaultdict(list)
+        errors_by_link = _defaultdict(list)
 
         for link in self.links:
             if internal and link.startswith(self.url):
@@ -178,8 +182,8 @@ class Site(object):
                 if error:
                     errors_by_link[link].append(error.message)
 
-            sys.stdout.write(".")
-            sys.stdout.flush()
+            _sys.stdout.write(".")
+            _sys.stdout.flush()
 
         print()
 
@@ -196,7 +200,7 @@ class Site(object):
         sock, code, error = None, None, None
 
         try:
-            sock = urlopen(link, timeout=5)
+            sock = _urlopen(link, timeout=5)
             code = sock.getcode()
         except IOError as e:
             error = e
@@ -207,7 +211,7 @@ class Site(object):
         return code, error
 
     def traverse_input_pages(self, dir, page):
-        names = set(os.listdir(dir))
+        names = set(_os.listdir(dir))
 
         # XXX Use "_transom_skip" instead
 
@@ -217,39 +221,39 @@ class Site(object):
         for name in ("index.md", "index.html", "index.html.in"):
             if name in names:
                 names.remove(name)
-                page = _Page(self, os.path.join(dir, name), page)
+                page = _Page(self, _os.path.join(dir, name), page)
                 break
 
         for name in sorted(names):
-            path = os.path.join(dir, name)
+            path = _os.path.join(dir, name)
 
-            if os.path.isfile(path):
+            if _os.path.isfile(path):
                 for extension in _page_extensions:
                     if name.endswith(extension):
                         _Page(self, path, page)
                         break
-            elif os.path.isdir(path) and name != ".svn":
+            elif _os.path.isdir(path) and name != ".svn":
                 self.traverse_input_pages(path, page)
 
     def traverse_input_resources(self, dir):
-        names = set(os.listdir(dir))
+        names = set(_os.listdir(dir))
 
         for name in sorted(names):
-            path = os.path.join(dir, name)
+            path = _os.path.join(dir, name)
 
-            if os.path.isfile(path):
+            if _os.path.isfile(path):
                 if path not in self.files_by_input_path:
                     _Resource(self, path)
-            elif os.path.isdir(path) and name != ".svn":
+            elif _os.path.isdir(path) and name != ".svn":
                 self.traverse_input_resources(path)
 
     def get_output_path(self, input_path):
         path = input_path[len(self.input_dir) + 1:]
-        return os.path.join(self.output_dir, path)
+        return _os.path.join(self.output_dir, path)
 
     def get_url(self, output_path):
         path = output_path[len(self.output_dir) + 1:]
-        path = path.replace(os.path.sep, "/")
+        path = path.replace(_os.path.sep, "/")
         return "{}/{}".format(self.url, path)
 
 class _File(object):
@@ -281,7 +285,7 @@ class _Resource(_File):
         self.site.resources.append(self)
 
     def save_output(self):
-        _make_dirs(os.path.dirname(self.output_path))
+        _make_dirs(_os.path.dirname(self.output_path))
         _copy_file(self.input_path, self.output_path)
 
 class _Page(_File):
@@ -311,7 +315,7 @@ class _Page(_File):
         if self.site.verbose:
             print("Loading {}".format(self))
 
-        with codecs.open(self.input_path, "r", "utf8", "replace") as file:
+        with _open_file(self.input_path, "r") as file:
             self.content = file.read()
 
     def save_output(self, path=None):
@@ -321,13 +325,13 @@ class _Page(_File):
         if path is None:
             path = self.output_path
 
-        _make_dirs(os.path.dirname(path))
+        _make_dirs(_os.path.dirname(path))
 
-        with codecs.open(path, "w", "utf8") as file:
+        with _open_file(self.output_path, "w") as file:
             file.write(self.content)
 
     def load_output(self):
-        with codecs.open(self.output_path, "r", "utf8") as file:
+        with _open_file(self.output_path, "r") as file:
             self.content = file.read()
 
     def convert(self):
@@ -338,7 +342,7 @@ class _Page(_File):
         content_lines = self.content.splitlines()
         content_lines = (x for x in content_lines if not x.startswith(";;"))
 
-        content = os.linesep.join(content_lines)
+        content = _os.linesep.join(content_lines)
         content = self.site.markdown.convert(content)
 
         self.content = self.apply_template(content)
@@ -354,7 +358,7 @@ class _Page(_File):
             self.title = "Home"
             return
 
-        self.title = os.path.split(self.output_path)[1]
+        self.title = _os.path.split(self.output_path)[1]
 
         if isinstance(self.title, bytes):
             self.title = self.title.decode("utf8")
@@ -403,7 +407,7 @@ class _Page(_File):
             if link == "?":
                 continue
 
-            scheme, netloc, path, query, fragment = urlsplit(link)
+            scheme, netloc, path, query, fragment = _urlsplit(link)
 
             if scheme and scheme not in ("file", "http", "https", "ftp"):
                 continue
@@ -412,7 +416,7 @@ class _Page(_File):
                 continue
 
             if (fragment and not path) or not path.startswith("/"):
-                link = urljoin(self.url, link)
+                link = _urljoin(self.url, link)
 
             self.site.links[link].add(self.url)
 
@@ -420,9 +424,9 @@ class _Page(_File):
 
     def parse_xml(self, xml):
         try:
-            return XML(xml)
+            return _XML(xml)
         except Exception as e:
-            path = tempfile.mkstemp(".xml")[1]
+            path = _tempfile.mkstemp(".xml")[1]
             msg = "{} fails to parse; {}; see {}".format(self, str(e), path)
 
             with open(path, "w") as file:
@@ -462,23 +466,25 @@ class _Page(_File):
         return targets
 
 def _make_dirs(dir):
-    if not os.path.exists(dir):
-        os.makedirs(dir)
+    if not _os.path.exists(dir):
+        _os.makedirs(dir)
+
+def _open_file(path, mode):
+    return _codecs.open(path, mode, "utf8", "replace", _buffer_size)
 
 # Adapted from http://stackoverflow.com/questions/22078621/python-how-to-copy-files-fast
 
-_read_flags = os.O_RDONLY
-_write_flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-_buffer_size = 128 * 1024
+_read_flags = _os.O_RDONLY
+_write_flags = _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC
 _eof = b""
 
 def _copy_file(src, dst):
     try:
-        fin = os.open(src, _read_flags)
-        fout = os.open(dst, _write_flags)
+        fin = _os.open(src, _read_flags)
+        fout = _os.open(dst, _write_flags)
 
-        for x in iter(lambda: os.read(fin, _buffer_size), _eof):
-            os.write(fout, x)
+        for x in iter(lambda: _os.read(fin, _buffer_size), _eof):
+            _os.write(fout, x)
     finally:
-        os.close(fin)
-        os.close(fout)
+        _os.close(fin)
+        _os.close(fout)
