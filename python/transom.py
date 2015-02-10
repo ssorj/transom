@@ -74,8 +74,8 @@ class Site(object):
 
         self.markdown = _markdown2.Markdown(extras=extras)
 
-        self.config = _SafeConfigParser()
-        self.config_items = None
+        self.config_parser = _SafeConfigParser()
+        self.config_vars = dict()
 
         self.template_content = None
 
@@ -89,11 +89,12 @@ class Site(object):
         self.targets = set()
 
     def init(self):
-        overrides = {"site-url": self.url}
+        self.config_vars["site-url"] = self.url
 
         if _os.path.isfile(self.config_path):
-            self.config.read(self.config_path)
-            self.config_items = self.config.items("main", vars=overrides)
+            self.config_parser.read(self.config_path)
+            items = self.config_parser.items("main", vars=self.config_vars)
+            self.config_vars.update(items)
 
         with _open_file(self.template_path, "r") as file:
             self.template_content = file.read()
@@ -275,10 +276,7 @@ class _File(object):
         self.site.targets.add(self.url)
 
     def replace_site_vars(self, content):
-        if self.site.config_items is None:
-            return content
-
-        for name, value in self.site.config_items:
+        for name, value in self.site.config_vars.items():
             content = content.replace("@{}@".format(name), value)
 
         return content
