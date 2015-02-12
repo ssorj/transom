@@ -402,7 +402,14 @@ class _Page(_File):
         return u"<ul id=\"-path-navigation\">{}</ul>".format(links)
 
     def check_links(self):
-        root = self.parse_xml(self.content)
+        if not self.output_path.endswith(".html"):
+            return
+
+        try:
+            root = self.parse_xml(self.content)
+        except Exception, e:
+            print("Warning: {}".format(str(e)))
+            return
 
         links = self.gather_links(root)
         targets = self.gather_targets(root)
@@ -433,7 +440,7 @@ class _Page(_File):
             path = _tempfile.mkstemp(".xml")[1]
             msg = "{} fails to parse; {}; see {}".format(self, str(e), path)
 
-            with open(path, "w") as file:
+            with _open_file(path, "w") as file:
                 file.write(xml)
 
             raise Exception(msg)
