@@ -54,9 +54,10 @@ _tag_regex = _re.compile(r"<.+?>")
 _page_extensions = ".md", ".html.in", ".html", ".css", ".jss"
 _buffer_size = 128 * 1024
 
-class Site(object):
-    def __init__(self, url, input_dir, output_dir):
-        self.url = url
+class Transom(object):
+    def __init__(self, home_dir, site_url, input_dir, output_dir):
+        self.home_dir = home_dir
+        self.site_url = site_url
         self.input_dir = input_dir
         self.output_dir = output_dir
 
@@ -68,6 +69,7 @@ class Site(object):
         extras = {
             "code-friendly": True,
             "tables": True,
+            "wiki-tables": True,
             "header-ids": True,
             "markdown-in-html": True,
             }
@@ -89,12 +91,16 @@ class Site(object):
         self.targets = set()
 
     def init(self):
-        self.config_vars["site-url"] = self.url
+        self.config_vars["site-url"] = self.site_url
 
         if _os.path.isfile(self.config_path):
             self.config_parser.read(self.config_path)
             items = self.config_parser.items("main", vars=self.config_vars)
             self.config_vars.update(items)
+
+        if not _os.path.isfile(self.template_path):
+            path = _os.path.join(self.home_dir, "resources", "template.html")
+            self.template_path = path
 
         with _open_file(self.template_path, "r") as file:
             self.template_content = file.read()
@@ -119,6 +125,29 @@ class Site(object):
 
         for resource in self.resources:
             resource.save_output()
+
+        self.copy_default_resources()
+
+    def copy_default_resources(self):
+        from_dir = _os.path.join(self.home_dir, "resources")
+        to_dir = _os.path.join(self.output_dir, "transom")
+        subpaths = list()
+
+        for root, dirs, files in _os.walk(from_dir):
+            dir = root[len(from_dir) + 1:]
+
+            for file in files:
+                subpaths.append(_os.path.join(dir, file))
+
+        for subpath in subpaths:
+            from_file = _os.path.join(from_dir, subpath)
+            to_file = _os.path.join(to_dir, subpath)
+            parent_dir = _os.path.dirname(to_file)
+
+            if not _os.path.exists(parent_dir):
+                _make_dirs(parent_dir)
+
+            _copy_file(from_file, to_file)
 
     def check_output_files(self):
         expected_files = set()
@@ -170,11 +199,11 @@ class Site(object):
         errors_by_link = _defaultdict(list)
 
         for link in self.links:
-            if internal and link.startswith(self.url):
+            if internal and link.startswith(self.site_url):
                 if link not in self.targets:
                     errors_by_link[link].append("Link has no target")
 
-            if external and not link.startswith(self.url):
+            if external and not link.startswith(self.site_url):
                 code, error = self.check_external_link(link)
             
                 if code >= 400:
@@ -260,7 +289,7 @@ class Site(object):
     def get_url(self, output_path):
         path = output_path[len(self.output_dir) + 1:]
         path = path.replace(_os.path.sep, "/")
-        return "{}/{}".format(self.url, path)
+        return "{}/{}".format(self.site_url, path)
 
 class _File(object):
     def __init__(self, site, input_path):
@@ -499,3 +528,8 @@ def _copy_file(src, dst):
     finally:
         _os.close(fin)
         _os.close(fout)
+
+def _repr(obj, *args):
+    cls = obj.__class__.__name__
+    strings = [str(x) for x in args]
+    return "{}({})".format(cls, ",".join(strings))

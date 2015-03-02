@@ -1,0 +1,145 @@
+* {
+    margin: 0 0 1em 0;
+    padding: 0;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+*:last-child {
+    margin-bottom: 0;
+}
+
+body {
+    font: 14pt/19pt Roboto, sans-serif;
+    font-weight: 300;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    clear: left;
+    font-weight: 300;
+    margin-bottom: 0.7em;
+}
+
+h2 {
+    font-size: 1.3em;
+}
+
+h3 {
+    font-size: 1.1em;
+}
+
+a {
+    text-decoration: none;
+}
+
+code, pre {
+    font-family: "Ubuntu Mono", monospace;
+    font-weight: 400;
+    color: #666;
+}
+
+blockquote, pre {
+    margin-left: 1.2em;
+}
+
+pre {
+    font-size: 0.9em;
+}
+
+ul {
+    padding-left: 2em;
+}
+
+li {
+    margin-bottom: 0;
+}
+
+.two-column {
+    -webkit-column-count: 2;
+    -moz-column-count: 2;
+}
+
+.three-column {
+    -webkit-column-count: 3;
+    -moz-column-count: 3;
+}
+
+.four-column {
+    -webkit-column-count: 4;
+    -moz-column-count: 4;
+}
+
+#-head {
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 0;
+}
+
+#-head-content {
+    padding: 0.6em 1.8em;
+    margin: 0 auto;
+    max-width: 48em;
+}
+
+#-body {
+    margin-bottom: 0;
+}
+
+#-body-content {
+    padding: 1.6em 1.8em 1.8em 1.8em;
+    margin: 0 auto;
+    max-width: 48em;
+}
+
+#-foot {
+    border-top: 1px solid #ddd;
+}
+
+#-foot-content {
+    padding: 0.6em 1.8em;
+    margin: 0 auto;
+    max-width: 48em;
+}
+
+#-path-navigation {
+    font-size: 0.9em;
+    padding: 0;
+}
+
+#-path-navigation > li {
+    display: inline;
+}
+
+#-path-navigation > li:after {
+    content: " \003e\00a0";
+}
+
+#-path-navigation > li:last-child:after {
+    content: none;
+}
+
+@media screen and (max-width: 720px) {
+    .two-column, .three-column, .four-column {
+        -webkit-column-count: 2;
+        -moz-column-count: 2;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    body {
+        font-size: 12pt;
+    }
+
+    pre {
+        font-size: 0.9em;
+    }
+
+    .two-column, .three-column, .four-column {
+        -webkit-column-count: 1;
+        -moz-column-count: 1;
+    }    
+
+    #-head-content, #-body-content, #-foot-content {
+        padding-left: 0.8em;
+        padding-right: 0.8em;
+    }
+}
