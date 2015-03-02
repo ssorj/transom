@@ -1,6 +1,5 @@
 .PHONY: default help build install clean devel
 
-BUILD_DIR := build
 DESTDIR := ""
 PREFIX := /usr/local
 
@@ -13,9 +12,9 @@ help:
 	@echo "devel          Build and install for this development session"
 
 build:
-	mkdir -p ${BUILD_DIR}/bin
+	mkdir -p build/bin
 
-	scripts/configure-file bin/transom.in "${BUILD_DIR}/bin/transom" \
+	scripts/configure-file bin/transom.in build/bin/transom \
 		"${PREFIX}/share/transom"
 
 install: build
@@ -23,13 +22,13 @@ install: build
 		"${DESTDIR}${PREFIX}/share/transom/python"
 
 	install -d "${DESTDIR}${PREFIX}/bin"
-	install -m 755 "${BUILD_DIR}/bin/transom" "${DESTDIR}${PREFIX}/bin/transom"
+	install -m 755 build/bin/transom "${DESTDIR}${PREFIX}/bin/transom"
 
 clean:
 	find python -type f -name \*.pyc -delete
 	rm -rf build
 	rm -rf install
 
-devel: PREFIX := ${INSTALL_DIR}
+devel: PREFIX := "${PWD}/install"
 devel: clean install
 	transom --help >/dev/null
