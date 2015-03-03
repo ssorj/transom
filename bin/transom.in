@@ -38,15 +38,17 @@ def main():
     parser = ArgumentParser(description=description)
 
     parser.add_argument("input_dir", metavar="INPUT-DIR",
-                        help="read source files from INPUT-DIR")
+                        help="Read source files from INPUT-DIR")
     parser.add_argument("output_dir", metavar="OUTPUT-DIR",
-                        help="render output files to OUTPUT-DIR")
+                        help="Render output files to OUTPUT-DIR")
     parser.add_argument("--site-url", metavar="URL",
-                        help="prefix site links with URL")
-    parser.add_argument("--check-links", action="store_true",
-                        help="Validate the output")
+                        help="Prefix site links with URL")
+    parser.add_argument("--check-links", metavar="MODE", default="none",
+                        choices=["none", "internal", "external", "all"],
+                        help="Validate HTML links (none [default], "
+                        "internal, external, or all)")
     parser.add_argument("--verbose", action="store_true",
-                        help="enable logging")
+                        help="Enable logging")
 
     args = parser.parse_args()
 
@@ -61,8 +63,14 @@ def main():
     transom.init()
     transom.render()
 
-    if args.check:
-        transom.check_links()
+    if args.check_links == "internal":
+        transom.check_links(internal=True)
+
+    if args.check_links == "external":
+        transom.check_links(external=True)
+
+    if args.check_links == "all":
+        transom.check_links(internal=True, external=True)
 
 if __name__ == "__main__":
     try:
