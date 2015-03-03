@@ -23,8 +23,7 @@ clean:
 build:
 	mkdir -p build/bin
 
-	scripts/configure-file bin/transom.in build/bin/transom \
-		transom_home "${PREFIX}/share/transom"
+	scripts/configure-file bin/transom.in build/bin/transom transom_home "${PREFIX}/share/transom"
 
 install: build
 	scripts/install-files python "${DESTDIR}${PREFIX}/share/transom/python" \*.py
