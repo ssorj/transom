@@ -1,4 +1,4 @@
-.PHONY: default help build install clean devel
+.PHONY: default help clean build install devel dist
 
 DESTDIR := ""
 PREFIX := /usr/local
@@ -11,12 +11,14 @@ help:
 	@echo "install        Install the code"
 	@echo "test           Run tests"
 	@echo "devel          Clean, build, install, test"
+	@echo "dist           Generate a release tarball"
 
 clean:
 	find python -type f -name \*.pyc -delete
 	rm -rf build
 	rm -rf install
 	rm -rf output
+	rm -rf dist
 
 build:
 	mkdir -p build/bin
@@ -38,3 +40,8 @@ test: install
 
 devel: PREFIX := "${PWD}/install"
 devel: clean test
+
+dist: VERSION := $(shell cat VERSION)
+dist:
+	mkdir -p dist
+	git archive --prefix "transom-${VERSION}/" --output "dist/transom-${VERSION}.tar.gz" HEAD
