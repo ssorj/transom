@@ -15,11 +15,10 @@ build:
 	mkdir -p build/bin
 
 	scripts/configure-file bin/transom.in build/bin/transom \
-		"${PREFIX}/share/transom"
+		transom_home "${PREFIX}/share/transom"
 
 install: build
-	scripts/install-python-code python \
-		"${DESTDIR}${PREFIX}/share/transom/python"
+	scripts/install-files python "${DESTDIR}${PREFIX}/share/transom/python" \*.py
 
 	install -d "${DESTDIR}${PREFIX}/share/transom/resources"
 	install -m 644 resources/* "${DESTDIR}${PREFIX}/share/transom/resources"

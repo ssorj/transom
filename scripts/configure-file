@@ -20,12 +20,12 @@
 
 import sys
 
-input, output, home = sys.argv[1:]
+input_file, output_file, name, value = sys.argv[1:]
 
-with open(input, "r") as f:
+with open(input_file, "r") as f:
      content = f.read()
 
-content = content.replace("@transom_home@", home)
+content = content.replace("@{}@".format(name), value)
 
-with open(output, "w") as f:
+with open(output_file, "w") as f:
      f.write(content)
