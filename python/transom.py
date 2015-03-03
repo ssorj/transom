@@ -114,6 +114,8 @@ class Transom(object):
     def render(self):
         for page in self.pages:
             page.load_input()
+
+        for page in self.pages:
             page.convert()
 
         for page in self.pages:
@@ -121,6 +123,8 @@ class Transom(object):
 
         for page in self.pages:
             page.render()
+
+        for page in self.pages:
             page.save_output()
 
         for resource in self.resources:
@@ -306,7 +310,7 @@ class _File(object):
         return content
 
     def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self.input_path)
+        return _repr(self, self.input_path)
 
 class _Resource(_File):
     def __init__(self, site, input_path):
@@ -332,10 +336,8 @@ class _Page(_File):
     def init(self):
         if self.output_path.endswith(".md"):
             self.output_path = "{}.html".format(self.output_path[:-3])
-            self.convert = self.convert_from_markdown
         elif self.output_path.endswith(".html.in"):
             self.output_path = self.output_path[:-3]
-            self.convert = self.convert_from_html_in
 
         self.url = self.site.get_url(self.output_path)
 
@@ -365,9 +367,15 @@ class _Page(_File):
             self.content = file.read()
 
     def convert(self):
-        pass
+        if self.input_path.endswith(".md"):
+            self.convert_from_markdown()
+        elif self.input_path.endswith(".html.in"):
+            self.convert_from_html_in()
 
     def convert_from_markdown(self):
+        if self.site.verbose:
+            print("Converting {} from markdown".format(self))
+
         # Strip out comments
         content_lines = self.content.splitlines()
         content_lines = (x for x in content_lines if not x.startswith(";;"))
@@ -378,12 +386,18 @@ class _Page(_File):
         self.content = self.apply_template(content)
 
     def convert_from_html_in(self):
+        if self.site.verbose:
+            print("Converting {} from html.in".format(self))
+
         self.content = self.apply_template(self.content)
 
     def apply_template(self, content):
         return self.site.template_content.replace("@content@", content)
 
     def process(self):
+        if self.site.verbose:
+            print("Processing {}".format(self))
+
         if self.parent is None:
             self.title = "Home"
             return
@@ -402,6 +416,9 @@ class _Page(_File):
         self.title = self.title.strip()
 
     def render(self):
+        if self.site.verbose:
+            print("Rendering {}".format(self))
+
         path_nav = self.render_path_navigation()
 
         self.content = self.content.replace("@path-navigation@", path_nav)
