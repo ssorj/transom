@@ -43,6 +43,8 @@ def main():
                         help="render output files to OUTPUT-DIR")
     parser.add_argument("--site-url", metavar="URL",
                         help="prefix site links with URL")
+    parser.add_argument("--check-links", action="store_true",
+                        help="Validate the output")
     parser.add_argument("--verbose", action="store_true",
                         help="enable logging")
 
@@ -58,6 +60,9 @@ def main():
 
     transom.init()
     transom.render()
+
+    if args.check:
+        transom.check_links()
 
 if __name__ == "__main__":
     try:

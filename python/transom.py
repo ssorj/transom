@@ -189,11 +189,6 @@ class Transom(object):
             page.load_output()
 
         for page in self.pages:
-            if page.output_path.endswith("java-broker/book/index.html"):
-                # The docbook tools always generate this page with broken
-                # fragment identifiers; skip it
-                continue
-
             page.check_links()
 
         errors_by_link = _defaultdict(list)
