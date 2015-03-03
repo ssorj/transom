@@ -6,10 +6,17 @@ PREFIX := /usr/local
 default: devel
 
 help:
+	@echo "clean          Clean up the source tree"
 	@echo "build          Build the code"
 	@echo "install        Install the code"
-	@echo "clean          Clean up the source tree"
-	@echo "devel          Build and install for this development session"
+	@echo "test           Run tests"
+	@echo "devel          Clean, build, install, test"
+
+clean:
+	find python -type f -name \*.pyc -delete
+	rm -rf build
+	rm -rf install
+	rm -rf output
 
 build:
 	mkdir -p build/bin
@@ -26,11 +33,8 @@ install: build
 	install -d "${DESTDIR}${PREFIX}/bin"
 	install -m 755 build/bin/transom "${DESTDIR}${PREFIX}/bin/transom"
 
-clean:
-	find python -type f -name \*.pyc -delete
-	rm -rf build
-	rm -rf install
+test: install
+	transom input output
 
 devel: PREFIX := "${PWD}/install"
-devel: clean install
-	transom --help >/dev/null
+devel: clean test
