@@ -33,7 +33,7 @@ to install and test your checkout.
     devel.sh              # Sets up your project environment
     Makefile              # Defines the make targets
     bin/                  # Command-line tools
-    python/               # Python library code; used by scripts
+    python/               # Python library code
     scripts/              # Scripts called by Makefile rules
     build/                # The default build location
     install/              # The devel install location
