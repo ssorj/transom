@@ -54,7 +54,7 @@ _tag_regex = _re.compile(r"<.+?>")
 _page_extensions = ".md", ".html.in", ".html", ".css", ".jss"
 _buffer_size = 128 * 1024
 
-class Transom(object):
+class Transom:
     def __init__(self, home_dir, site_url, input_dir, output_dir):
         self.home_dir = home_dir
         self.site_url = site_url
@@ -290,7 +290,7 @@ class Transom(object):
         path = path.replace(_os.path.sep, "/")
         return "{}/{}".format(self.site_url, path)
 
-class _File(object):
+class _File:
     def __init__(self, site, input_path):
         self.site = site
         self.input_path = input_path
@@ -448,7 +448,7 @@ class _Page(_File):
 
         try:
             root = self.parse_xml(self.content)
-        except Exception, e:
+        except Exception as e:
             print("Warning: {}".format(str(e)))
             return
 
