@@ -20,6 +20,7 @@
 from __future__ import print_function
 
 import codecs as _codecs
+import importlib as _importlib
 import markdown2 as _markdown2
 import os as _os
 import re as _re
@@ -65,6 +66,7 @@ class Transom:
 
         self.config_path = _os.path.join(self.input_dir, "_config.ini")
         self.template_path = _os.path.join(self.input_dir, "_template.html")
+        self.python_module_path = _os.path.join(self.input_dir, "_module.py")
 
         extras = {
             "code-friendly": True,
@@ -80,7 +82,8 @@ class Transom:
         self.config_vars = dict()
 
         self.template_content = None
-
+        self.python_module = None
+        
         self.files = list()
         self.files_by_input_path = dict()
 
@@ -105,6 +108,13 @@ class Transom:
         with _open_file(self.template_path, "r") as file:
             self.template_content = file.read()
 
+        if _os.path.isfile(self.python_module_path):
+            _sys.path.append(self.input_dir)
+            self.python_module = _importlib.import_module("_module")
+            
+            import pprint
+            pprint.pprint(vars(self.python_module))
+                
         self.traverse_input_pages(self.input_dir, None)
         self.traverse_input_resources(self.input_dir)
 
@@ -290,7 +300,7 @@ class Transom:
         path = path.replace(_os.path.sep, "/")
         return "{}/{}".format(self.site_url, path)
 
-class _File:
+class _File(object):
     def __init__(self, site, input_path):
         self.site = site
         self.input_path = input_path
@@ -303,11 +313,27 @@ class _File:
     def init(self):
         self.site.targets.add(self.url)
 
-    def replace_site_vars(self, content):
-        for name, value in self.site.config_vars.items():
-            content = content.replace("@{}@".format(name), value)
+    def replace_placeholders(self, content):
+        out = list()
+        tokens = _re.split("({{.+?}})", content)
 
-        return content
+        for token in tokens:
+            if token.startswith("{{") and token.endswith("}}"):
+                code = token[2:-2]
+
+                try:
+                    result = eval(code, vars(self.site.python_module), vars(self.site.python_module))
+                except Exception as e:
+                    msg = "Failed evaluating '{}' in file '{}'; {}".format \
+                          (token, self.input_path, e)
+                    raise Exception(msg)
+
+                if result is not None:
+                    out.append(str(result))
+            else:
+                out.append(token)
+
+        return "".join(out)
 
     def __repr__(self):
         return _repr(self, self.input_path)
@@ -392,7 +418,7 @@ class _Page(_File):
         self.content = self.apply_template(self.content)
 
     def apply_template(self, content):
-        return self.site.template_content.replace("@content@", content)
+        return self.site.template_content.replace("{{content}}", content)
 
     def process(self):
         if self.site.verbose:
@@ -421,9 +447,11 @@ class _Page(_File):
 
         path_nav = self.render_path_navigation()
 
-        self.content = self.content.replace("@path-navigation@", path_nav)
-        self.content = self.content.replace("@title@", self.title)
-        self.content = self.replace_site_vars(self.content)
+        self.content = self.content.replace("{{path_navigation}}", path_nav)
+        self.content = self.content.replace("{{title}}", self.title)
+        self.content = self.content.replace("{{site_url}}", self.site.site_url)
+
+        self.content = self.replace_placeholders(self.content)
 
     def render_link(self):
         return u"<a href=\"{}\">{}</a>".format(self.url, self.title)
