@@ -20,10 +20,10 @@
 from __future__ import print_function
 
 import codecs as _codecs
-import importlib as _importlib
 import markdown2 as _markdown2
 import os as _os
 import re as _re
+import runpy as _runpy
 import sys as _sys
 import tempfile as _tempfile
 
@@ -45,14 +45,9 @@ try:
 except:
     from urlparse import urljoin as _urljoin
 
-try:
-    from configparser import SafeConfigParser as _SafeConfigParser
-except:
-    from ConfigParser import SafeConfigParser as _SafeConfigParser
-
 _title_regex = _re.compile(r"<([hH][12]).*?>(.*?)</\1>")
 _tag_regex = _re.compile(r"<.+?>")
-_page_extensions = ".md", ".html.in", ".html", ".css", ".jss"
+_page_extensions = ".md", ".html.in", ".html", ".css", ".js"
 _buffer_size = 128 * 1024
 
 class Transom:
@@ -64,10 +59,12 @@ class Transom:
 
         self.verbose = False
 
-        self.config_path = _os.path.join(self.input_dir, "_config.ini")
         self.template_path = _os.path.join(self.input_dir, "_template.html")
-        self.python_module_path = _os.path.join(self.input_dir, "_module.py")
+        self.config_path = _os.path.join(self.input_dir, "_config.py")
 
+        self.template_content = None
+        self.config_env = None
+        
         extras = {
             "code-friendly": True,
             "tables": True,
@@ -78,12 +75,6 @@ class Transom:
 
         self.markdown = _markdown2.Markdown(extras=extras)
 
-        self.config_parser = _SafeConfigParser()
-        self.config_vars = dict()
-
-        self.template_content = None
-        self.python_module = None
-        
         self.files = list()
         self.files_by_input_path = dict()
 
@@ -94,13 +85,6 @@ class Transom:
         self.targets = set()
 
     def init(self):
-        self.config_vars["site-url"] = self.site_url
-
-        if _os.path.isfile(self.config_path):
-            self.config_parser.read(self.config_path)
-            items = self.config_parser.items("main", vars=self.config_vars)
-            self.config_vars.update(items)
-
         if not _os.path.isfile(self.template_path):
             path = _os.path.join(self.home_dir, "resources", "template.html")
             self.template_path = path
@@ -108,13 +92,10 @@ class Transom:
         with _open_file(self.template_path, "r") as file:
             self.template_content = file.read()
 
-        if _os.path.isfile(self.python_module_path):
-            _sys.path.append(self.input_dir)
-            self.python_module = _importlib.import_module("_module")
-            
-            import pprint
-            pprint.pprint(vars(self.python_module))
-                
+        if _os.path.isfile(self.config_path):
+            init_globals = {"site_url": self.site_url}
+            self.config_env = _runpy.run_path(self.config_path, init_globals)
+
         self.traverse_input_pages(self.input_dir, None)
         self.traverse_input_resources(self.input_dir)
 
@@ -265,7 +246,7 @@ class Transom:
         for name in sorted(names):
             path = _os.path.join(dir, name)
 
-            if path in (self.config_path, self.template_path):
+            if path in (self.template_path, self.config_path):
                 continue
 
             if _os.path.isfile(path):
@@ -282,7 +263,7 @@ class Transom:
         for name in sorted(names):
             path = _os.path.join(dir, name)
 
-            if path in (self.config_path, self.template_path):
+            if path in (self.template_path, self.config_path):
                 continue
 
             if _os.path.isfile(path):
@@ -319,14 +300,18 @@ class _File(object):
 
         for token in tokens:
             if token.startswith("{{") and token.endswith("}}"):
-                code = token[2:-2]
-
+                expr = token[2:-2]
+                env = self.site.config_env
+                
                 try:
-                    result = eval(code, vars(self.site.python_module), vars(self.site.python_module))
+                    result = eval(expr, env)
                 except Exception as e:
-                    msg = "Failed evaluating '{}' in file '{}'; {}".format \
-                          (token, self.input_path, e)
-                    raise Exception(msg)
+                    msg = "Expression '{}'; file '{}'; {}"
+                    args = expr, self.input_path, e
+                    print(msg.format(*args))
+
+                    out.append(token)
+                    continue
 
                 if result is not None:
                     out.append(str(result))
@@ -449,8 +434,9 @@ class _Page(_File):
 
         self.content = self.content.replace("{{path_navigation}}", path_nav)
         self.content = self.content.replace("{{title}}", self.title)
-        self.content = self.content.replace("{{site_url}}", self.site.site_url)
 
+        # XXX pass path nav and title in here somehow
+        
         self.content = self.replace_placeholders(self.content)
 
     def render_link(self):

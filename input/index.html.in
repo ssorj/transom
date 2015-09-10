@@ -7,38 +7,38 @@
     <p>Apache Qpid&#8482; makes messaging tools that speak AMQP
       and support many languages and platforms.</p>
 
-    <p><a href="@site-url@/amqp.html">AMQP</a> is an open
+    <p><a href="{{site_url}}/amqp.html">AMQP</a> is an open
       internet protocol for reliably sending and receiving
       messages.  It makes it possible for everyone to build a
       diverse, coherent messaging ecosystem.</p>
 
-    <p>More about <a href="@site-url@/overview.html">Qpid and
+    <p>More about <a href="{{site_url}}/overview.html">Qpid and
     AMQP</a>.</p>
   </div>
 
   <h2>Build AMQP applications</h2>
 
   <ul>
-    <li><a href="@site-url@/components/messenger/index.html">AMQP Messenger</a> - A simple but powerful message-oriented API</li>
-    <li><a href="@site-url@/components/qpid-jca/index.html">Qpid JCA</a> - A JCA resource adapter for AMQP brokers</li>
-    <li><a href="@site-url@/components/qpid-jms/index.html">Qpid JMS</a> - An AMQP-fluent JMS implementation</li>
-    <li><a href="@site-url@/components/messaging-api/index.html">Qpid Messaging API</a> - A connection-oriented messaging API</li>
-    <li>More about <a href="@site-url@/components/index.html#messaging-apis">Qpid messaging APIs</a></li>
+    <li><a href="{{site_url}}/components/messenger/index.html">AMQP Messenger</a> - A simple but powerful message-oriented API</li>
+    <li><a href="{{site_url}}/components/qpid-jca/index.html">Qpid JCA</a> - A JCA resource adapter for AMQP brokers</li>
+    <li><a href="{{site_url}}/components/qpid-jms/index.html">Qpid JMS</a> - An AMQP-fluent JMS implementation</li>
+    <li><a href="{{site_url}}/components/messaging-api/index.html">Qpid Messaging API</a> - A connection-oriented messaging API</li>
+    <li>More about <a href="{{site_url}}/components/index.html#messaging-apis">Qpid messaging APIs</a></li>
   </ul>
 
   <h2>Deploy AMQP networks</h2>
   
   <ul>
-    <li><a href="@site-url@/components/java-broker/index.html">Java broker</a> - A pure-Java AMQP message broker</li>
-    <li><a href="@site-url@/components/cpp-broker/index.html">C++ broker</a> - A native-code AMQP message broker</li>
-    <li><a href="@site-url@/components/dispatch-router/index.html">Dispatch router</a> - A lightweight AMQP message router</li>
-    <li>More about <a href="@site-url@/components/index.html#servers-and-tools">Qpid servers and tools</a></li>
+    <li><a href="{{site_url}}/components/java-broker/index.html">Java broker</a> - A pure-Java AMQP message broker</li>
+    <li><a href="{{site_url}}/components/cpp-broker/index.html">C++ broker</a> - A native-code AMQP message broker</li>
+    <li><a href="{{site_url}}/components/dispatch-router/index.html">Dispatch router</a> - A lightweight AMQP message router</li>
+    <li>More about <a href="{{site_url}}/components/index.html#servers-and-tools">Qpid servers and tools</a></li>
   </ul>
 </div>
 
 <div id="-right-column">
   <div id="-download-link">
-    <a href="@site-url@/download.html">Download</a>
+    <a href="{{site_url}}/download.html">Download</a>
   </div>
 
   <section>
@@ -47,8 +47,8 @@
     <ul>
       <li>Qpid is an <a href="http://www.apache.org/">Apache</a> project</li>
       <li>Our code is <a href="http://www.apache.org/licenses/LICENSE-2.0">open source</a></li>
-      <li>Thank you, <a href="@site-url@/contributors.html">contributors</a></li>
-      <li><a href="@site-url@/get-involved.html">How to get involved</a></li>
+      <li>Thank you, <a href="{{site_url}}/contributors.html">contributors</a></li>
+      <li><a href="{{site_url}}/get-involved.html">How to get involved</a></li>
     </ul>
   </section>
 
@@ -56,7 +56,7 @@
     <h2>Qpid Proton</h2>
 
     <div class="indent">
-      <p><a href="@site-url@/proton/index.html">Qpid Proton</a>
+      <p><a href="{{site_url}}/proton/index.html">Qpid Proton</a>
         is a toolkit allowing any application to speak AMQP.</p>
     </div>
   </section>
@@ -76,13 +76,13 @@
     <h2>Resources</h2>
 
     <ul>
-      <li><a href="@site-url@/documentation.html">Documentation</a></li>
-      <li><a href="@site-url@/discussion.html">Discussion</a></li>
-      <li><a href="@site-url@/issues.html">Issues</a></li>
-      <li><a href="@site-url@/source-code.html">Source code</a></li>
-      <li><a href="@site-url@/releases/index.html">Releases</a></li>
-      <li><a href="@site-url@/components/index.html">Components</a></li>
-      <li><a href="@site-url@/resources.html">More resources</a></li>
+      <li><a href="{{site_url}}/documentation.html">Documentation</a></li>
+      <li><a href="{{site_url}}/discussion.html">Discussion</a></li>
+      <li><a href="{{site_url}}/issues.html">Issues</a></li>
+      <li><a href="{{site_url}}/source-code.html">Source code</a></li>
+      <li><a href="{{site_url}}/releases/index.html">Releases</a></li>
+      <li><a href="{{site_url}}/components/index.html">Components</a></li>
+      <li><a href="{{site_url}}/resources.html">More resources</a></li>
     </ul>
   </section>
 </div>
