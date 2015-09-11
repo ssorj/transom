@@ -96,9 +96,12 @@ class Transom:
         with _open_file(self.template_path, "r") as file:
             self.template_content = file.read()
 
+        init_globals = {"site_url": self.site_url}
+
         if _os.path.isfile(self.config_path):
-            init_globals = {"site_url": self.site_url}
             self.config_env = _runpy.run_path(self.config_path, init_globals)
+        else:
+            self.config_env = init_globals
 
         self.traverse_input_pages(self.input_dir, None)
         self.traverse_input_resources(self.input_dir)
@@ -125,7 +128,8 @@ class Transom:
         for resource in self.resources:
             resource.save_output()
 
-        self.copy_default_resources()
+        if self.home_dir is not None:
+            self.copy_default_resources()
 
     def copy_default_resources(self):
         from_dir = _join(self.home_dir, "resources")
