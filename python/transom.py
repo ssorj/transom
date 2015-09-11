@@ -59,8 +59,10 @@ class Transom:
 
         self.verbose = False
 
-        self.template_path = _os.path.join(self.input_dir, "_template.html")
-        self.config_path = _os.path.join(self.input_dir, "_config.py")
+        self.template_path = _os.path.join \
+                             (self.input_dir, "_transom_template.html")
+        self.config_path = _os.path.join \
+                             (self.input_dir, "_transom_config.py")
 
         self.template_content = None
         self.config_env = None
