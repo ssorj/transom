@@ -82,7 +82,7 @@ class Transom:
         self.pages = list()
 
         self.links = _defaultdict(set)
-        self.targets = set()
+        self.link_targets = set()
 
     def init(self):
         if not _os.path.isfile(self.template_path):
@@ -139,9 +139,7 @@ class Transom:
             to_file = _os.path.join(to_dir, subpath)
             parent_dir = _os.path.dirname(to_file)
 
-            if not _os.path.exists(parent_dir):
-                _make_dirs(parent_dir)
-
+            _make_dirs(parent_dir)
             _copy_file(from_file, to_file)
 
     def check_output_files(self):
@@ -190,7 +188,10 @@ class Transom:
 
         for link in self.links:
             if internal and link.startswith(self.site_url):
-                if link not in self.targets:
+                if link[len(self.site_url):].startswith("/transom"):
+                    continue
+                
+                if link not in self.link_targets:
                     errors_by_link[link].append("Link has no target")
 
             if external and not link.startswith(self.site_url):
@@ -292,7 +293,7 @@ class _File(object):
         self.site.files_by_input_path[self.input_path] = self
 
     def init(self):
-        self.site.targets.add(self.url)
+        self.site.link_targets.add(self.url)
 
     def replace_placeholders(self, content):
         out = list()
@@ -467,7 +468,7 @@ class _Page(_File):
             return
 
         links = self.gather_links(root)
-        targets = self.gather_targets(root)
+        link_targets = self.gather_link_targets(root)
 
         for link in links:
             if link == "?":
@@ -486,7 +487,7 @@ class _Page(_File):
 
             self.site.links[link].add(self.url)
 
-        self.site.targets.update(targets)
+        self.site.link_targets.update(link_targets)
 
     def parse_xml(self, xml):
         try:
@@ -514,8 +515,8 @@ class _Page(_File):
 
         return links
 
-    def gather_targets(self, root_elem):
-        targets = set()
+    def gather_link_targets(self, root_elem):
+        link_targets = set()
 
         for elem in root_elem.iter("*"):
             try:
@@ -525,11 +526,11 @@ class _Page(_File):
 
             target = "{}#{}".format(self.url, id)
 
-            assert target not in targets, target
+            assert target not in link_targets, target
 
-            targets.add(target)
+            link_targets.add(target)
 
-        return targets
+        return link_targets
 
 def _make_dirs(dir):
     if not _os.path.exists(dir):
