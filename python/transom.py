@@ -91,7 +91,7 @@ class Transom:
                 self.template_path = path
 
         if not _os.path.isfile(self.template_path):
-            raise Error("No template found")
+            raise Exception("No template found")
             
         with _open_file(self.template_path, "r") as file:
             self.template_content = file.read()
