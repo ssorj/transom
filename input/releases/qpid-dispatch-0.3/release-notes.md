@@ -20,7 +20,7 @@
 # Qpid Dispatch 0.3 Release Notes
 
 Dispatch is a lightweight AMQP message router library. More about
-[Qpid Dispatch](@site-url@/components/dispatch-router/index.html).
+[Qpid Dispatch]({{site_url}}/components/dispatch-router/index.html).
 
 For more information about this release, including download links and
 documentation, see the [release overview](index.html).

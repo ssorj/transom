@@ -19,7 +19,7 @@
 
 <script type="text/javascript">
   _deferredFunctions.push(function() {
-      if ("0.3" === "@current-dispatch-release@") {
+      if ("0.3" === "{{current_dispatch_release}}") {
           _modifyCurrentReleaseLinks();
       }
   });
@@ -28,7 +28,7 @@
 # Qpid Dispatch 0.3
 
 Dispatch is a lightweight AMQP message router library. More about
-[Qpid Dispatch](@site-url@/components/dispatch-router/index.html).
+[Qpid Dispatch]({{site_url}}/components/dispatch-router/index.html).
 
 For a detailed list of the changes in this release, see the [release
 notes](release-notes.html).
@@ -36,7 +36,7 @@ notes](release-notes.html).
 ## Downloads
 
 It's important to [verify the
-integrity](@site-url@/download.html#verify-what-you-download) of the
+integrity]({{site_url}}/download.html#verify-what-you-download) of the
 files you download.
 
   || *Content* || *Download* || *Signature* ||

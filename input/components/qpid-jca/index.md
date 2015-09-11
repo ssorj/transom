@@ -27,7 +27,7 @@ EE applications and AMQP 0-10 message brokers.
   || *Languages* || Java ||
   || *Platforms* || JVM ||
   || *AMQP versions* || 0-10 ||
-  || *Download* || [qpid-java-@current-release@.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/@current-release@/qpid-java-@current-release@.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/@current-release@/qpid-java-@current-release@.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/@current-release@/qpid-java-@current-release@.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/@current-release@/qpid-java-@current-release@.tar.gz.sha1)] ||
+  || *Download* || [qpid-java-{{current_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/qpid-java-{{current_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/qpid-java-{{current_release}}.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/qpid-java-{{current_release}}.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/qpid-java-{{current_release}}.tar.gz.sha1)] ||
   || *Source location* ||  <http://svn.apache.org/repos/asf/qpid/trunk/qpid/java/jca/> ||
 
 ## Features
@@ -45,23 +45,23 @@ EE applications and AMQP 0-10 message brokers.
 
 This is the documentation for the current released version.  You can
 find previous versions with our
-[past releases](@site-url@/releases/index.html#past-releases).
+[past releases]({{site_url}}/releases/index.html#past-releases).
 
 <div class="two-column" markdown="1">
 
- - [README](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/java/jca/README.txt)
- - [Connect with JBoss EAP 5](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/java/jca/README-JBOSS.txt)
- - [Connect with JBoss EAP 6](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/java/jca/README-JBOSS-EAP6.txt)
- - [Connect with Geronimo](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/java/jca/README-GERONIMO.txt)
- - [Connect with Glassfish](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/java/jca/example/README-GLASSFISH.txt)
- - [Examples](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/java/jca/example/)
+ - [README](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/java/jca/README.txt)
+ - [Connect with JBoss EAP 5](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/java/jca/README-JBOSS.txt)
+ - [Connect with JBoss EAP 6](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/java/jca/README-JBOSS-EAP6.txt)
+ - [Connect with Geronimo](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/java/jca/README-GERONIMO.txt)
+ - [Connect with Glassfish](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/java/jca/example/README-GLASSFISH.txt)
+ - [Examples](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/java/jca/example/)
 
 </div>
 
 ## Issues
 
 For more information about finding and reporting bugs, see
-[Qpid issues](@site-url@/issues.html).
+[Qpid issues]({{site_url}}/issues.html).
 
 <div class="indent">
   <form id="jira-search-form">

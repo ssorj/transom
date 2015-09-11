@@ -31,7 +31,7 @@ following dependencies can be added to the POM for your Maven build.
 <span class="nt">&lt;dependency&gt;</span>
   <span class="nt">&lt;groupId&gt;</span>org.apache.qpid<span class="nt">&lt;/groupId&gt;</span>
   <span class="nt">&lt;artifactId&gt;</span>qpid-client<span class="nt">&lt;/artifactId&gt;</span>
-  <span class="nt">&lt;version&gt;</span>@current-release@<span class="nt">&lt;/version&gt;</span>
+  <span class="nt">&lt;version&gt;</span>{{current_release}}<span class="nt">&lt;/version&gt;</span>
 <span class="nt">&lt;/dependency&gt;</span>
 </pre></div>
 
@@ -41,7 +41,7 @@ following dependencies can be added to the POM for your Maven build.
 <span class="nt">&lt;dependency&gt;</span>
   <span class="nt">&lt;groupId&gt;</span>org.apache.qpid<span class="nt">&lt;/groupId&gt;</span>
   <span class="nt">&lt;artifactId&gt;</span>qpid-amqp-1-0-client-jms<span class="nt">&lt;/artifactId&gt;</span>
-  <span class="nt">&lt;version&gt;</span>@current-release@<span class="nt">&lt;/version&gt;</span>
+  <span class="nt">&lt;version&gt;</span>{{current_release}}<span class="nt">&lt;/version&gt;</span>
 <span class="nt">&lt;/dependency&gt;</span>
 </pre></div>
 

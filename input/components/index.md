@@ -50,16 +50,16 @@ persistence, and manageability.
 <div class="scroll" markdown="1">
 
   || *Component* || *Languages* || *Platforms* || *AMQP versions* ||
-  || [AMQP Messenger](@site-url@/components/messenger/index.html) || C, Java, Perl, PHP, Python, Ruby || Linux, OS X, JVM || 1.0 ||
-  || [AMQP Protocol Engine](@site-url@/components/protocol-engine/index.html) || C, Java, Perl, PHP, Python, Ruby || Linux, OS X, JVM || 1.0 ||
-  || [C++ broker](@site-url@/components/cpp-broker/index.html) || C++ || Linux, Windows || 1.0, 0-10 ||
-  || [Dispatch router](@site-url@/components/dispatch-router/index.html) || C || Linux || 1.0 ||
-  || [Java broker](@site-url@/components/java-broker/index.html) || Java || JVM || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
-  || [Qpid JCA](@site-url@/components/qpid-jca/index.html) || Java || JVM || 0-10 ||
-  || [Qpid JMS](@site-url@/components/qpid-jms/index.html) || Java || JVM || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
-  || [Qpid Messaging API](@site-url@/components/messaging-api/index.html) || C++, Perl, Python, Ruby, .NET || Linux, Windows || 1.0, 0-10 ||
-  || [Qpid WCF](@site-url@/components/qpid-wcf/index.html) || .NET || Windows || 0-10 ||
-  || [QMF](@site-url@/components/qmf/index.html) || C++, Python || Linux || 0-10 ||
+  || [AMQP Messenger]({{site_url}}/components/messenger/index.html) || C, Java, Perl, PHP, Python, Ruby || Linux, OS X, JVM || 1.0 ||
+  || [AMQP Protocol Engine]({{site_url}}/components/protocol-engine/index.html) || C, Java, Perl, PHP, Python, Ruby || Linux, OS X, JVM || 1.0 ||
+  || [C++ broker]({{site_url}}/components/cpp-broker/index.html) || C++ || Linux, Windows || 1.0, 0-10 ||
+  || [Dispatch router]({{site_url}}/components/dispatch-router/index.html) || C || Linux || 1.0 ||
+  || [Java broker]({{site_url}}/components/java-broker/index.html) || Java || JVM || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
+  || [Qpid JCA]({{site_url}}/components/qpid-jca/index.html) || Java || JVM || 0-10 ||
+  || [Qpid JMS]({{site_url}}/components/qpid-jms/index.html) || Java || JVM || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
+  || [Qpid Messaging API]({{site_url}}/components/messaging-api/index.html) || C++, Perl, Python, Ruby, .NET || Linux, Windows || 1.0, 0-10 ||
+  || [Qpid WCF]({{site_url}}/components/qpid-wcf/index.html) || .NET || Windows || 0-10 ||
+  || [QMF]({{site_url}}/components/qmf/index.html) || C++, Python || Linux || 0-10 ||
 
 </div>
 

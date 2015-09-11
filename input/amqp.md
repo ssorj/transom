@@ -34,12 +34,12 @@ member section and technical committees at OASIS.
 Qpid offers AMQP 1.0 support in the following components:
 
 <div class="two-column" markdown="1">
- - [AMQP Messenger](@site-url@/components/messenger/index.html)
- - [AMQP Protocol Engine](@site-url@/components/protocol-engine/index.html)
- - [C++ broker](@site-url@/components/cpp-broker/index.html)
- - [Java broker](@site-url@/components/java-broker/index.html)
- - [Qpid JMS](@site-url@/components/qpid-jms/index.html)
- - [Qpid Messaging API](@site-url@/components/messaging-api/index.html)
+ - [AMQP Messenger]({{site_url}}/components/messenger/index.html)
+ - [AMQP Protocol Engine]({{site_url}}/components/protocol-engine/index.html)
+ - [C++ broker]({{site_url}}/components/cpp-broker/index.html)
+ - [Java broker]({{site_url}}/components/java-broker/index.html)
+ - [Qpid JMS]({{site_url}}/components/qpid-jms/index.html)
+ - [Qpid Messaging API]({{site_url}}/components/messaging-api/index.html)
 </div>
 
 ## AMQP and your app

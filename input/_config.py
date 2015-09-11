@@ -1,28 +1,40 @@
-def _link(href, text):
-    return "<a href=\"{}\">{}</a>".format(href, text)
-
 class _Release(object):
-    def __init__(self, name, number):
-        self.name = name
+    def __init__(self, component_name, component_key, number):
+        self.component_name = component_name
+        self.component_key = component_key
         self.number = number
 
-current_release = "0.30"
+    @property
+    def name(self):
+        return "{} {}".format(self.component_name, self.number)
 
-current_release_url = "{}/releases/qpid-{}".format(site_url, current_release)
-current_release_link = _link("{}/index.html".format(current_release_url), "Qpid {}</a>".format(current_release_url, current_release))
+    @property
+    def url(self):
+        return "{}/releases/{}-{}".format(site_url, self.component_key, self.number)
 
-current_release_link = "<a href=\"%(current_release_url)s/index.html\">Qpid %(current_release)s</a>"
-current_release_tag = "http://svn.apache.org/repos/asf/qpid/tags/%(current_release)s"
+    @property
+    def link(self):
+        return "<a href=\"{}\">{}</a>".format(self.url, self.name)
 
-current_proton_release = "0.8"
-current_proton_release_url = "%(site_url)s/releases/qpid-proton-%(current_proton_release)s"
-current_proton_release_link = "<a href=\"%(current_proton_release_url)s/index.html\">Qpid Proton %(current_proton_release)s</a>"
-current_proton_release_tag = "http://svn.apache.org/repos/asf/qpid/proton/tags/%(current_proton_release)s"
+_qpid_release = _Release("Qpid", "qpid", "0.30")
+_proton_release = _Release("Qpid Proton", "qpid-proton", "0.8")
+_dispatch_release = _Release("Qpid Dispatch", "qpid-dispatch", "0.3")
 
-current_dispatch_release = "0.3"
-current_dispatch_release_url = "%(site_url)s/releases/qpid-dispatch-%(current_dispatch_release)s"
-current_dispatch_release_link = "<a href=\"%(current_dispatch_release_url)s/index.html\">Qpid Dispatch %(current_dispatch_release)s</a>"
-current_dispatch_release_tag = "http://svn.apache.org/repos/asf/qpid/dispatch/tags/%(current_di"
+_svn_base = "http://svn.apache.org/repos/asf/qpid"
 
-def user_link(name):
-    return "XXX {}".format(name)
+current_release = _qpid_release.number
+current_release_url = _qpid_release.url
+current_release_link = _qpid_release.link
+current_release_tag = "{}/tags/{}".format(_svn_base, _qpid_release.number)
+
+current_proton_release = _proton_release.number
+current_proton_release_url = _proton_release.url
+current_proton_release_link = _proton_release.link
+current_proton_release_tag = "{}/proton/tags/{}".format \
+                             (_svn_base, _proton_release.number)
+
+current_dispatch_release = _dispatch_release.number
+current_dispatch_release_url = _dispatch_release.url
+current_dispatch_release_link = _dispatch_release.link
+current_dispatch_release_tag = "{}/dispatch/tags/{}".format \
+                               (_svn_base, _dispatch_release.number)

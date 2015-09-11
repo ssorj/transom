@@ -23,21 +23,21 @@
 
 Our code is [open source](http://www.apache.org/licenses/LICENSE-2.0),
 free to use, and built to help you solve problems.
-[Download Qpid](@site-url@/download.html) and try it.
+[Download Qpid]({{site_url}}/download.html) and try it.
 
 ## Tell us about problems
 
 If everything just works, great!  If not, tell us what's wrong.  You
 can ask questions on the Qpid
-[mailing lists](@site-url@/discussion.html#mailing-lists) or
-[report a bug](@site-url@/issues.html#report-a-bug).
+[mailing lists]({{site_url}}/discussion.html#mailing-lists) or
+[report a bug]({{site_url}}/issues.html#report-a-bug).
 
 ## Follow what's happening
 
 Qpid is an active community.  There's ongoing development of new
 features, lots of bug fixing, and discussion of messaging
 architecture.  Subscribe to our
-[mailing lists](@site-url@/discussion.html#mailing-lists) to watch our
+[mailing lists]({{site_url}}/discussion.html#mailing-lists) to watch our
 progress and voice your opinion.
 
 ## Make Qpid work for you
@@ -45,7 +45,7 @@ progress and voice your opinion.
 Each new user brings new scenarios and new challenges.  Maybe Qpid
 doesn't do something that you need.  Since Qpid is open source, *you
 can make Qpid do what you need*.  Write a patch and send it to us.  If
-you want guidance, [discuss it with us](@site-url@/discussion.html).
+you want guidance, [discuss it with us]({{site_url}}/discussion.html).
 
 ## Contribute
 
@@ -75,5 +75,5 @@ you want guidance, [discuss it with us](@site-url@/discussion.html).
  - *Tell others about Qpid* - We think Qpid is good stuff, and more
    people ought to know about it.  If you use Qpid to do something
    cool, tell others about it in a
-   [blog post](@site-url@/resources.html#blogs), news article, or your
+   [blog post]({{site_url}}/resources.html#blogs), news article, or your
    project's website.  We really appreciate it.

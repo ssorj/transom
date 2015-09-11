@@ -25,47 +25,47 @@ platforms.
   || *Languages* || C++, Perl, Python, Ruby, .NET ||
   || *Platforms* || Linux, Windows ||
   || *AMQP versions* || 1.0, 0-10 ||
-  || *Downloads* || C++, bindings: [qpid-cpp-@current-release@.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz.sha1)],<br/>Python: [qpid-python-@current-release@.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/@current-release@/qpid-python-@current-release@.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/@current-release@/qpid-python-@current-release@.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/@current-release@/qpid-python-@current-release@.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/@current-release@/qpid-python-@current-release@.tar.gz.sha1)] ||
+  || *Downloads* || C++, bindings: [qpid-cpp-{{current_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.sha1)],<br/>Python: [qpid-python-{{current_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/qpid-python-{{current_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/qpid-python-{{current_release}}.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/qpid-python-{{current_release}}.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/qpid-python-{{current_release}}.tar.gz.sha1)] ||
   || *Source location* ||  <http://svn.apache.org/repos/asf/qpid/trunk/qpid/cpp/>,<br/> <http://svn.apache.org/repos/asf/qpid/trunk/qpid/python/> ||
 
 ## Documentation
 
 This is the documentation for the current released version.  You can
 find previous versions with our
-[past releases](@site-url@/releases/index.html#past-releases).
+[past releases]({{site_url}}/releases/index.html#past-releases).
 
 <div class="two-column" markdown="1">
 
- - [Using the Qpid Messaging API](@current-release-url@/programming/book/ch02.html)
- - [C++ API reference](@current-release-url@/messaging-api/cpp/api/index.html)
- - [C++ examples](@current-release-url@/messaging-api/cpp/examples/index.html)
- - [Perl examples](@current-release-url@/messaging-api/perl/examples/index.html)
- - [Python API reference](@current-release-url@/messaging-api/python/api/index.html)
- - [Python examples](@current-release-url@/messaging-api/python/examples/index.html)
- - [Ruby API reference](@current-release-url@/messaging-api/ruby/api/index.html)
- - [Ruby examples](@current-release-url@/messaging-api/ruby/examples/index.html)
- - [The .NET Binding for the C++ Messaging Client](@current-release-url@/programming/book/ch05.html)
- - [.NET API reference](@current-release-url@/messaging-api/dotnet/api/index.html)
- - [.NET examples](@current-release-url@/messaging-api/dotnet/examples/index.html)
- - [Installing Qpid C++](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/cpp/INSTALL)
- - [Installing Qpid Python](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/python/README.txt)
- - [Installing the Ruby Messaging API](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/cpp/bindings/qpid/ruby/README.rdoc)
- - [Installing the .NET Messaging API](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/cpp/bindings/qpid/dotnet/ReadMe.txt)
+ - [Using the Qpid Messaging API]({{current_release_url}}/programming/book/ch02.html)
+ - [C++ API reference]({{current_release_url}}/messaging-api/cpp/api/index.html)
+ - [C++ examples]({{current_release_url}}/messaging-api/cpp/examples/index.html)
+ - [Perl examples]({{current_release_url}}/messaging-api/perl/examples/index.html)
+ - [Python API reference]({{current_release_url}}/messaging-api/python/api/index.html)
+ - [Python examples]({{current_release_url}}/messaging-api/python/examples/index.html)
+ - [Ruby API reference]({{current_release_url}}/messaging-api/ruby/api/index.html)
+ - [Ruby examples]({{current_release_url}}/messaging-api/ruby/examples/index.html)
+ - [The .NET Binding for the C++ Messaging Client]({{current_release_url}}/programming/book/ch05.html)
+ - [.NET API reference]({{current_release_url}}/messaging-api/dotnet/api/index.html)
+ - [.NET examples]({{current_release_url}}/messaging-api/dotnet/examples/index.html)
+ - [Installing Qpid C++](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/cpp/INSTALL)
+ - [Installing Qpid Python](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/python/README.txt)
+ - [Installing the Ruby Messaging API](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/cpp/bindings/qpid/ruby/README.rdoc)
+ - [Installing the .NET Messaging API](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/cpp/bindings/qpid/dotnet/ReadMe.txt)
 
 </div>
 
 ### Examples
 
-  || *C++* || [hello_world.cpp](@current-release-url@/messaging-api/cpp/examples/hello_world.cpp.html) || [client.cpp](@current-release-url@/messaging-api/cpp/examples/client.cpp.html) || [server.cpp](@current-release-url@/messaging-api/cpp/examples/server.cpp.html) || [spout.cpp](@current-release-url@/messaging-api/cpp/examples/spout.cpp.html) || [drain.cpp](@current-release-url@/messaging-api/cpp/examples/drain.cpp.html) ||
-  || *Perl* || [hello_world.pl](@current-release-url@/messaging-api/perl/examples/hello_world.pl.html) || [client.pl](@current-release-url@/messaging-api/perl/examples/client.pl.html) || [server.pl](@current-release-url@/messaging-api/perl/examples/server.pl.html) || [spout.pl](@current-release-url@/messaging-api/perl/examples/spout.pl.html) || [drain.pl](@current-release-url@/messaging-api/perl/examples/drain.pl.html) ||
-  || *Python* || [hello](@current-release-url@/messaging-api/python/examples/hello.html) ||  || [server](@current-release-url@/messaging-api/python/examples/server.html) || [spout](@current-release-url@/messaging-api/python/examples/spout.html) || [drain](@current-release-url@/messaging-api/python/examples/drain.html) ||
-  || *Ruby* || [hello_world.rb](@current-release-url@/messaging-api/ruby/examples/hello_world.rb.html) || [client.rb](@current-release-url@/messaging-api/ruby/examples/client.rb.html) || [server.rb](@current-release-url@/messaging-api/ruby/examples/server.rb.html) || [spout.rb](@current-release-url@/messaging-api/ruby/examples/spout.rb.html) || [drain.rb](@current-release-url@/messaging-api/ruby/examples/drain.rb.html) ||
-  || *.NET* || [helloworld.cs](@current-release-url@/messaging-api/dotnet/examples/csharp.example.helloworld.cs.html) || [client.cs](@current-release-url@/messaging-api/dotnet/examples/csharp.example.client.cs.html) || [server.cs](@current-release-url@/messaging-api/dotnet/examples/csharp.example.server.cs.html) || [spout.cs](@current-release-url@/messaging-api/dotnet/examples/csharp.example.spout.cs.html) || [drain.cs](@current-release-url@/messaging-api/dotnet/examples/csharp.example.drain.cs.html) ||
+  || *C++* || [hello_world.cpp]({{current_release_url}}/messaging-api/cpp/examples/hello_world.cpp.html) || [client.cpp]({{current_release_url}}/messaging-api/cpp/examples/client.cpp.html) || [server.cpp]({{current_release_url}}/messaging-api/cpp/examples/server.cpp.html) || [spout.cpp]({{current_release_url}}/messaging-api/cpp/examples/spout.cpp.html) || [drain.cpp]({{current_release_url}}/messaging-api/cpp/examples/drain.cpp.html) ||
+  || *Perl* || [hello_world.pl]({{current_release_url}}/messaging-api/perl/examples/hello_world.pl.html) || [client.pl]({{current_release_url}}/messaging-api/perl/examples/client.pl.html) || [server.pl]({{current_release_url}}/messaging-api/perl/examples/server.pl.html) || [spout.pl]({{current_release_url}}/messaging-api/perl/examples/spout.pl.html) || [drain.pl]({{current_release_url}}/messaging-api/perl/examples/drain.pl.html) ||
+  || *Python* || [hello]({{current_release_url}}/messaging-api/python/examples/hello.html) ||  || [server]({{current_release_url}}/messaging-api/python/examples/server.html) || [spout]({{current_release_url}}/messaging-api/python/examples/spout.html) || [drain]({{current_release_url}}/messaging-api/python/examples/drain.html) ||
+  || *Ruby* || [hello_world.rb]({{current_release_url}}/messaging-api/ruby/examples/hello_world.rb.html) || [client.rb]({{current_release_url}}/messaging-api/ruby/examples/client.rb.html) || [server.rb]({{current_release_url}}/messaging-api/ruby/examples/server.rb.html) || [spout.rb]({{current_release_url}}/messaging-api/ruby/examples/spout.rb.html) || [drain.rb]({{current_release_url}}/messaging-api/ruby/examples/drain.rb.html) ||
+  || *.NET* || [helloworld.cs]({{current_release_url}}/messaging-api/dotnet/examples/csharp.example.helloworld.cs.html) || [client.cs]({{current_release_url}}/messaging-api/dotnet/examples/csharp.example.client.cs.html) || [server.cs]({{current_release_url}}/messaging-api/dotnet/examples/csharp.example.server.cs.html) || [spout.cs]({{current_release_url}}/messaging-api/dotnet/examples/csharp.example.spout.cs.html) || [drain.cs]({{current_release_url}}/messaging-api/dotnet/examples/csharp.example.drain.cs.html) ||
 
 ## Issues
 
 For more information about finding and reporting bugs, see
-[Qpid issues](@site-url@/issues.html).
+[Qpid issues]({{site_url}}/issues.html).
 
 <div class="indent">
   <form id="jira-search-form">

@@ -24,7 +24,7 @@ messages using AMQP.
 
   || *Platforms* || JVM ||
   || *AMQP versions* || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
-  || *Download* || [qpid-broker-@current-release@-bin.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/@current-release@/binaries/qpid-broker-@current-release@-bin.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/@current-release@/binaries/qpid-broker-@current-release@-bin.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/@current-release@/binaries/qpid-broker-@current-release@-bin.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/@current-release@/binaries/qpid-broker-@current-release@-bin.tar.gz.sha1)] ||
+  || *Download* || [qpid-broker-{{current_release}}-bin.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/binaries/qpid-broker-{{current_release}}-bin.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/binaries/qpid-broker-{{current_release}}-bin.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/binaries/qpid-broker-{{current_release}}-bin.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/binaries/qpid-broker-{{current_release}}-bin.tar.gz.sha1)] ||
   || *Source location* ||  <http://svn.apache.org/repos/asf/qpid/trunk/qpid/java/> ||
 
 ## Features
@@ -33,24 +33,24 @@ messages using AMQP.
 
  - [JMS 1.1](http://www.oracle.com/technetwork/java/docs-136352.html) compliant
  - Speaks and translates among all versions of AMQP
- - [Management](@current-release-url@/java-broker/book/Java-Broker-Configuring-And-Managing.html) via JMX, REST, QMF, and web console
- - [Access control lists](@current-release-url@/java-broker/book/Java-Broker-Security-ACLs.html)
+ - [Management]({{current_release_url}}/java-broker/book/Java-Broker-Configuring-And-Managing.html) via JMX, REST, QMF, and web console
+ - [Access control lists]({{current_release_url}}/java-broker/book/Java-Broker-Security-ACLs.html)
  - Flexible logging
  - Flow to disk
  - Header-based routing
  - Heartbeats
- - [High availability](@current-release-url@/java-broker/book/Java-Broker-High-Availability.html)
+ - [High availability]({{current_release_url}}/java-broker/book/Java-Broker-High-Availability.html)
  - Message groups
- - [Pluggable persistence](@current-release-url@/java-broker/book/Java-Broker-Stores.html) supporting Derby, SQL, and BDB stores
- - [Pluggable authentication](@current-release-url@/java-broker/book/Java-Broker-Security.html#Java-Broker-Security-Authentication-Providers) supporting LDAP, Kerberos, and SSL client certificates
- - [Producer flow control](@current-release-url@/java-broker/book/Java-Broker-Runtime-Disk-Space-Management.html#Qpid-Producer-Flow-Control)
- - [Secure connection via SSL](@current-release-url@/java-broker/book/Java-Broker-Security-SSL.html)
+ - [Pluggable persistence]({{current_release_url}}/java-broker/book/Java-Broker-Stores.html) supporting Derby, SQL, and BDB stores
+ - [Pluggable authentication]({{current_release_url}}/java-broker/book/Java-Broker-Security.html#Java-Broker-Security-Authentication-Providers) supporting LDAP, Kerberos, and SSL client certificates
+ - [Producer flow control]({{current_release_url}}/java-broker/book/Java-Broker-Runtime-Disk-Space-Management.html#Qpid-Producer-Flow-Control)
+ - [Secure connection via SSL]({{current_release_url}}/java-broker/book/Java-Broker-Security-SSL.html)
  - Server-side selectors
- - [Specialized queuing](@current-release-url@/java-broker/book/Java-Broker-Queues.html) with last value queue, priority queue, and sorted queue
+ - [Specialized queuing]({{current_release_url}}/java-broker/book/Java-Broker-Queues.html) with last value queue, priority queue, and sorted queue
  - Threshold alerts
  - Transactions
- - [Undeliverable message handling](@current-release-url@/java-broker/book/Java-Broker-Runtime-Handling-Undeliverable-Messages.html)
- - [Virtual hosts](@current-release-url@/java-broker/book/Java-Broker-Virtual-Hosts.html)
+ - [Undeliverable message handling]({{current_release_url}}/java-broker/book/Java-Broker-Runtime-Handling-Undeliverable-Messages.html)
+ - [Virtual hosts]({{current_release_url}}/java-broker/book/Java-Broker-Virtual-Hosts.html)
 
 </div>
 
@@ -58,11 +58,11 @@ messages using AMQP.
 
 This is the documentation for the current released version.  You can
 find previous versions with our
-[past releases](@site-url@/releases/index.html#past-releases).
+[past releases]({{site_url}}/releases/index.html#past-releases).
 
 <div class="two-column" markdown="1">
 
- - [Java broker book](@current-release-url@/java-broker/book/index.html)
+ - [Java broker book]({{current_release_url}}/java-broker/book/index.html)
  - [How to build Qpid Java](https://cwiki.apache.org/confluence/display/qpid/qpid+java+build+how+to)
  - [FAQ](https://cwiki.apache.org/confluence/display/qpid/qpid+java+faq)
  - [Design documents](https://cwiki.apache.org/confluence/display/qpid/java+broker+design)
@@ -74,7 +74,7 @@ find previous versions with our
 ## Issues
 
 For more information about finding and reporting bugs, see
-[Qpid issues](@site-url@/issues.html).
+[Qpid issues]({{site_url}}/issues.html).
 
 <div class="indent">
   <form id="jira-search-form">

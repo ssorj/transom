@@ -19,7 +19,7 @@
 
 <script type="text/javascript">
   _deferredFunctions.push(function() {
-      if ("0.8" === "@current-proton-release@") {
+      if ("0.8" === "{{current_proton_release}}") {
           _modifyCurrentReleaseLinks();
       }
   });
@@ -28,7 +28,7 @@
 # Qpid Proton 0.8
 
 Proton is a high-performance, lightweight messaging library. More
-about [Qpid Proton](@site-url@/proton/index.html).
+about [Qpid Proton]({{site_url}}/proton/index.html).
 
 For a detailed list of the changes in this release, see the [release
 notes](release-notes.html).
@@ -36,7 +36,7 @@ notes](release-notes.html).
 ## Downloads
 
 It's important to [verify the
-integrity](@site-url@/download.html#verify-what-you-download) of the
+integrity]({{site_url}}/download.html#verify-what-you-download) of the
 files you download.
 
   || *Content* || *Download* || *Signature* ||
@@ -45,8 +45,8 @@ files you download.
 ## Components
 
   || *Component* || *Languages* || *Platforms* || *AMQP versions* ||
-  || [AMQP Messenger](@site-url@/components/messenger/index.html) || C, Java, Perl, PHP, Python, Ruby || Linux, OS X, JVM || 1.0 ||
-  || [AMQP Protocol Engine](@site-url@/components/protocol-engine/index.html) || C, Java, Perl, PHP, Python, Ruby || Linux, OS X, JVM || 1.0 ||
+  || [AMQP Messenger]({{site_url}}/components/messenger/index.html) || C, Java, Perl, PHP, Python, Ruby || Linux, OS X, JVM || 1.0 ||
+  || [AMQP Protocol Engine]({{site_url}}/components/protocol-engine/index.html) || C, Java, Perl, PHP, Python, Ruby || Linux, OS X, JVM || 1.0 ||
 
 ## Documentation
 

@@ -92,9 +92,9 @@ If you have commit access, it's also possible to commit back with `git
 svn dcommit` by following the instructions on the
 [Git at Apache](http://www.apache.org/dev/git.html) page.
 
-[Qpid Proton](@site-url@/proton/index.html) uses Git as its primary
+[Qpid Proton]({{site_url}}/proton/index.html) uses Git as its primary
 source control.  See the links for
-[Qpid Proton source code](@site-url@/proton/index.html#source-code).
+[Qpid Proton source code]({{site_url}}/proton/index.html#source-code).
 
 ## Continuous integration
 

@@ -20,7 +20,7 @@
 # Qpid Proton 0.8 Release Notes
 
 Proton is a high-performance, lightweight messaging library. More
-about [Qpid Proton](@site-url@/proton/index.html).
+about [Qpid Proton]({{site_url}}/proton/index.html).
 
 For more information about this release, including download links and
 documentation, see the [release overview](index.html).

@@ -20,13 +20,13 @@
 # Dispatch Router
 
 A lightweight message router, written in C and built on
-[Qpid Proton](@site-url@/proton/index.html), that provides flexible
+[Qpid Proton]({{site_url}}/proton/index.html), that provides flexible
 and scalable interconnect between AMQP endpoints or between endpoints
 and brokers.
 
   || *Platforms* || Linux ||
   || *AMQP versions* || 1.0 ||
-  || *Download* || [qpid-dispatch-@current-dispatch-release@.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/dispatch/@current-dispatch-release@/qpid-dispatch-@current-dispatch-release@.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/dispatch/@current-dispatch-release@/qpid-dispatch-@current-dispatch-release@.tar.gz.asc), [SHA1](http://www.apache.org/dist/qpid/dispatch/@current-dispatch-release@/SHA1SUM)] ||
+  || *Download* || [qpid-dispatch-{{current_dispatch_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/dispatch/{{current_dispatch_release}}/qpid-dispatch-{{current_dispatch_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/dispatch/{{current_dispatch_release}}/qpid-dispatch-{{current_dispatch_release}}.tar.gz.asc), [SHA1](http://www.apache.org/dist/qpid/dispatch/{{current_dispatch_release}}/SHA1SUM)] ||
   || *Source location* ||  <http://svn.apache.org/repos/asf/qpid/dispatch/trunk/> ||
   
 ## Overview
@@ -70,14 +70,14 @@ involving a broker at all.
 
 ## Documentation
 
-- [Current release](@current-dispatch-release-url@/index.html)
-- [Past releases](@site-url@/releases/index.html#past-releases) 
-- [Work in progress](@site-url@/releases/qpid-dispatch-trunk/index.html)
+- [Current release]({{current_dispatch_release_url}}/index.html)
+- [Past releases]({{site_url}}/releases/index.html#past-releases) 
+- [Work in progress]({{site_url}}/releases/qpid-dispatch-trunk/index.html)
 
 ## Issues
 
 For more information about finding and reporting bugs, see
-[Qpid issues](@site-url@/issues.html).
+[Qpid issues]({{site_url}}/issues.html).
 
 <div class="indent">
   <form id="jira-search-form">

@@ -24,7 +24,7 @@
 
 ## Blogs
 
-[Contact us](@site-url@/discussion.html) if you write about Qpid and
+[Contact us]({{site_url}}/discussion.html) if you write about Qpid and
 would like your blog linked here.
 
  - [Dial M for Messaging](http://dialmformessaging.blogspot.com/) by Mick Goulish
@@ -80,9 +80,9 @@ To view these you must
 
 ## More
 
- - [About this site](@site-url@/site.html)
- - [Qpid packages](@site-url@/packages.html)
- - [Qpid via Maven](@site-url@/maven.html)
+ - [About this site]({{site_url}}/site.html)
+ - [Qpid packages]({{site_url}}/packages.html)
+ - [Qpid via Maven]({{site_url}}/maven.html)
 
 </section>
 </div>

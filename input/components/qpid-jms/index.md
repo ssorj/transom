@@ -26,7 +26,7 @@ implementation that speaks all versions of AMQP.
   || *Languages* || Java ||
   || *Platforms* || JVM ||
   || *AMQP versions* || 1.0\*, 0-10, 0-9-1, 0-9, 0-8 ||
-  || *Downloads* || AMQP 0-10, 0-9-1, 0-9, 0-8: [qpid-client-@current-release@-bin.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/@current-release@/binaries/qpid-client-@current-release@-bin.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/@current-release@/binaries/qpid-client-@current-release@-bin.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/@current-release@/binaries/qpid-client-@current-release@-bin.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/@current-release@/binaries/qpid-client-@current-release@-bin.tar.gz.sha1)],<br/>AMQP 1.0: [qpid-amqp-1-0-client-jms-@current-release@-bin.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/@current-release@/binaries/qpid-amqp-1-0-client-jms-@current-release@-bin.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/@current-release@/binaries/qpid-amqp-1-0-client-jms-@current-release@-bin.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/@current-release@/binaries/qpid-amqp-1-0-client-jms-@current-release@-bin.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/@current-release@/binaries/qpid-amqp-1-0-client-jms-@current-release@-bin.tar.gz.sha1)] ||
+  || *Downloads* || AMQP 0-10, 0-9-1, 0-9, 0-8: [qpid-client-{{current_release}}-bin.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/binaries/qpid-client-{{current_release}}-bin.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/binaries/qpid-client-{{current_release}}-bin.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/binaries/qpid-client-{{current_release}}-bin.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/binaries/qpid-client-{{current_release}}-bin.tar.gz.sha1)],<br/>AMQP 1.0: [qpid-amqp-1-0-client-jms-{{current_release}}-bin.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/binaries/qpid-amqp-1-0-client-jms-{{current_release}}-bin.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/binaries/qpid-amqp-1-0-client-jms-{{current_release}}-bin.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/binaries/qpid-amqp-1-0-client-jms-{{current_release}}-bin.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/binaries/qpid-amqp-1-0-client-jms-{{current_release}}-bin.tar.gz.sha1)] ||
   || *Source location* ||  <http://svn.apache.org/repos/asf/qpid/trunk/qpid/java/> ||
 
 \*1.0 support is offered in an implementation distinct from that of
@@ -43,7 +43,7 @@ older protocol versions.
  - Pluggable authentication supporting LDAP, Kerberos, and SSL certificates
  - Secure connection via SSL
  - Transactions
- - [Flexible logging](@current-release-url@/programming/book/section-JMS-Logging.html)
+ - [Flexible logging]({{current_release_url}}/programming/book/section-JMS-Logging.html)
  - Failover
  - Heartbeats
 
@@ -53,24 +53,24 @@ older protocol versions.
 
 This is the documentation for the current released versions.  You can
 find previous versions with our
-[past releases](@site-url@/releases/index.html#past-releases).
+[past releases]({{site_url}}/releases/index.html#past-releases).
 
 <div class="two-column" markdown="1">
 
  - [API reference](http://docs.oracle.com/javaee/1.4/api/javax/jms/package-summary.html)
  - [How to build Qpid Java](https://cwiki.apache.org/confluence/display/qpid/qpid+java+build+how+to)
- - [Using the Qpid JMS client (AMQP 0-10)](@current-release-url@/programming/book/QpidJMS.html)
- - [Using the Qpid JMS client (AMQP 0-9-1, 0-9, 0-8)](@current-release-url@/jms-client-0-8/book/index.html)
- - [Examples (AMQP 1.0)](http://svn.apache.org/repos/asf/qpid/branches/@current-release@/qpid/java/amqp-1-0-client-jms/example)
- - [Examples (AMQP 0-10)](@current-release-url@/qpid-jms/examples/index.html)
- - [Examples (AMQP 0-9-1, 0-9, 0-8)](@current-release-url@/jms-client-0-8/book/JMS-Client-0-8-Examples.html)
+ - [Using the Qpid JMS client (AMQP 0-10)]({{current_release_url}}/programming/book/QpidJMS.html)
+ - [Using the Qpid JMS client (AMQP 0-9-1, 0-9, 0-8)]({{current_release_url}}/jms-client-0-8/book/index.html)
+ - [Examples (AMQP 1.0)](http://svn.apache.org/repos/asf/qpid/branches/{{current_release}}/qpid/java/amqp-1-0-client-jms/example)
+ - [Examples (AMQP 0-10)]({{current_release_url}}/qpid-jms/examples/index.html)
+ - [Examples (AMQP 0-9-1, 0-9, 0-8)]({{current_release_url}}/jms-client-0-8/book/JMS-Client-0-8-Examples.html)
 
 </div>
 
 ## Issues
 
 For more information about finding and reporting bugs, see
-[Qpid issues](@site-url@/issues.html).
+[Qpid issues]({{site_url}}/issues.html).
 
 <div class="indent">
   <form id="jira-search-form">

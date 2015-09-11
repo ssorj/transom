@@ -83,16 +83,16 @@ and core libraries for making AMQP part of your own messaging product.
  - *Application development* - Messaging is essential to reliable
    distributed applications, and we offer the tools you need to build
    one.  Check out our
-   [messaging APIs](@site-url@/components/index.html#messaging-apis).
+   [messaging APIs]({{site_url}}/components/index.html#messaging-apis).
 
  - *Messaging infrastructure* - You can design and deploy an AMQP
    network that integrates with other services in your organization.
    See our
-   [messaging servers and tools](@site-url@/components/index.html#servers-and-tools).
+   [messaging servers and tools]({{site_url}}/components/index.html#servers-and-tools).
 
  - *Your messaging product* - We know that there are many established
    messaging systems, and we want to make it easy for them to speak
-   AMQP.  Consider using [Qpid Proton](@site-url@/proton/index.html)
+   AMQP.  Consider using [Qpid Proton]({{site_url}}/proton/index.html)
    instead of developing your own protocol support.
 
 ;; - *Language-native communication frameworks* - Java, .NET, Python,

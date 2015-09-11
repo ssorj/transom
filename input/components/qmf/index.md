@@ -27,23 +27,23 @@ easy-to-use manageability to a large set of applications.
   || *Languages* || C++, Python ||
   || *Platforms* || Linux ||
   || *AMQP versions* || 0-10 ||
-  || *Downloads* || [qpid-cpp-@current-release@.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz.sha1)], [qpid-qmf-@current-release@.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/@current-release@/qpid-qmf-@current-release@.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/@current-release@/qpid-qmf-@current-release@.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/@current-release@/qpid-qmf-@current-release@.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/@current-release@/qpid-qmf-@current-release@.tar.gz.sha1)] ||
+  || *Downloads* || [qpid-cpp-{{current_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.sha1)], [qpid-qmf-{{current_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/qpid-qmf-{{current_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/qpid-qmf-{{current_release}}.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/qpid-qmf-{{current_release}}.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/qpid-qmf-{{current_release}}.tar.gz.sha1)] ||
   || *Source location* ||  <http://svn.apache.org/repos/asf/qpid/trunk/qpid/cpp/>,<br/> <http://svn.apache.org/repos/asf/qpid/trunk/qpid/extras/qmf/> ||
 
 ## Documentation
 
 This is the documentation for the current released version.  You can
 find previous versions with our
-[past releases](@site-url@/releases/index.html#past-releases).
+[past releases]({{site_url}}/releases/index.html#past-releases).
 
 <div class="two-column" markdown="1">
 
- - [Introduction](@current-release-url@/cpp-broker/book/ch02s02.html)
- - [C++ API reference](@current-release-url@/qmf/cpp/api/index.html)
- - [C++ examples](@current-release-url@/qmf/cpp/examples/index.html)
- - [Python examples](@current-release-url@/qmf/python/examples/index.html)
- - [Ruby examples](@current-release-url@/qmf/ruby/examples/index.html)
- - [Installing Qpid C++](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/cpp/INSTALL)
+ - [Introduction]({{current_release_url}}/cpp-broker/book/ch02s02.html)
+ - [C++ API reference]({{current_release_url}}/qmf/cpp/api/index.html)
+ - [C++ examples]({{current_release_url}}/qmf/cpp/examples/index.html)
+ - [Python examples]({{current_release_url}}/qmf/python/examples/index.html)
+ - [Ruby examples]({{current_release_url}}/qmf/ruby/examples/index.html)
+ - [Installing Qpid C++](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/cpp/INSTALL)
  - [Map message protocol](https://cwiki.apache.org/confluence/display/qpid/qmf+map+message+protocol)
 
 </div>
@@ -51,7 +51,7 @@ find previous versions with our
 ## Issues
 
 For more information about finding and reporting bugs, see
-[Qpid issues](@site-url@/issues.html).
+[Qpid issues]({{site_url}}/issues.html).
 
 <div class="indent">
   <form id="jira-search-form">

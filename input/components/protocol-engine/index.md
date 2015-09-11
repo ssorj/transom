@@ -23,13 +23,13 @@ Control the details of AMQP 1.0 without needing to develop custom
 protocol support.
 
 The AMQP Protocol Engine API is part of the
-[Qpid Proton](@site-url@/proton/index.html) toolkit for making any
+[Qpid Proton]({{site_url}}/proton/index.html) toolkit for making any
 application speak AMQP.
 
   || *Languages* || C, Java, Perl, PHP, Python, Ruby ||
   || *Platforms* || Linux, OS X, JVM ||
   || *AMQP versions* || 1.0 ||
-  || *Download* || [qpid-proton-@current-proton-release@.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/proton/@current-proton-release@/qpid-proton-@current-proton-release@.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/proton/@current-proton-release@/qpid-proton-@current-proton-release@.tar.gz.asc), [SHA1](http://www.apache.org/dist/qpid/proton/@current-proton-release@/SHA1SUM)] ||
+  || *Download* || [qpid-proton-{{current_proton_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/proton/{{current_proton_release}}/qpid-proton-{{current_proton_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/proton/{{current_proton_release}}/qpid-proton-{{current_proton_release}}.tar.gz.asc), [SHA1](http://www.apache.org/dist/qpid/proton/{{current_proton_release}}/SHA1SUM)] ||
   || *Source location* ||  <http://svn.apache.org/repos/asf/qpid/proton/trunk/> ||
 
 ## Features
@@ -46,22 +46,22 @@ application speak AMQP.
 
 This is the documentation for the current released version.  You can
 find previous versions with our
-[past releases](@site-url@/releases/index.html#past-releases).
+[past releases]({{site_url}}/releases/index.html#past-releases).
 
 <div class="two-column" markdown="1">
 
  - [Overview](https://cwiki.apache.org/confluence/display/qpid/protocol+engines)
- - [C API reference](@current-proton-release-url@/protocol-engine/c/api/files.html)
- - [Java API reference](@current-proton-release-url@/protocol-engine/java/api/index.html)
- - [Python API reference](@current-proton-release-url@/protocol-engine/python/api/index.html)
- - [Installing Qpid Proton](http://svn.apache.org/repos/asf/qpid/proton/tags/@current-proton-release@/README)
+ - [C API reference]({{current_proton_release_url}}/protocol-engine/c/api/files.html)
+ - [Java API reference]({{current_proton_release_url}}/protocol-engine/java/api/index.html)
+ - [Python API reference]({{current_proton_release_url}}/protocol-engine/python/api/index.html)
+ - [Installing Qpid Proton](http://svn.apache.org/repos/asf/qpid/proton/tags/{{current_proton_release}}/README)
 
 </div>
 
 ## Issues
 
 For more information about finding and reporting bugs, see
-[Qpid issues](@site-url@/issues.html).
+[Qpid issues]({{site_url}}/issues.html).
 
 <div class="indent">
   <form id="jira-search-form">

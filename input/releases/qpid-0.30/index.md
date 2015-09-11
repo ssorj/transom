@@ -19,7 +19,7 @@
 
 <script type="text/javascript">
   _deferredFunctions.push(function() {
-      if ("0.30" === "@current-release@") {
+      if ("0.30" === "{{current_release}}") {
           _modifyCurrentReleaseLinks();
       }
   });
@@ -29,13 +29,13 @@
 
 Qpid is a cross-platform AMQP messaging system.  It provides message
 brokers written in C++ and Java, and clients for C++, Java, Perl,
-Python, Ruby, and .NET.  More about [Qpid](@site-url@/index.html).
+Python, Ruby, and .NET.  More about [Qpid]({{site_url}}/index.html).
 
 For a detailed list of the changes in this release, see the [release
 notes](release-notes.html).
 
 It's important to [verify the
-integrity](@site-url@/download.html#verify-what-you-download) of the
+integrity]({{site_url}}/download.html#verify-what-you-download) of the
 files you download.
 
 ## Source archives
@@ -56,11 +56,11 @@ files you download.
 ## Components
 
   || *Component* || *Languages* || *Platforms* || *AMQP versions* ||
-  || [C++ broker](@site-url@/components/cpp-broker/index.html) || C++ || Linux, Windows || 1.0, 0-10 ||
-  || [Java broker](@site-url@/components/java-broker/index.html) || Java || JVM || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
-  || [Qpid JCA](@site-url@/components/qpid-jca/index.html) || Java || JVM || 0-10 ||
-  || [Qpid JMS](@site-url@/components/qpid-jms/index.html) || Java || JVM || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
-  || [Qpid Messaging API](@site-url@/components/messaging-api/index.html) || C++, Perl, Python, Ruby, .NET || Linux, Windows || 1.0, 0-10 ||
+  || [C++ broker]({{site_url}}/components/cpp-broker/index.html) || C++ || Linux, Windows || 1.0, 0-10 ||
+  || [Java broker]({{site_url}}/components/java-broker/index.html) || Java || JVM || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
+  || [Qpid JCA]({{site_url}}/components/qpid-jca/index.html) || Java || JVM || 0-10 ||
+  || [Qpid JMS]({{site_url}}/components/qpid-jms/index.html) || Java || JVM || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
+  || [Qpid Messaging API]({{site_url}}/components/messaging-api/index.html) || C++, Perl, Python, Ruby, .NET || Linux, Windows || 1.0, 0-10 ||
 
 ## Documentation
 

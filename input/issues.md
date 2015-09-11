@@ -112,7 +112,7 @@ you give to make Qpid better.
 ## Notifications
 
 Alerts for new and updated issues are directed to the
-[developer list](@site-url@/discussion.html#developer-list).
+[developer list]({{site_url}}/discussion.html#developer-list).
 
 ## More information
 

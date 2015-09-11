@@ -37,8 +37,8 @@ channel implementation that speaks AMQP.
  - WCF channel model programming using `IInputChannel`- and `IOutputChannel`-based factories
  - WCF-to-WCF applications using SOAP message encoders
  - WCF-to-non-WCF applications using raw content encoders
- - [Secure connection via SSL](@site-url@/releases/qpid-0.28/programming/book/ch04s04.html)
- - [Full distributed transactions](@site-url@/releases/qpid-0.28/programming/book/ch04s05.html)
+ - [Secure connection via SSL]({{site_url}}/releases/qpid-0.28/programming/book/ch04s04.html)
+ - [Full distributed transactions]({{site_url}}/releases/qpid-0.28/programming/book/ch04s05.html)
  - Programmatic access to AMQP message properties on WCF messages
 
 </div>
@@ -47,12 +47,12 @@ channel implementation that speaks AMQP.
 
 This is the documentation for the last released version, 0.28.  You can
 find previous versions with our
-[past releases](@site-url@/releases/index.html#past-releases).
+[past releases]({{site_url}}/releases/index.html#past-releases).
 
 <div class="two-column" markdown="1">
 
  - [README](http://svn.apache.org/repos/asf/qpid/tags/0.28/qpid/wcf/ReadMe.txt)
- - [Using the Qpid WCF client](@site-url@/releases/qpid-0.28/programming/book/QpidWCF.html)
+ - [Using the Qpid WCF client]({{site_url}}/releases/qpid-0.28/programming/book/QpidWCF.html)
  - [API reference](http://msdn.microsoft.com/en-us/library/vstudio/ms735119\(v=vs.90\).aspx)
  - [Examples](http://svn.apache.org/repos/asf/qpid/tags/0.28/qpid/wcf/samples)
 
@@ -61,7 +61,7 @@ find previous versions with our
 ## Issues
 
 For more information about finding and reporting bugs, see
-[Qpid issues](@site-url@/issues.html).
+[Qpid issues]({{site_url}}/issues.html).
 
 <div class="indent">
   <form id="jira-search-form">

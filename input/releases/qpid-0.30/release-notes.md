@@ -21,7 +21,7 @@
 
 Qpid is a cross-platform AMQP messaging system.  It provides message
 brokers written in C++ and Java, and clients for C++, Java, Perl,
-Python, Ruby, and .NET.  More about [Qpid](@site-url@/index.html).
+Python, Ruby, and .NET.  More about [Qpid]({{site_url}}/index.html).
 
 The full list of changes in the Qpid 0.30 release incorporates
 both the issues worked on during the 0.29 development

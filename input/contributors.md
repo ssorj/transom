@@ -21,7 +21,7 @@
 
 These are the people who have built Qpid.  We are grateful for their
 contributions.  If you'd like to become a contributor, learn how to
-[get involved](@site-url@/get-involved.html).
+[get involved]({{site_url}}/get-involved.html).
 
 ## Current committers
 
@@ -112,15 +112,15 @@ the past year.
 Thanks to the following companies for letting us use their software to
 improve ours.
 
- - <img class="company-logo" src="@site-url@/images/coverity.png"/>
+ - <img class="company-logo" src="{{site_url}}/images/coverity.png"/>
    [Coverity](http://www.coverity.com/) for granting us use of their
    static analysis tools for Qpid C++ and Java code.
  
- - <img class="company-logo" src="@site-url@/images/jprofiler.png"/>
+ - <img class="company-logo" src="{{site_url}}/images/jprofiler.png"/>
    [ej-technologies](http://www.ej-technologies.com/) for giving us a
    free team license for profiling Qpid Java code.
 
- - <img class="company-logo" src="@site-url@/images/structure101.jpg"/>
+ - <img class="company-logo" src="{{site_url}}/images/structure101.jpg"/>
    [Headway Software](http://structure101.com/) for giving us free
    licenses of Structure101 for analyzing and managing the
    architecture of Qpid Java code.

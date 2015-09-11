@@ -24,7 +24,7 @@ messages using AMQP.
 
   || *Platforms* || Linux, Windows ||
   || *AMQP versions* || 1.0, 0-10 ||
-  || *Download* || [qpid-cpp-@current-release@.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/@current-release@/qpid-cpp-@current-release@.tar.gz.sha1)\], [qpid-tools-@current-release@.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/@current-release@/qpid-tools-@current-release@.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/@current-release@/qpid-tools-@current-release@.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/@current-release@/qpid-tools-@current-release@.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/@current-release@/qpid-tools-@current-release@.tar.gz.sha1)\] ||
+  || *Download* || [qpid-cpp-{{current_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.sha1)\], [qpid-tools-{{current_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/qpid-tools-{{current_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/qpid-tools-{{current_release}}.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/qpid-tools-{{current_release}}.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/qpid-tools-{{current_release}}.tar.gz.sha1)\] ||
   || *Source location* ||  <http://svn.apache.org/repos/asf/qpid/trunk/qpid/cpp/>, <http://svn.apache.org/repos/asf/qpid/trunk/qpid/tools/> ||
 
 ## Features
@@ -32,23 +32,23 @@ messages using AMQP.
 <div class="two-column" markdown="1">
 
  - Speaks and translates between AMQP 1.0 and 0-10
- - [Management](@current-release-url@/cpp-broker/book/chapter-Managing-CPP-Broker.html#section-Managing-CPP-Broker) via [QMF](@site-url@/components/qmf/index.html)
+ - [Management]({{current_release_url}}/cpp-broker/book/chapter-Managing-CPP-Broker.html#section-Managing-CPP-Broker) via [QMF]({{site_url}}/components/qmf/index.html)
  - Access control lists
- - [Federation](@current-release-url@/cpp-broker/book/chap-Messaging_User_Guide-Broker_Federation.html)
+ - [Federation]({{current_release_url}}/cpp-broker/book/chap-Messaging_User_Guide-Broker_Federation.html)
  - Flexible logging
  - Header-based routing
  - Heartbeats
- - [High availability](@current-release-url@/cpp-broker/book/chapter-ha.html)
- - [Message groups](@current-release-url@/cpp-broker/book/Using-message-groups.html)
+ - [High availability]({{current_release_url}}/cpp-broker/book/chapter-ha.html)
+ - [Message groups]({{current_release_url}}/cpp-broker/book/Using-message-groups.html)
  - Message TTLs and arrival timestamps
  - Pluggable persistence
- - [Pluggable authentication via SASL](@current-release-url@/cpp-broker/book/chap-Messaging_User_Guide-Security.html)
- - [Producer flow control](@current-release-url@/cpp-broker/book/producer-flow-control.html)
- - [Queue replication](@current-release-url@/cpp-broker/book/ha-queue-replication.html)
+ - [Pluggable authentication via SASL]({{current_release_url}}/cpp-broker/book/chap-Messaging_User_Guide-Security.html)
+ - [Producer flow control]({{current_release_url}}/cpp-broker/book/producer-flow-control.html)
+ - [Queue replication]({{current_release_url}}/cpp-broker/book/ha-queue-replication.html)
  - Resource limits
  - Secure connection via SSL
  - [Server-side selectors](https://issues.apache.org/jira/browse/QPID-4558?focusedCommentId=13592659&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-13592659)
- - Specialized queueing with [last value queue](@current-release-url@/cpp-broker/book/ch01s06.html), priority queue, and ring queue
+ - Specialized queueing with [last value queue]({{current_release_url}}/cpp-broker/book/ch01s06.html), priority queue, and ring queue
  - [Threshold alerts](https://issues.apache.org/jira/browse/QPID-3002)
  - Transactions
  - Undeliverable message handling
@@ -59,13 +59,13 @@ messages using AMQP.
 
 This is the documentation for the current released version.  You can
 find previous versions with our
-[past releases](@site-url@/releases/index.html#past-releases).
+[past releases]({{site_url}}/releases/index.html#past-releases).
 
 <div class="two-column" markdown="1">
 
- - [C++ broker book](@current-release-url@/cpp-broker/book/index.html)
- - [Managing the C++ broker](@current-release-url@/cpp-broker/book/chapter-Managing-CPP-Broker.html#section-Managing-CPP-Broker)
- - [Installing Qpid C++](http://svn.apache.org/repos/asf/qpid/tags/@current-release@/qpid/cpp/INSTALL)
+ - [C++ broker book]({{current_release_url}}/cpp-broker/book/index.html)
+ - [Managing the C++ broker]({{current_release_url}}/cpp-broker/book/chapter-Managing-CPP-Broker.html#section-Managing-CPP-Broker)
+ - [Installing Qpid C++](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/cpp/INSTALL)
  - [Qpid extensions to AMQP](https://cwiki.apache.org/confluence/display/qpid/qpid+extensions+to+amqp)
 
 </div>
@@ -73,7 +73,7 @@ find previous versions with our
 ## Issues
 
 For more information about finding and reporting bugs, see
-[Qpid issues](@site-url@/issues.html).
+[Qpid issues]({{site_url}}/issues.html).
 
 <div class="indent">
   <form id="jira-search-form">
