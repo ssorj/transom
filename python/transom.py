@@ -297,29 +297,36 @@ class _File(object):
     def init(self):
         self.site.link_targets.add(self.url)
 
-    def replace_placeholders(self, content):
+    def replace_placeholders(self, content, page_vars):
         out = list()
         tokens = _re.split("({{.+?}})", content)
 
         for token in tokens:
-            if token.startswith("{{") and token.endswith("}}"):
-                expr = token[2:-2]
-                env = self.site.config_env
-                
-                try:
-                    result = eval(expr, env)
-                except Exception as e:
-                    msg = "Expression '{}'; file '{}'; {}"
-                    args = expr, self.input_path, e
-                    print(msg.format(*args))
-
-                    out.append(token)
-                    continue
-
-                if result is not None:
-                    out.append(str(result))
-            else:
+            if token[:2] != "{{" or token[-2:] != "}}":
                 out.append(token)
+                continue
+            
+            token_content = token[2:-2]
+
+            if page_vars and token_content in page_vars:
+                out.append(page_vars[token_content])
+                continue
+
+            expr = token_content
+            env = self.site.config_env
+            
+            try:
+                result = eval(expr, env)
+            except Exception as e:
+                msg = "Expression '{}'; file '{}'; {}"
+                args = expr, self.input_path, e
+                print(msg.format(*args))
+
+                out.append(token)
+                continue
+
+            if result is not None:
+                out.append(str(result))
 
         return "".join(out)
 
@@ -433,14 +440,12 @@ class _Page(_File):
         if self.site.verbose:
             print("Rendering {}".format(self))
 
-        path_nav = self.render_path_navigation()
+        page_vars = {
+            "path_navigation": self.render_path_navigation(),
+            "title": self.title,
+        }
 
-        self.content = self.content.replace("{{path_navigation}}", path_nav)
-        self.content = self.content.replace("{{title}}", self.title)
-
-        # XXX pass path nav and title in here somehow
-        
-        self.content = self.replace_placeholders(self.content)
+        self.content = self.replace_placeholders(self.content, page_vars)
 
     def render_link(self):
         return u"<a href=\"{}\">{}</a>".format(self.url, self.title)
