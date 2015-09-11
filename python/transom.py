@@ -90,8 +90,8 @@ class Transom:
                 path = _join(self.home_dir, "resources", "template.html")
                 self.template_path = path
 
-            if self.template_path is None:
-                raise Error("No template found")
+        if self.template_path is None:
+            raise Error("No template found")
             
         with _open_file(self.template_path, "r") as file:
             self.template_content = file.read()
