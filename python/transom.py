@@ -51,18 +51,16 @@ _page_extensions = ".md", ".html.in", ".html", ".css", ".js"
 _buffer_size = 128 * 1024
 
 class Transom:
-    def __init__(self, home_dir, site_url, input_dir, output_dir):
-        self.home_dir = home_dir
+    def __init__(self, site_url, input_dir, output_dir, home_dir=None):
         self.site_url = site_url
         self.input_dir = input_dir
         self.output_dir = output_dir
+        self.home_dir = home_dir
 
         self.verbose = False
 
-        self.template_path = _os.path.join \
-                             (self.input_dir, "_transom_template.html")
-        self.config_path = _os.path.join \
-                             (self.input_dir, "_transom_config.py")
+        self.template_path = _join(self.input_dir, "_transom_template.html")
+        self.config_path = _join(self.input_dir, "_transom_config.py")
 
         self.template_content = None
         self.config_env = None
@@ -88,9 +86,13 @@ class Transom:
 
     def init(self):
         if not _os.path.isfile(self.template_path):
-            path = _os.path.join(self.home_dir, "resources", "template.html")
-            self.template_path = path
+            if self.home_dir is not None:
+                path = _join(self.home_dir, "resources", "template.html")
+                self.template_path = path
 
+            if self.template_path is None:
+                raise Error("No template found")
+            
         with _open_file(self.template_path, "r") as file:
             self.template_content = file.read()
 
@@ -126,22 +128,22 @@ class Transom:
         self.copy_default_resources()
 
     def copy_default_resources(self):
-        from_dir = _os.path.join(self.home_dir, "resources")
-        to_dir = _os.path.join(self.output_dir, "transom")
+        from_dir = _join(self.home_dir, "resources")
+        to_dir = _join(self.output_dir, "transom")
         subpaths = list()
 
         for root, dirs, files in _os.walk(from_dir):
             dir = root[len(from_dir) + 1:]
 
             for file in files:
-                subpaths.append(_os.path.join(dir, file))
+                subpaths.append(_join(dir, file))
 
         for subpath in subpaths:
-            from_file = _os.path.join(from_dir, subpath)
-            to_file = _os.path.join(to_dir, subpath)
+            from_file = _join(from_dir, subpath)
+            to_file = _join(to_dir, subpath)
             parent_dir = _os.path.dirname(to_file)
 
-            _make_dirs(parent_dir)
+            _make_dir(parent_dir)
             _copy_file(from_file, to_file)
 
     def check_output_files(self):
@@ -172,7 +174,7 @@ class Transom:
         names = set(_os.listdir(dir))
 
         for name in names:
-            path = _os.path.join(dir, name)
+            path = _join(dir, name)
 
             if _os.path.isfile(path):
                 files.add(path)
@@ -243,13 +245,13 @@ class Transom:
         for name in ("index.md", "index.html", "index.html.in"):
             if name in names:
                 names.remove(name)
-                page = _Page(self, _os.path.join(dir, name), page)
+                page = _Page(self, _join(dir, name), page)
                 break
 
         for name in sorted(names):
-            path = _os.path.join(dir, name)
+            path = _join(dir, name)
 
-            if path in (self.template_path, self.config_path):
+            if name.startswith("_transom_"):
                 continue
 
             if _os.path.isfile(path):
@@ -264,9 +266,9 @@ class Transom:
         names = set(_os.listdir(dir))
 
         for name in sorted(names):
-            path = _os.path.join(dir, name)
+            path = _join(dir, name)
 
-            if path in (self.template_path, self.config_path):
+            if name.startswith("_transom_"):
                 continue
 
             if _os.path.isfile(path):
@@ -277,7 +279,7 @@ class Transom:
 
     def get_output_path(self, input_path):
         path = input_path[len(self.input_dir) + 1:]
-        return _os.path.join(self.output_dir, path)
+        return _join(self.output_dir, path)
 
     def get_url(self, output_path):
         path = output_path[len(self.output_dir) + 1:]
@@ -331,7 +333,7 @@ class _File(object):
         return "".join(out)
 
     def __repr__(self):
-        return _repr(self, self.input_path)
+        return _format_repr(self, self.input_path)
 
 class _Resource(_File):
     def __init__(self, site, input_path):
@@ -340,7 +342,7 @@ class _Resource(_File):
         self.site.resources.append(self)
 
     def save_output(self):
-        _make_dirs(_os.path.dirname(self.output_path))
+        _make_dir(_os.path.dirname(self.output_path))
         _copy_file(self.input_path, self.output_path)
 
 class _Page(_File):
@@ -378,7 +380,7 @@ class _Page(_File):
         if path is None:
             path = self.output_path
 
-        _make_dirs(_os.path.dirname(path))
+        _make_dir(_os.path.dirname(path))
 
         with _open_file(self.output_path, "w") as file:
             file.write(self.content)
@@ -539,7 +541,7 @@ class _Page(_File):
 
         return link_targets
 
-def _make_dirs(dir):
+def _make_dir(dir):
     if not _os.path.exists(dir):
         _os.makedirs(dir)
 
@@ -563,7 +565,9 @@ def _copy_file(src, dst):
         _os.close(fin)
         _os.close(fout)
 
-def _repr(obj, *args):
+def _format_repr(obj, *args):
     cls = obj.__class__.__name__
     strings = [str(x) for x in args]
     return "{}({})".format(cls, ",".join(strings))
+
+_join = _os.path.join
