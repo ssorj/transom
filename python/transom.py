@@ -85,12 +85,12 @@ class Transom:
         self.link_targets = set()
 
     def init(self):
-        if not _os.path.isfile(self.template_path):
+        if not _is_file(self.template_path):
             if self.home_dir is not None:
                 path = _join(self.home_dir, "resources", "template.html")
                 self.template_path = path
 
-        if not _os.path.isfile(self.template_path):
+        if not _is_file(self.template_path):
             raise Exception("No template found")
             
         with _open_file(self.template_path, "r") as file:
@@ -98,7 +98,7 @@ class Transom:
 
         init_globals = {"site_url": self.site_url}
 
-        if _os.path.isfile(self.config_path):
+        if _is_file(self.config_path):
             self.config_env = _runpy.run_path(self.config_path, init_globals)
         else:
             self.config_env = init_globals
@@ -145,7 +145,7 @@ class Transom:
         for subpath in subpaths:
             from_file = _join(from_dir, subpath)
             to_file = _join(to_dir, subpath)
-            parent_dir = _os.path.dirname(to_file)
+            parent_dir = _split(to_file)[0]
 
             _make_dir(parent_dir)
             _copy_file(from_file, to_file)
@@ -180,9 +180,9 @@ class Transom:
         for name in names:
             path = _join(dir, name)
 
-            if _os.path.isfile(path):
+            if _is_file(path):
                 files.add(path)
-            elif _os.path.isdir(path) and name != ".svn":
+            elif _is_dir(path) and name != ".svn":
                 self.traverse_output_files(path, files)
 
     def check_links(self, internal=True, external=False):
@@ -258,12 +258,12 @@ class Transom:
             if name.startswith("_transom_"):
                 continue
 
-            if _os.path.isfile(path):
+            if _is_file(path):
                 for extension in _page_extensions:
                     if name.endswith(extension):
                         _Page(self, path, page)
                         break
-            elif _os.path.isdir(path) and name != ".svn":
+            elif _is_dir(path) and name != ".svn":
                 self.traverse_input_pages(path, page)
 
     def traverse_input_resources(self, dir):
@@ -275,10 +275,10 @@ class Transom:
             if name.startswith("_transom_"):
                 continue
 
-            if _os.path.isfile(path):
+            if _is_file(path):
                 if path not in self.files_by_input_path:
                     _Resource(self, path)
-            elif _os.path.isdir(path) and name != ".svn":
+            elif _is_dir(path) and name != ".svn":
                 self.traverse_input_resources(path)
 
     def get_output_path(self, input_path):
@@ -346,7 +346,7 @@ class _Resource(_File):
         self.site.resources.append(self)
 
     def save_output(self):
-        _make_dir(_os.path.dirname(self.output_path))
+        _make_dir(_split(self.output_path)[0])
         _copy_file(self.input_path, self.output_path)
 
 class _Page(_File):
@@ -376,7 +376,7 @@ class _Page(_File):
         page_dir = _split(self.input_path)[0]
         template_path = _join(page_dir, "_transom_template.html")
 
-        if _os.path.isfile(template_path):
+        if _is_file(template_path):
             with _open_file(template_path, "r") as file:
                 self.template_content = file.read()
         
@@ -394,7 +394,7 @@ class _Page(_File):
         if path is None:
             path = self.output_path
 
-        _make_dir(_os.path.dirname(path))
+        _make_dir(_split(path)[0])
 
         with _open_file(self.output_path, "w") as file:
             file.write(self.content)
@@ -586,3 +586,5 @@ def _format_repr(obj, *args):
 
 _join = _os.path.join
 _split = _os.path.split
+_is_file = _os.path.isfile
+_is_dir = _os.path.isdir
