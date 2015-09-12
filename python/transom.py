@@ -357,7 +357,8 @@ class _Page(_File):
 
         self.content = None
         self.title = None
-
+        self.template_content = None
+        
         self.site.pages.append(self)
 
     def init(self):
@@ -370,6 +371,15 @@ class _Page(_File):
 
         super(_Page, self).init()
 
+        self.template_content = self.site.template_content
+        
+        page_dir = _split(self.input_path)[0]
+        template_path = _join(page_dir, "_transom_template.html")
+
+        if _os.path.isfile(template_path):
+            with _open_file(template_path, "r") as file:
+                self.template_content = file.read()
+        
     def load_input(self):
         if self.site.verbose:
             print("Loading {}".format(self))
@@ -419,7 +429,7 @@ class _Page(_File):
         self.content = self.apply_template(self.content)
 
     def apply_template(self, content):
-        return self.site.template_content.replace("{{content}}", content)
+        return self.template_content.replace("{{content}}", content)
 
     def process(self):
         if self.site.verbose:
@@ -429,7 +439,7 @@ class _Page(_File):
             self.title = "Home"
             return
 
-        self.title = _os.path.split(self.output_path)[1]
+        self.title = _split(self.output_path)[1]
 
         if isinstance(self.title, bytes):
             self.title = self.title.decode("utf8")
@@ -575,3 +585,4 @@ def _format_repr(obj, *args):
     return "{}({})".format(cls, ",".join(strings))
 
 _join = _os.path.join
+_split = _os.path.split
