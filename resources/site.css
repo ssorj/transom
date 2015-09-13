@@ -130,9 +130,13 @@ table td em, table th {
     font-style: normal;
 }
 
+code, pre {
+    background-color: rgb(247, 247, 247);
+}
+
 pre {
     overflow: auto;
-    margin-left: 1em;
+    padding: 1em;
 }
 
 .two-column {
