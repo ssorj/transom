@@ -20,6 +20,7 @@
 from __future__ import print_function
 
 import codecs as _codecs
+import fnmatch as _fnmatch
 import markdown2 as _markdown2
 import os as _os
 import re as _re
@@ -193,8 +194,9 @@ class Transom:
             page.check_links()
 
         errors_by_link = _defaultdict(list)
-
-        for link in self.links:
+        links = self.filter_links(self.links)
+        
+        for link in links:
             if internal and link.startswith(self.site_url):
                 if link[len(self.site_url):].startswith("/transom"):
                     continue
@@ -226,6 +228,27 @@ class Transom:
             for source in self.links[link]:
                 print("  Source: {}".format(source))
 
+    def filter_links(self, links):
+        config_path = _join(self.input_dir, "_transom_check_links_ignore")
+
+        if _is_file(config_path):
+            with _open_file(config_path, "r") as file:
+                ignore_patterns = list(file)
+
+            def retain(link):
+                for pattern in ignore_patterns:
+                    pattern = pattern.strip()
+                    path = link[len(self.site_url) + 1:]
+                    
+                    if _fnmatch.fnmatch(path, pattern):
+                        return False
+
+                return True
+
+            return filter(retain, links)
+
+        return links
+                
     def check_external_link(self, link):
         sock, code, error = None, None, None
 
@@ -302,6 +325,10 @@ class _File(object):
 
     def init(self):
         self.site.link_targets.add(self.url)
+
+        if self.url.endswith("/index.html"):
+            self.site.link_targets.add(self.url[:-10])
+            self.site.link_targets.add(self.url[:-11])
 
     def replace_placeholders(self, content, page_vars):
         out = list()
