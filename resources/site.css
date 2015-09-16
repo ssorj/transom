@@ -25,6 +25,7 @@
     margin: 0 0 20pt 0;
     padding: 0;
     box-sizing: border-box;
+    border-style: none;
 }
 
 *:last-child {
@@ -128,6 +129,10 @@ table td, table th {
 table td em, table th {
     font-weight: 300;
     font-style: normal;
+}
+
+hr {
+    border-bottom: 1px solid #ddd;
 }
 
 code, pre {
