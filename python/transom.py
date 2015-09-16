@@ -235,7 +235,7 @@ class Transom:
                 print("  Source: {}".format(source))
 
     def filter_links(self, links):
-        config_path = _join(self.input_dir, "_transom_check_links_ignore")
+        config_path = _join(self.input_dir, "_transom_ignore_links")
 
         if _is_file(config_path):
             with _open_file(config_path, "r") as file:
@@ -271,6 +271,9 @@ class Transom:
 
     def traverse_input_pages(self, dir, page):
         names = set(_os.listdir(dir))
+
+        if "_transom_ignore_pages" in names:
+            return
 
         if ".transom-skip" in names:
             return
