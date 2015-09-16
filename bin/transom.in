@@ -24,7 +24,6 @@ import os
 import sys
 
 from argparse import ArgumentParser
-from argparse import RawDescriptionHelpFormatter, ArgumentDefaultsHelpFormatter
 
 default = os.path.normpath("@transom_home@")
 home_dir = os.environ.get("TRANSOM_HOME", default)
@@ -47,6 +46,8 @@ def main():
                         choices=["none", "internal", "external", "all"],
                         help="Validate HTML links (none [default], "
                         "internal, external, or all)")
+    parser.add_argument("--check-output-files", action="store_true",
+                        help="Check for missing or extra files")
     parser.add_argument("--verbose", action="store_true",
                         help="Enable logging")
 
@@ -73,6 +74,9 @@ def main():
     if args.check_links == "all":
         transom.check_links(internal=True, external=True)
 
+    if args.check_output_files:
+        transom.check_output_files()
+        
 if __name__ == "__main__":
     try:
         main()

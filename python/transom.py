@@ -183,7 +183,13 @@ class Transom:
 
             if _is_file(path):
                 files.add(path)
-            elif _is_dir(path) and name != ".svn":
+            elif _is_dir(path):
+                if name == ".svn":
+                    continue
+
+                if name == "transom":
+                    continue
+                
                 self.traverse_output_files(path, files)
 
     def check_links(self, internal=True, external=False):
