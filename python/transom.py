@@ -301,6 +301,9 @@ class Transom:
     def traverse_input_resources(self, dir):
         names = set(_os.listdir(dir))
 
+        if "_transom_ignore_resources" in names:
+            return
+
         for name in sorted(names):
             path = _join(dir, name)
 
