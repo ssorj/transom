@@ -22,14 +22,26 @@
 @import url(http://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400italic,600|Ubuntu+Mono:400);
 
 * {
-    margin: 0 0 20pt 0;
+    margin: 1em 0;
     padding: 0;
     box-sizing: border-box;
     border-style: none;
 }
 
+*:first-child {
+    margin-top: 0;
+}
+
 *:last-child {
     margin-bottom: 0;
+}
+
+html,
+body,
+div,
+a,
+br {
+    margin: 0;
 }
 
 body {
@@ -39,19 +51,31 @@ body {
     text-rendering: optimizeLegibility;
 }
 
-code, pre {
+code,
+pre {
     font-family: "Ubuntu Mono", monospace;
 }
 
-h1, h2 {
+h1,
+h2 {
     font-weight: 400;
 }
 
-h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
+h1 a,
+h2 a,
+h3 a,
+h4 a,
+h5 a,
+h6 a {
     color: inherit;
 }
 
-h1.selected, h2.selected, h3.selected, h4.selected, h5.selected, h6.selected {
+h1.selected,
+h2.selected,
+h3.selected,
+h4.selected,
+h5.selected,
+h6.selected {
     color: rgba(127, 0, 0, 0.8);
 }
 
@@ -71,33 +95,34 @@ a.heading-link:hover {
     opacity: 1;
 }
 
-ol, ul {
+ol, ul, dd {
+    padding-left: 1.2em;
+}
+
+ul {
     list-style-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdAAAAHQBMYXlgQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAABMSURBVCjPY/j//z8DFtwAxRhyuBTDQAMhDWDF9+/f/wfC2DRhVRwcHPwfhLFpwqrYxcUFjLFpwqkYlyayNJDsJLI8TVawkhVxBJMGABnYvZjQ/qzjAAAAAElFTkSuQmCC");
-    padding-left: 0.5em;
-    margin-left: 1em;
 }
 
-ul > ul, ol > ol {
+li,
+dt,
+dd {
     margin: 0;
 }
 
-li, dt {
-    margin: 0;
-}
-
-li > ul, li > ol {
-    margin-left: 0.5em;
-}
-
+li > ul,
+li > ol,
 dd > dl {
-    margin-left: 1em;
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
-dl > dd {
-    margin-left: 1em;
+li > p:last-child,
+dd > p:last-child {
+    margin-bottom: 1em;
 }
 
-form input, form button {
+form input,
+form button {
     font-family: inherit;
     font-size: inherit;
     border: 1px solid #ccc;
@@ -109,7 +134,7 @@ form input {
 }
 
 form button {
-    background-color: #f2f2f2;
+    background-color: rgb(247, 247, 247);
     padding: 0 0.4em;
     font-weight: 300;
 }
@@ -119,14 +144,16 @@ table {
     table-layout: auto;
 }
 
-table td, table th {
+td,
+th {
     border-bottom: 1px solid #ddd;
-    padding: 0.2em 1.5em 0.2em 0;
+    padding: 0.3em 1.5em 0.3em 0;
     vertical-align: top;
     text-align: left;
 }
 
-table td em, table th {
+td em,
+ th {
     font-weight: 300;
     font-style: normal;
 }
@@ -142,6 +169,10 @@ code, pre {
 pre {
     overflow: auto;
     padding: 1em;
+}
+
+blockquote {
+    margin-left: 2em;
 }
 
 .two-column {
@@ -162,27 +193,6 @@ pre {
     column-count: 4;
 }
 
-.column, section {
-    -webkit-column-break-inside: avoid;
-    page-break-inside: avoid;
-}
-
-@media screen and (max-width: 720px) {
-    .two-column, .three-column, .four-column {
-        -webkit-column-count: 2;
-        -moz-column-count: 2;
-        column-count: 2;
-    }
-}
-
-@media screen and (max-width: 480px) {
-    .two-column, .three-column, .four-column {
-        -webkit-column-count: 1;
-        -moz-column-count: 1;
-        column-count: 1;
-    }
-}
-
 .ruled {
     border-top: 1px solid #ddd;
     padding-top: 2em;
@@ -191,21 +201,30 @@ pre {
 .flex {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0;
+    margin: 0;
 }
 
-.flex > section, .flex > div {
+.flex > section,
+.flex > div {
     flex: 1 0 0;
 }
 
 #-head, #-body, #-foot {
+    margin-bottom: 0;
+}
+
+#-head {
     padding: 1em 2em;
     border-bottom: 1px solid #ddd;
-    margin-bottom: 0;
 }
 
 #-body {
     padding: 2em;
+}
+
+#-foot {
+    border-top: 1px solid #ddd;
+    padding: 1em 2em;
 }
 
 #-head-content, #-body-content, #-foot-content {
@@ -215,10 +234,6 @@ pre {
 
 #-head-content {
     font-size: 0.9em;
-}
-
-#-foot {
-    border-bottom: none;
 }
 
 #-foot-content {
@@ -241,4 +256,60 @@ pre {
 
 #-path-navigation > li:last-child:after {
     content: none;
+}
+
+@media screen and (max-width: 720px) {
+    .two-column,
+    .three-column,
+    .four-column {
+        -webkit-column-count: 2;
+        -moz-column-count: 2;
+        column-count: 2;
+    }
+
+    .flex {
+        display: block;
+    }
+
+    .flex > section,
+    .flex > div {
+        margin: 1em 0;
+    }
+
+    .flex > section:first-child,
+    .flex > div:first-child {
+        margin-top: 0;
+    }
+
+    .flex > section:last-child,
+    .flex > div:last-child {
+        margin-bottom: 0;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .two-column, .three-column, .four-column {
+        -webkit-column-count: 1;
+        -moz-column-count: 1;
+        column-count: 1;
+    }
+}
+
+@media print {
+    body {
+        font-size: 10pt;
+    }
+
+    pre {
+        font-size: 0.9em;
+        overflow: hidden;
+    }
+    
+    #-head, #-foot {
+        display: none;
+    }
+
+    #-body {
+        padding: 0;
+    }
 }

@@ -68,10 +68,12 @@ class Transom:
         
         extras = {
             "code-friendly": True,
-            "tables": True,
-            "wiki-tables": True,
+            "footnotes": True,
             "header-ids": True,
             "markdown-in-html": True,
+            "smarty-pants": True,
+            "tables": True,
+            "toc": True,
             }
 
         self.markdown = _markdown2.Markdown(extras=extras)
