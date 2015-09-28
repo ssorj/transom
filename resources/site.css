@@ -107,6 +107,8 @@ li,
 dt,
 dd {
     margin: 0;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
 }
 
 li > ul,
@@ -201,7 +203,6 @@ blockquote {
 .flex {
     display: flex;
     justify-content: space-between;
-    margin: 0;
 }
 
 .flex > section,
