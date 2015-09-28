@@ -56,10 +56,11 @@ Address semantics include the following considerations:
 
 Routing patterns constrain the paths that a message can take across a network.
 
-  || *Pattern* || *Description* ||
-  || *Direct* || Direct routing allows for only one consumer to use an address at a time.  Messages (or links) follow the lowest cost path across the network from the sender to the one receiver. ||
-  || *Multicast* || Multicast routing allows multiple consumers to use the same address at the same time.  Messages are routed such that each consumer receives a copy of the message. ||
-  || *Balanced* || Balanced routing also allows multiple consumers to use the same address.  In this case, messages (or links) are routed to exactly one of the consumers, and the network attempts to balance the traffic load across the set of consumers using the same address. ||
+| Pattern | Description |
+| ------- | ----------- |
+| *Direct* | Direct routing allows for only one consumer to use an address at a time.  Messages (or links) follow the lowest cost path across the network from the sender to the one receiver. |
+| *Multicast* | Multicast routing allows multiple consumers to use the same address at the same time.  Messages are routed such that each consumer receives a copy of the message. |
+| *Balanced* | Balanced routing also allows multiple consumers to use the same address.  In this case, messages (or links) are routed to exactly one of the consumers, and the network attempts to balance the traffic load across the set of consumers using the same address. |
 
 ## Routing mechanisms
 
@@ -88,9 +89,10 @@ address from the delivered message's `to` field and looks the address up in its
 routing table.  The lookup results in zero or more outgoing links onto which the message
 shall be resent.
 
-  || *Delivery* || *Handling* ||
-  || *pre-settled* || If the arriving delivery is pre-settled (i.e., fire and forget), the incoming delivery shall be settled by the router, and the outgoing deliveries shall also be pre-settled. In other words, the pre-settled nature of the message delivery is propagated across the network to the message's destination. ||
-  || *unsettled* || Unsettled delivery is also propagated across the network.  Because unsettled delivery records cannot be discarded, the router tracks the incoming deliveries and keeps the association of the incoming deliveries to the resulting outgoing deliveries.  This kept association allows the router to continue to propagate changes in delivery state (settlement and disposition) back and forth along the path which the message traveled. ||
+| Delivery | Handling |
+| -------- | -------- |
+| *pre-settled* | If the arriving delivery is pre-settled (i.e., fire and forget), the incoming delivery shall be settled by the router, and the outgoing deliveries shall also be pre-settled. In other words, the pre-settled nature of the message delivery is propagated across the network to the message's destination. |
+| *unsettled* | Unsettled delivery is also propagated across the network.  Because unsettled delivery records cannot be discarded, the router tracks the incoming deliveries and keeps the association of the incoming deliveries to the resulting outgoing deliveries.  This kept association allows the router to continue to propagate changes in delivery state (settlement and disposition) back and forth along the path which the message traveled. |
 
 ### Link routing
 

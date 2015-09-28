@@ -39,8 +39,9 @@ It's important to [verify the
 integrity]({{site_url}}/download.html#verify-what-you-download) of the
 files you download.
 
-  || *Content* || *Download* || *Signature* ||
-  || Dispatch router || [qpid-dispatch-0.3.tar.gz](http://archive.apache.org/dist/qpid/dispatch/0.3/qpid-dispatch-0.3.tar.gz) || [PGP](http://archive.apache.org/dist/qpid/dispatch/0.3/qpid-dispatch-0.3.tar.gz.asc) ||
+| Content | Download | Signature |
+| ------- | -------- | --------- |
+| Dispatch router | [qpid-dispatch-0.3.tar.gz](http://archive.apache.org/dist/qpid/dispatch/0.3/qpid-dispatch-0.3.tar.gz) | [PGP](http://archive.apache.org/dist/qpid/dispatch/0.3/qpid-dispatch-0.3.tar.gz.asc) |
 
 
 ## Documentation

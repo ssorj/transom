@@ -74,9 +74,10 @@ To run the router, invoke the executable:
 Dispatch Router should, in theory, work with any client that is compatible with AMQP 1.0.
 The following clients have been tested:
 
-  || *Client* || *Notes* ||
-  || qpid::messaging || The Qpid messaging clients work with Dispatch Router as long as they are configured to use the 1.0 version of the protocol.  To enable AMQP 1.0 in the C++ client, use the {protocol:amqp1.0} connection option. ||
-  || Proton Messenger || Messenger works with Dispatch Router. ||
+| Client | Notes |
+| ------ | ----- |
+| qpid::messaging | The Qpid messaging clients work with Dispatch Router as long as they are configured to use the 1.0 version of the protocol.  To enable AMQP 1.0 in the C++ client, use the {protocol:amqp1.0} connection option. |
+| Proton Messenger | Messenger works with Dispatch Router. |
 
 ## Tools
 
@@ -84,11 +85,12 @@ Installed with the Dispatch Router kit is a command line tool called *qdstat*.  
 can be used to view manageable data inside Dispatch Router.  The following options are
 useful for seeing that the router is doing:
 
-  || *Option* || *Description* ||
-  || -l || Print a list of AMQP links attached to the router.  Links are unidirectional. Outgoing links are usually associated with a subscription address.  The tool distinguishes between _endpoint_ links and _router_ links.  Endpoint links are attached to clients using the router.  Router links are attached to other routers in a network of routers. ||
-  || -a || Print a list of addresses known to the router. ||
-  || -n || Print a list of known routers in the network. ||
-  || -c || Print a list of connections to the router. ||
+| Option | Description |
+| ------ | ----------- |
+| -l | Print a list of AMQP links attached to the router.  Links are unidirectional. Outgoing links are usually associated with a subscription address.  The tool distinguishes between _endpoint_ links and _router_ links.  Endpoint links are attached to clients using the router.  Router links are attached to other routers in a network of routers. |
+| -a | Print a list of addresses known to the router. |
+| -n | Print a list of known routers in the network. |
+| -c | Print a list of connections to the router. |
 
 ## Features and Examples
 

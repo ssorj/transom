@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+# 
+#   http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+from __future__ import print_function
+
+from plano import *
+
+# From https://github.com/trentm/python-markdown2/blob/master/tools/wiki-tables-to-tables.py
+
+from pprint import pprint, pformat
+import codecs
+import os
+import re
+import sys
+
+def wiki_tables_to_tables(path):
+    def _wiki_table_sub(match):
+        ttext = match.group(0).strip()
+        rows = []
+        for line in ttext.splitlines(0):
+            line = line.strip()[2:-2].strip()
+            row = [c.strip() for c in re.split(r'(?<!\\)\|\|', line)]
+            rows.append(row)
+
+        head = []
+        for cell in rows[0]:
+            if cell.startswith('**') and cell.endswith('**'):
+                head.append(cell[2:-2].strip())
+            elif cell.startswith('*') and cell.endswith('*'):
+                head.append(cell[1:-1].strip())
+            else:
+                msg = 'Error: wiki-table in "%s" has no header row, bailing: %r'
+                raise RuntimeError(msg % (path, ttext))
+
+        underline = []
+        for cell in head:
+            underline.append('-' * max(1, len(cell)))
+
+        body = rows[1:]
+        table = [head, underline] + body
+        table_str = '\n'.join(('| ' + ' | '.join(r) + ' |') for r in table)
+        return table_str + '\n'
+
+    text = codecs.open(path, 'rb', 'utf8').read()
+    less_than_tab = 3
+    wiki_table_re = re.compile(r'''
+        (?:(?<=\n\n)|\A\n?)            # leading blank line
+        ^([ ]{0,%d})\|\|.+?\|\|[ ]*\n  # first line
+        (^\1\|\|.+?\|\|\n)*        # any number of subsequent lines
+        ''' % less_than_tab, re.M | re.X)
+    return wiki_table_re.sub(_wiki_table_sub, text)
+
+# Now do stuff
+
+root_dir = ARGS[1]
+
+for path in find(root_dir, "*.md"):
+     if not is_file(path):
+          continue
+
+     if ".svn" in path.split("/"):
+          continue
+
+     try:
+          output = wiki_tables_to_tables(path)
+     except RuntimeError as e:
+          print(e)
+          continue
+
+     write(path, output)

@@ -39,14 +39,16 @@ It's important to [verify the
 integrity]({{site_url}}/download.html#verify-what-you-download) of the
 files you download.
 
-  || *Content* || *Download* || *Signature* ||
-  || AMQP Messenger, AMQP Protocol Engine || [qpid-proton-0.8.tar.gz](http://archive.apache.org/dist/qpid/proton/0.8/qpid-proton-0.8.tar.gz) || [PGP](http://archive.apache.org/dist/qpid/proton/0.8/qpid-proton-0.8.tar.gz.asc) ||
+| Content | Download | Signature |
+| ------- | -------- | --------- |
+| AMQP Messenger, AMQP Protocol Engine | [qpid-proton-0.8.tar.gz](http://archive.apache.org/dist/qpid/proton/0.8/qpid-proton-0.8.tar.gz) | [PGP](http://archive.apache.org/dist/qpid/proton/0.8/qpid-proton-0.8.tar.gz.asc) |
 
 ## Components
 
-  || *Component* || *Languages* || *Platforms* || *AMQP versions* ||
-  || [AMQP Messenger]({{site_url}}/components/messenger/index.html) || C, Java, Perl, PHP, Python, Ruby || Linux, OS X, JVM || 1.0 ||
-  || [AMQP Protocol Engine]({{site_url}}/components/protocol-engine/index.html) || C, Java, Perl, PHP, Python, Ruby || Linux, OS X, JVM || 1.0 ||
+| Component | Languages | Platforms | AMQP versions |
+| --------- | --------- | --------- | ------------- |
+| [AMQP Messenger]({{site_url}}/components/messenger/index.html) | C, Java, Perl, PHP, Python, Ruby | Linux, OS X, JVM | 1.0 |
+| [AMQP Protocol Engine]({{site_url}}/components/protocol-engine/index.html) | C, Java, Perl, PHP, Python, Ruby | Linux, OS X, JVM | 1.0 |
 
 ## Documentation
 

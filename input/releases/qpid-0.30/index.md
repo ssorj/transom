@@ -40,27 +40,30 @@ files you download.
 
 ## Source archives
 
-  || *Content* || *Download* || *Verify* ||
-  || C++ broker, Qpid Messaging API (C++, bindings) || [qpid-cpp-0.30.tar.gz](http://archive.apache.org/dist/qpid/0.30/qpid-cpp-0.30.tar.gz) || [ASC](http://archive.apache.org/dist/qpid/0.30/qpid-cpp-0.30.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/qpid-cpp-0.30.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/qpid-cpp-0.30.tar.gz.sha1) ||
-  || C++ broker command-line tools || [qpid-tools-0.30.tar.gz](http://archive.apache.org/dist/qpid/0.30/qpid-tools-0.30.tar.gz) || [ASC](http://archive.apache.org/dist/qpid/0.30/qpid-tools-0.30.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/qpid-tools-0.30.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/qpid-tools-0.30.tar.gz.sha1) ||
-  || Java broker, Qpid JMS, Qpid JCA || [qpid-java-0.30.tar.gz](http://archive.apache.org/dist/qpid/0.30/qpid-java-0.30.tar.gz) || [ASC](http://archive.apache.org/dist/qpid/0.30/qpid-java-0.30.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/qpid-java-0.30.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/qpid-java-0.30.tar.gz.sha1) ||
-  || Qpid Messaging API (Python) || [qpid-python-0.30.tar.gz](http://archive.apache.org/dist/qpid/0.30/qpid-python-0.30.tar.gz) || [ASC](http://archive.apache.org/dist/qpid/0.30/qpid-python-0.30.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/qpid-python-0.30.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/qpid-python-0.30.tar.gz.sha1) ||
+| Content | Download | Verify |
+| ------- | -------- | ------ |
+| C++ broker, Qpid Messaging API (C++, bindings) | [qpid-cpp-0.30.tar.gz](http://archive.apache.org/dist/qpid/0.30/qpid-cpp-0.30.tar.gz) | [ASC](http://archive.apache.org/dist/qpid/0.30/qpid-cpp-0.30.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/qpid-cpp-0.30.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/qpid-cpp-0.30.tar.gz.sha1) |
+| C++ broker command-line tools | [qpid-tools-0.30.tar.gz](http://archive.apache.org/dist/qpid/0.30/qpid-tools-0.30.tar.gz) | [ASC](http://archive.apache.org/dist/qpid/0.30/qpid-tools-0.30.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/qpid-tools-0.30.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/qpid-tools-0.30.tar.gz.sha1) |
+| Java broker, Qpid JMS, Qpid JCA | [qpid-java-0.30.tar.gz](http://archive.apache.org/dist/qpid/0.30/qpid-java-0.30.tar.gz) | [ASC](http://archive.apache.org/dist/qpid/0.30/qpid-java-0.30.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/qpid-java-0.30.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/qpid-java-0.30.tar.gz.sha1) |
+| Qpid Messaging API (Python) | [qpid-python-0.30.tar.gz](http://archive.apache.org/dist/qpid/0.30/qpid-python-0.30.tar.gz) | [ASC](http://archive.apache.org/dist/qpid/0.30/qpid-python-0.30.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/qpid-python-0.30.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/qpid-python-0.30.tar.gz.sha1) |
 
 ## Java binaries
 
-  || *Content* || *Download* || *Verify* ||
-  || Java broker || [qpid-broker-0.30-bin.tar.gz](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-broker-0.30-bin.tar.gz) || [ASC](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-broker-0.30-bin.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-broker-0.30-bin.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-broker-0.30-bin.tar.gz.sha1) ||
-  || Qpid JMS (AMQP 1.0) || [qpid-amqp-1-0-client-jms-0.30-bin.tar.gz](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-amqp-1-0-client-jms-0.30-bin.tar.gz) || [ASC](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-amqp-1-0-client-jms-0.30-bin.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-amqp-1-0-client-jms-0.30-bin.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-amqp-1-0-client-jms-0.30-bin.tar.gz.sha1) ||
-  || Qpid JMS (AMQP 0-10, 0-9-1, 0-9, 0-8) || [qpid-client-0.30-bin.tar.gz](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-client-0.30-bin.tar.gz) || [ASC](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-client-0.30-bin.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-client-0.30-bin.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-client-0.30-bin.tar.gz.sha1) ||
+| Content | Download | Verify |
+| ------- | -------- | ------ |
+| Java broker | [qpid-broker-0.30-bin.tar.gz](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-broker-0.30-bin.tar.gz) | [ASC](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-broker-0.30-bin.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-broker-0.30-bin.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-broker-0.30-bin.tar.gz.sha1) |
+| Qpid JMS (AMQP 1.0) | [qpid-amqp-1-0-client-jms-0.30-bin.tar.gz](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-amqp-1-0-client-jms-0.30-bin.tar.gz) | [ASC](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-amqp-1-0-client-jms-0.30-bin.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-amqp-1-0-client-jms-0.30-bin.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-amqp-1-0-client-jms-0.30-bin.tar.gz.sha1) |
+| Qpid JMS (AMQP 0-10, 0-9-1, 0-9, 0-8) | [qpid-client-0.30-bin.tar.gz](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-client-0.30-bin.tar.gz) | [ASC](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-client-0.30-bin.tar.gz.asc), [MD5](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-client-0.30-bin.tar.gz.md5), [SHA1](http://archive.apache.org/dist/qpid/0.30/binaries/qpid-client-0.30-bin.tar.gz.sha1) |
 
 ## Components
 
-  || *Component* || *Languages* || *Platforms* || *AMQP versions* ||
-  || [C++ broker]({{site_url}}/components/cpp-broker/index.html) || C++ || Linux, Windows || 1.0, 0-10 ||
-  || [Java broker]({{site_url}}/components/java-broker/index.html) || Java || JVM || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
-  || [Qpid JCA]({{site_url}}/components/qpid-jca/index.html) || Java || JVM || 0-10 ||
-  || [Qpid JMS]({{site_url}}/components/qpid-jms/index.html) || Java || JVM || 1.0, 0-10, 0-9-1, 0-9, 0-8 ||
-  || [Qpid Messaging API]({{site_url}}/components/messaging-api/index.html) || C++, Perl, Python, Ruby, .NET || Linux, Windows || 1.0, 0-10 ||
+| Component | Languages | Platforms | AMQP versions |
+| --------- | --------- | --------- | ------------- |
+| [C++ broker]({{site_url}}/components/cpp-broker/index.html) | C++ | Linux, Windows | 1.0, 0-10 |
+| [Java broker]({{site_url}}/components/java-broker/index.html) | Java | JVM | 1.0, 0-10, 0-9-1, 0-9, 0-8 |
+| [Qpid JCA]({{site_url}}/components/qpid-jca/index.html) | Java | JVM | 0-10 |
+| [Qpid JMS]({{site_url}}/components/qpid-jms/index.html) | Java | JVM | 1.0, 0-10, 0-9-1, 0-9, 0-8 |
+| [Qpid Messaging API]({{site_url}}/components/messaging-api/index.html) | C++, Perl, Python, Ruby, .NET | Linux, Windows | 1.0, 0-10 |
 
 ## Documentation
 
