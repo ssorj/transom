@@ -277,9 +277,6 @@ class Transom:
         if "_transom_ignore_pages" in names:
             return
 
-        if ".transom-skip" in names:
-            return
-
         for name in ("index.md", "index.html", "index.html.in"):
             if name in names:
                 names.remove(name)
@@ -292,12 +289,15 @@ class Transom:
             if name.startswith("_transom_"):
                 continue
 
+            if name == ".svn":
+                continue
+
             if _is_file(path):
-                for extension in _page_extensions:
-                    if name.endswith(extension):
-                        _Page(self, path, page)
-                        break
-            elif _is_dir(path) and name != ".svn":
+                stem, ext = _os.path.splitext(name)
+
+                if ext in _page_extensions:
+                    _Page(self, path, page)
+            elif _is_dir(path):
                 self.traverse_input_pages(path, page)
 
     def traverse_input_resources(self, dir):
