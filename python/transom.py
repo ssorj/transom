@@ -79,7 +79,7 @@ class Transom:
         self.markdown = _markdown2.Markdown(extras=extras)
 
         self.files = list()
-        self.files_by_input_path = dict()
+        self.files_by_path = dict()
 
         self.resources = list()
         self.pages = list()
@@ -96,8 +96,7 @@ class Transom:
         if not _is_file(self.template_path):
             raise Exception("No template found")
             
-        with _open_file(self.template_path, "r") as file:
-            self.template_content = file.read()
+        self.template_content = _read_file(self.template_path)
 
         init_globals = {"site_url": self.site_url}
 
@@ -106,8 +105,8 @@ class Transom:
         else:
             self.config_env = init_globals
 
-        self.traverse_input_pages(self.input_dir, None)
-        self.traverse_input_resources(self.input_dir)
+        self.traverse_input_pages("", None)
+        self.traverse_input_resources("")
 
         for file in self.files:
             file.init()
@@ -148,9 +147,7 @@ class Transom:
         for subpath in subpaths:
             from_file = _join(from_dir, subpath)
             to_file = _join(to_dir, subpath)
-            parent_dir = _split(to_file)[0]
 
-            _make_dir(parent_dir)
             _copy_file(from_file, to_file)
 
     def check_output_files(self):
@@ -160,7 +157,7 @@ class Transom:
         for file in self.files:
             expected_files.add(file.output_path)
 
-        self.traverse_output_files(self.output_dir, found_files)
+        self.traverse_output_files("", found_files)
 
         missing_files = expected_files.difference(found_files)
         extra_files = found_files.difference(expected_files)
@@ -177,15 +174,17 @@ class Transom:
             for path in sorted(extra_files):
                 print("  {}".format(path))
 
-    def traverse_output_files(self, dir, files):
-        names = set(_os.listdir(dir))
+    def traverse_output_files(self, subdir, files):
+        output_dir = _join(self.output_dir, subdir)
+        names = set(_os.listdir(output_dir))
 
         for name in names:
-            path = _join(dir, name)
+            path = _join(subdir, name)
+            output_path = _join(self.output_dir, path)
 
-            if _is_file(path):
-                files.add(path)
-            elif _is_dir(path):
+            if _is_file(output_path):
+                files.add(output_path)
+            elif _is_dir(output_path):
                 if name == ".svn":
                     continue
 
@@ -240,8 +239,7 @@ class Transom:
         config_path = _join(self.input_dir, "_transom_ignore_links")
 
         if _is_file(config_path):
-            with _open_file(config_path, "r") as file:
-                ignore_patterns = list(file)
+            ignore_patterns = _read_file(config_path)
 
             def retain(link):
                 for pattern in ignore_patterns:
@@ -271,8 +269,9 @@ class Transom:
 
         return code, error
 
-    def traverse_input_pages(self, dir, page):
-        names = set(_os.listdir(dir))
+    def traverse_input_pages(self, subdir, parent_page):
+        input_dir = _join(self.input_dir, subdir)
+        names = set(_os.listdir(input_dir))
 
         if "_transom_ignore_pages" in names:
             return
@@ -280,62 +279,67 @@ class Transom:
         for name in ("index.md", "index.html", "index.html.in"):
             if name in names:
                 names.remove(name)
-                page = _Page(self, _join(dir, name), page)
+                parent_page = _Page(self, _join(subdir, name), parent_page)
                 break
 
         for name in sorted(names):
-            path = _join(dir, name)
-
             if name.startswith("_transom_"):
                 continue
 
             if name == ".svn":
                 continue
 
-            if _is_file(path):
+            path = _join(subdir, name)
+            input_path = _join(self.input_dir, path)
+
+            if _is_file(input_path):
                 stem, ext = _os.path.splitext(name)
 
                 if ext in _page_extensions:
-                    _Page(self, path, page)
-            elif _is_dir(path):
-                self.traverse_input_pages(path, page)
+                    _Page(self, path, parent_page)
+            elif _is_dir(input_path):
+                self.traverse_input_pages(path, parent_page)
 
-    def traverse_input_resources(self, dir):
-        names = set(_os.listdir(dir))
+    def traverse_input_resources(self, subdir):
+        input_dir = _join(self.input_dir, subdir)
+        names = set(_os.listdir(input_dir))
 
         if "_transom_ignore_resources" in names:
             return
 
         for name in sorted(names):
-            path = _join(dir, name)
-
             if name.startswith("_transom_"):
                 continue
 
-            if _is_file(path):
-                if path not in self.files_by_input_path:
-                    _Resource(self, path)
-            elif _is_dir(path) and name != ".svn":
-                self.traverse_input_resources(path)
+            if name == ".svn":
+                continue
 
-    def get_output_path(self, input_path):
-        path = input_path[len(self.input_dir) + 1:]
-        return _join(self.output_dir, path)
+            path = _join(subdir, name)
+            input_path = _join(self.input_dir, path)
+
+            if _is_file(input_path):
+                if path not in self.files_by_path:
+                    _Resource(self, path)
+            elif _is_dir(input_path):
+                self.traverse_input_resources(path)
 
     def get_url(self, output_path):
         path = output_path[len(self.output_dir) + 1:]
         path = path.replace(_os.path.sep, "/")
+
         return "{}/{}".format(self.site_url, path)
 
 class _File(object):
-    def __init__(self, site, input_path):
+    def __init__(self, site, path):
         self.site = site
-        self.input_path = input_path
-        self.output_path = self.site.get_output_path(self.input_path)
+        self.path = path
+
+        self.input_path = _join(self.site.input_dir, self.path)
+        self.output_path = _join(self.site.output_dir, self.path)
         self.url = self.site.get_url(self.output_path)
 
         self.site.files.append(self)
-        self.site.files_by_input_path[self.input_path] = self
+        self.site.files_by_path[self.path] = self
 
     def init(self):
         self.site.link_targets.add(self.url)
@@ -367,6 +371,7 @@ class _File(object):
             except Exception as e:
                 msg = "Expression '{}'; file '{}'; {}"
                 args = expr, self.input_path, e
+
                 print(msg.format(*args))
 
                 out.append(token)
@@ -378,21 +383,20 @@ class _File(object):
         return "".join(out)
 
     def __repr__(self):
-        return _format_repr(self, self.input_path)
+        return _format_repr(self, self.path)
 
 class _Resource(_File):
-    def __init__(self, site, input_path):
-        super(_Resource, self).__init__(site, input_path)
+    def __init__(self, site, path):
+        super(_Resource, self).__init__(site, path)
 
         self.site.resources.append(self)
 
     def save_output(self):
-        _make_dir(_split(self.output_path)[0])
         _copy_file(self.input_path, self.output_path)
 
 class _Page(_File):
-    def __init__(self, site, input_path, parent):
-        super(_Page, self).__init__(site, input_path)
+    def __init__(self, site, path, parent):
+        super(_Page, self).__init__(site, path)
 
         self.parent = parent
 
@@ -414,19 +418,17 @@ class _Page(_File):
 
         self.template_content = self.site.template_content
         
-        page_dir = _split(self.input_path)[0]
-        template_path = _join(page_dir, "_transom_template.html")
+        input_dir, name = _split(self.input_path)
+        template_path = _join(input_dir, "_transom_template.html")
 
         if _is_file(template_path):
-            with _open_file(template_path, "r") as file:
-                self.template_content = file.read()
+            self.template_content = _read_file(template_path)
         
     def load_input(self):
         if self.site.verbose:
             print("Loading {}".format(self))
 
-        with _open_file(self.input_path, "r") as file:
-            self.content = file.read()
+        self.content = _read_file(self.input_path)
 
     def save_output(self, path=None):
         if self.site.verbose:
@@ -435,19 +437,15 @@ class _Page(_File):
         if path is None:
             path = self.output_path
 
-        _make_dir(_split(path)[0])
-
-        with _open_file(self.output_path, "w") as file:
-            file.write(self.content)
+        _write_file(self.output_path, self.content)
 
     def load_output(self):
-        with _open_file(self.output_path, "r") as file:
-            self.content = file.read()
+        self.content = _read_file(self.output_path)
 
     def convert(self):
-        if self.input_path.endswith(".md"):
+        if self.path.endswith(".md"):
             self.convert_from_markdown()
-        elif self.input_path.endswith(".html.in"):
+        elif self.path.endswith(".html.in"):
             self.convert_from_html_in()
 
     def convert_from_markdown(self):
@@ -480,7 +478,8 @@ class _Page(_File):
             self.title = "Home"
             return
 
-        self.title = _split(self.output_path)[1]
+        dir, name = _split(self.output_path)
+        self.title = name
 
         if isinstance(self.title, bytes):
             self.title = self.title.decode("utf8")
@@ -590,11 +589,17 @@ class _Page(_File):
 
             target = "{}#{}".format(self.url, id)
 
-            assert target not in link_targets, target
+            if target in link_targets:
+                print("Warning! Duplicate link target in '{}'".format(target))
 
             link_targets.add(target)
 
         return link_targets
+
+_join = _os.path.join
+_split = _os.path.split
+_is_file = _os.path.isfile
+_is_dir = _os.path.isdir
 
 def _make_dir(dir):
     if not _os.path.exists(dir):
@@ -603,6 +608,16 @@ def _make_dir(dir):
 def _open_file(path, mode):
     return _codecs.open(path, mode, "utf8", "replace", _buffer_size)
 
+def _read_file(path):
+    with _open_file(path, "r") as file:
+        return file.read()
+
+def _write_file(path, content):
+    _make_dir(_split(path)[0])
+
+    with _open_file(path, "w") as file:
+        return file.write(content)
+    
 # Adapted from http://stackoverflow.com/questions/22078621/python-how-to-copy-files-fast
 
 _read_flags = _os.O_RDONLY
@@ -610,6 +625,8 @@ _write_flags = _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC
 _eof = b""
 
 def _copy_file(src, dst):
+    _make_dir(_split(dst)[0])
+    
     try:
         fin = _os.open(src, _read_flags)
         fout = _os.open(dst, _write_flags)
@@ -624,8 +641,3 @@ def _format_repr(obj, *args):
     cls = obj.__class__.__name__
     strings = [str(x) for x in args]
     return "{}({})".format(cls, ",".join(strings))
-
-_join = _os.path.join
-_split = _os.path.split
-_is_file = _os.path.isfile
-_is_dir = _os.path.isdir
