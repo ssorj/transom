@@ -474,10 +474,6 @@ class _Page(_File):
         if self.site.verbose:
             print("Processing {}".format(self))
 
-        if self.parent is None:
-            self.title = "Home"
-            return
-
         dir, name = _split(self.output_path)
         self.title = name
 
