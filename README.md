@@ -1,6 +1,6 @@
 # Transom
 
-Transom renders website contetn from markdown source files.
+Transom renders website content from markdown source files.
 
 [User documentation](http://www.ssorj.net/projects/transom.html)
 
