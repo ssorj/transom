@@ -293,7 +293,10 @@ class Transom:
             input_path = _join(self.input_dir, path)
 
             if _is_file(input_path):
-                stem, ext = _os.path.splitext(name)
+                if input_path.endswith(".html.in"):
+                    ext = ".html.in"
+                else:
+                    stem, ext = _os.path.splitext(name)
 
                 if ext in _page_extensions:
                     _Page(self, path, parent_page)

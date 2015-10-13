@@ -95,7 +95,9 @@ a.heading-link:hover {
     opacity: 1;
 }
 
-ol, ul, dd {
+ol,
+ul,
+dd {
     padding-left: 1.2em;
 }
 
@@ -155,7 +157,7 @@ th {
 }
 
 td em,
- th {
+th {
     font-weight: 300;
     font-style: normal;
 }
@@ -164,7 +166,8 @@ hr {
     border-bottom: 1px solid #ddd;
 }
 
-code, pre {
+code,
+pre {
     background-color: rgb(247, 247, 247);
 }
 
@@ -175,6 +178,10 @@ pre {
 
 blockquote {
     margin-left: 2em;
+}
+
+section {
+    margin: 1.5em 0;
 }
 
 .two-column {
@@ -272,18 +279,15 @@ blockquote {
         display: block;
     }
 
-    .flex > section,
-    .flex > div {
-        margin: 1em 0;
+    .flex > section {
+        margin: 1.5em 0;
     }
 
-    .flex > section:first-child,
-    .flex > div:first-child {
+    .flex > section:first-child {
         margin-top: 0;
     }
 
-    .flex > section:last-child,
-    .flex > div:last-child {
+    .flex > section:last-child {
         margin-bottom: 0;
     }
 }
