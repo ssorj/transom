@@ -145,13 +145,12 @@ form button {
 
 table {
     border-collapse: collapse;
-    table-layout: auto;
 }
 
 td,
 th {
     border-bottom: 1px solid #ddd;
-    padding: 0.3em 1.5em 0.3em 0;
+    padding: 0.3em 0.5em 0.3em 0;
     vertical-align: top;
     text-align: left;
 }
