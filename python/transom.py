@@ -71,7 +71,6 @@ class Transom:
             "footnotes": True,
             "header-ids": True,
             "markdown-in-html": True,
-            "smarty-pants": True,
             "tables": True,
             "toc": True,
             }
