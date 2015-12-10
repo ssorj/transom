@@ -265,6 +265,10 @@ section {
     content: none;
 }
 
+#-global-navigation {
+    float: right;
+}
+
 @media screen and (max-width: 720px) {
     .two-column,
     .three-column,
