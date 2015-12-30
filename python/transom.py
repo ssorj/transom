@@ -71,8 +71,8 @@ class Transom:
             "footnotes": True,
             "header-ids": True,
             "markdown-in-html": True,
+            "metadata": True,
             "tables": True,
-            "toc": True,
             }
 
         self.markdown = _markdown2.Markdown(extras=extras)
@@ -403,8 +403,10 @@ class _Page(_File):
         self.parent = parent
 
         self.content = None
-        self.title = None
         self.template_content = None
+
+        self.title = None
+        self.attributes = dict()
         
         self.site.pages.append(self)
 
@@ -462,6 +464,7 @@ class _Page(_File):
         content = self.site.markdown.convert(content)
 
         self.content = self.apply_template(content)
+        self.attributes.update(content.metadata)
 
     def convert_from_html_in(self):
         if self.site.verbose:
@@ -495,8 +498,9 @@ class _Page(_File):
             print("Rendering {}".format(self))
 
         page_vars = {
-            "path_navigation": self.render_path_navigation(),
             "title": self.title,
+            "path_navigation": self.render_path_navigation(),
+            "extra_headers" : self.attributes.get("extra_headers", ""),
         }
 
         self.content = self.replace_placeholders(self.content, page_vars)
