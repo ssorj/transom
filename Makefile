@@ -19,7 +19,6 @@ clean:
 	rm -rf build
 	rm -rf install
 	rm -rf output
-	rm -rf dist
 
 .PHONY: build
 build:
@@ -37,7 +36,7 @@ install: build
 .PHONY: test
 test: PREFIX := "${PWD}/install"
 test: install
-	${PREFIX}/bin/transom input output
+	${PREFIX}/bin/transom input output --verbose
 
 .PHONY: devel
 devel: PREFIX := "${PWD}/install"

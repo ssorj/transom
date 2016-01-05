@@ -331,6 +331,14 @@ class Transom:
 
         return "{}/{}".format(self.site_url, path)
 
+    def info(self, message, *args):
+        if self.verbose:
+            print(message.format(*args))
+
+    def warn(self, message, *args):
+        message = message.format(*args)
+        print("Warning! {}".format(message))
+
 class _File(object):
     def __init__(self, site, path):
         self.site = site
@@ -429,14 +437,11 @@ class _Page(_File):
             self.template_content = _read_file(template_path)
         
     def load_input(self):
-        if self.site.verbose:
-            print("Loading {}".format(self))
-
+        self.site.info("Loading {}", self)
         self.content = _read_file(self.input_path)
 
     def save_output(self, path=None):
-        if self.site.verbose:
-            print("Saving {} to {}".format(self, self.output_path))
+        self.site.info("Saving {} to {}", self, self.output_path)
 
         if path is None:
             path = self.output_path
@@ -453,12 +458,11 @@ class _Page(_File):
             self.convert_from_html_in()
 
     def convert_from_markdown(self):
-        if self.site.verbose:
-            print("Converting {} from markdown".format(self))
+        self.site.info("Converting {} from markdown", self)
 
         # Strip out comments
         content_lines = self.content.splitlines()
-        content_lines = (x for x in content_lines if not x.startswith(";;"))
+        content_lines = [x for x in content_lines if not x.startswith(";;")]
 
         content = _os.linesep.join(content_lines)
         content = self.site.markdown.convert(content)
@@ -467,17 +471,14 @@ class _Page(_File):
         self.attributes.update(content.metadata)
 
     def convert_from_html_in(self):
-        if self.site.verbose:
-            print("Converting {} from html.in".format(self))
-
+        self.site.info("Converting {} from html.in", self)
         self.content = self.apply_template(self.content)
 
     def apply_template(self, content):
         return self.template_content.replace("{{content}}", content)
 
     def process(self):
-        if self.site.verbose:
-            print("Processing {}".format(self))
+        self.site.info("Processing {}", self)
 
         dir, name = _split(self.output_path)
         self.title = name
@@ -494,8 +495,7 @@ class _Page(_File):
         self.title = self.title.strip()
 
     def render(self):
-        if self.site.verbose:
-            print("Rendering {}".format(self))
+        self.site.info("Rendering {}", self)
 
         page_vars = {
             "title": self.title,
@@ -529,7 +529,7 @@ class _Page(_File):
         try:
             root = self.parse_xml(self.content)
         except Exception as e:
-            print("Warning: {}".format(str(e)))
+            self.site.warn(str(e))
             return
 
         links = self.gather_links(root)
@@ -592,7 +592,7 @@ class _Page(_File):
             target = "{}#{}".format(self.url, id)
 
             if target in link_targets:
-                print("Warning! Duplicate link target in '{}'".format(target))
+                self.site.warn("Duplicate link target in '{}'", target)
 
             link_targets.add(target)
 
