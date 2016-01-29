@@ -197,11 +197,11 @@ class Transom:
             page.load_output()
 
         for page in self.pages:
-            page.check_links()
+            page.find_links()
 
         errors_by_link = _defaultdict(list)
         links = self.filter_links(self.links)
-        
+
         for link in links:
             if internal and link.startswith(self.site_url):
                 if link[len(self.site_url):].startswith("/transom"):
@@ -238,13 +238,13 @@ class Transom:
         config_path = _join(self.input_dir, "_transom_ignore_links")
 
         if _is_file(config_path):
-            ignore_patterns = _read_file(config_path)
+            ignore_patterns = _read_file(config_path).splitlines()
 
             def retain(link):
                 for pattern in ignore_patterns:
                     pattern = pattern.strip()
                     path = link[len(self.site_url) + 1:]
-                    
+
                     if _fnmatch.fnmatch(path, pattern):
                         return False
 
@@ -522,9 +522,11 @@ class _Page(_File):
 
         return u"<ul id=\"-path-navigation\">{}</ul>".format(links)
 
-    def check_links(self):
+    def find_links(self):
         if not self.output_path.endswith(".html"):
             return
+
+        self.site.info("Finding links in {}", self)
 
         try:
             root = self.parse_xml(self.content)
