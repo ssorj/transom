@@ -494,6 +494,8 @@ class _Page(_File):
         self.title = _tag_regex.sub("", self.title)
         self.title = self.title.strip()
 
+        self.title = self.attributes.get("title", self.title)
+
     def render(self):
         self.site.info("Rendering {}", self)
 

@@ -56,7 +56,7 @@ def main():
     site_url = args.site_url
 
     if site_url is None:
-        site_url = os.path.abspath(args.output_dir)
+        site_url = "file://{}".format(os.path.abspath(args.output_dir))
 
     transom = Transom(site_url, args.input_dir, args.output_dir)
     transom.home_dir = home_dir
