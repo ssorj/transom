@@ -40,7 +40,7 @@ var transom = {
     },
 
     getHeadings: function() {
-        var tags = ["h2", "h3", "h4", "h5", "h6"];
+        var tags = ["h", "h1", "h2", "h3", "h4", "h5", "h6"];
         var headings = [];
 
         for (var i = 0; i < tags.length; i++) {
