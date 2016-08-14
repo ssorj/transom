@@ -7,13 +7,13 @@ Transom renders website content from markdown source files.
 ## Installation
 
     $ cd transom/
-    transom$ make build
-    transom$ sudo make install
+    $ make build
+    $ make install
 
-The default install location is `/usr/local`.  Use the `PREFIX`
+The default install location is `$HOME/.local`.  Use the `PREFIX`
 argument to change it.
 
-    transom$ sudo make install PREFIX=/some/path
+    $ sudo make install PREFIX=/some/path
 
 ## Development
 
@@ -21,12 +21,12 @@ To setup paths in your development environment, source the `devel.sh`
 script from the project directory.
 
     $ cd transom/
-    transom$ source devel.sh
+    $ source devel.sh
 
 The `devel` make target uses the environment established by `devel.sh`
 to install and test your checkout.
 
-    transom$ make devel
+    $ make devel
 
 ## Project layout
 
@@ -43,7 +43,7 @@ to install and test your checkout.
 After that most everything is accomplished by running make targets.
 These are the important ones:
 
-    transom$ make build   # Builds the code
-    transom$ make install # Installs the code
-    transom$ make devel   # Cleans, builds, installs, tests
-    transom$ make clean   # Removes build/ and install/
+    $ make build         # Builds the code
+    $ make install       # Installs the code
+    $ make devel         # Cleans, builds, installs, tests
+    $ make clean         # Removes build/ and install/
