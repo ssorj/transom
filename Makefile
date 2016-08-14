@@ -1,5 +1,5 @@
 DESTDIR := ""
-PREFIX := /usr/local
+PREFIX := ${HOME}/.local
 home = ${PREFIX}/share/transom
 
 .PHONY: default
@@ -34,10 +34,10 @@ install: build
 	install -m 755 build/bin/transom ${DESTDIR}${PREFIX}/bin/transom
 
 .PHONY: test
-test: PREFIX := "${PWD}/install"
+test: PREFIX := ${PWD}/install
 test: install
 	${PREFIX}/bin/transom input output --verbose
 
 .PHONY: devel
-devel: PREFIX := "${PWD}/install"
+devel: PREFIX := ${PWD}/install
 devel: clean test
