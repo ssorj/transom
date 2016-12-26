@@ -1,6 +1,8 @@
 DESTDIR := ""
 PREFIX := ${HOME}/.local
-home = ${PREFIX}/share/transom
+TRANSOM_HOME = ${PREFIX}/share/transom
+
+export PATH := ${PWD}/install/bin:${PATH}
 
 .PHONY: default
 default: devel
@@ -23,20 +25,18 @@ clean:
 .PHONY: build
 build:
 	mkdir -p build/bin
-	scripts/configure-file bin/transom.in build/bin/transom transom_home ${home}
+	scripts/configure-file -a transom_home=${TRANSOM_HOME} bin/transom.in build/bin/transom
 
 .PHONY: install
 install: build
-	scripts/install-files python ${DESTDIR}${home}/python \*.py
-	install -d ${DESTDIR}${home}/resources
-	install -m 644 resources/* ${DESTDIR}${home}/resources
-	install -d ${DESTDIR}${PREFIX}/bin
-	install -m 755 build/bin/transom ${DESTDIR}${PREFIX}/bin/transom
+	scripts/install-files -n \*.py python ${DESTDIR}${TRANSOM_HOME}/python
+	scripts/install-files resources ${DESTDIR}${TRANSOM_HOME}/resources
+	scripts/install-files build/bin ${DESTDIR}${PREFIX}/bin
 
 .PHONY: test
 test: PREFIX := ${PWD}/install
 test: install
-	${PREFIX}/bin/transom input output --verbose
+	transom input output --verbose
 
 .PHONY: devel
 devel: PREFIX := ${PWD}/install
