@@ -52,11 +52,11 @@ _page_extensions = ".md", ".html.in", ".html", ".css", ".js"
 _buffer_size = 128 * 1024
 
 class Transom:
-    def __init__(self, site_url, input_dir, output_dir, home_dir=None):
+    def __init__(self, site_url, input_dir, output_dir, home=None):
         self.site_url = site_url
         self.input_dir = input_dir
         self.output_dir = output_dir
-        self.home_dir = home_dir
+        self.home = home
 
         self.verbose = False
 
@@ -77,10 +77,10 @@ class Transom:
 
         self.markdown = _markdown2.Markdown(extras=extras)
 
-        self.files = list()
-        self.files_by_path = dict()
-
         self.resources = list()
+        self.resources_by_path = dict()
+
+        self.files = list()
         self.pages = list()
 
         self.links = _defaultdict(set)
@@ -88,12 +88,13 @@ class Transom:
 
     def init(self):
         if not _is_file(self.template_path):
-            if self.home_dir is not None:
-                path = _join(self.home_dir, "resources", "template.html")
+            if self.home is not None:
+                path = _join(self.home, "files", "template.html")
                 self.template_path = path
 
         if not _is_file(self.template_path):
-            raise Exception("No template found")
+            m = "No template found at '{}'".format(self.template_path)
+            raise Exception(m)
             
         self.template_content = _read_file(self.template_path)
 
@@ -105,9 +106,9 @@ class Transom:
             self.config_env = init_globals
 
         self.traverse_input_pages("", None)
-        self.traverse_input_resources("")
+        self.traverse_input_files("")
 
-        for file in self.files:
+        for file in self.resources:
             file.init()
 
     def render(self):
@@ -126,22 +127,22 @@ class Transom:
         for page in self.pages:
             page.save_output()
 
-        for resource in self.resources:
-            resource.save_output()
+        for file_ in self.files:
+            file_.save_output()
 
-        if self.home_dir is not None:
-            self.copy_default_resources()
+        if self.home is not None:
+            self.copy_default_files()
 
-    def copy_default_resources(self):
-        from_dir = _join(self.home_dir, "resources")
+    def copy_default_files(self):
+        from_dir = _join(self.home, "files")
         to_dir = _join(self.output_dir, "transom")
         subpaths = list()
 
         for root, dirs, files in _os.walk(from_dir):
-            dir = root[len(from_dir) + 1:]
+            dir_ = root[len(from_dir) + 1:]
 
-            for file in files:
-                subpaths.append(_join(dir, file))
+            for file_ in files:
+                subpaths.append(_join(dir_, file_))
 
         for subpath in subpaths:
             from_file = _join(from_dir, subpath)
@@ -149,31 +150,31 @@ class Transom:
 
             _copy_file(from_file, to_file)
 
-    def check_output_files(self):
-        expected_files = set()
-        found_files = set()
+    def check_output_resources(self):
+        expected_resources = set()
+        found_resources = set()
 
-        for file in self.files:
-            expected_files.add(file.output_path)
+        for resource in self.resources:
+            expected_resources.add(resource.output_path)
 
-        self.traverse_output_files("", found_files)
+        self.traverse_output_resources("", found_resources)
 
-        missing_files = expected_files.difference(found_files)
-        extra_files = found_files.difference(expected_files)
+        missing_resources = expected_resources.difference(found_resources)
+        extra_resources = found_resources.difference(expected_resources)
 
-        if missing_files:
-            print("Missing files:")
+        if missing_resources:
+            print("Missing resources:")
 
-            for path in sorted(missing_files):
+            for path in sorted(missing_resources):
                 print("  {}".format(path))
 
-        if extra_files:
-            print("Extra files:")
+        if extra_resources:
+            print("Extra resources:")
 
-            for path in sorted(extra_files):
+            for path in sorted(extra_resources):
                 print("  {}".format(path))
 
-    def traverse_output_files(self, subdir, files):
+    def traverse_output_resources(self, subdir, resources):
         output_dir = _join(self.output_dir, subdir)
         names = set(_os.listdir(output_dir))
 
@@ -182,7 +183,7 @@ class Transom:
             output_path = _join(self.output_dir, path)
 
             if _is_file(output_path):
-                files.add(output_path)
+                resources.add(output_path)
             elif _is_dir(output_path):
                 if name == ".svn":
                     continue
@@ -190,7 +191,7 @@ class Transom:
                 if name == "transom":
                     continue
                 
-                self.traverse_output_files(path, files)
+                self.traverse_output_resources(path, resources)
 
     def check_links(self, internal=True, external=False):
         for page in self.pages:
@@ -275,6 +276,9 @@ class Transom:
         if "_transom_ignore_pages" in names:
             return
 
+        if "_transom_ignore_resources" in names:
+            return
+
         for name in ("index.md", "index.html", "index.html.in"):
             if name in names:
                 names.remove(name)
@@ -302,9 +306,12 @@ class Transom:
             elif _is_dir(input_path):
                 self.traverse_input_pages(path, parent_page)
 
-    def traverse_input_resources(self, subdir):
+    def traverse_input_files(self, subdir):
         input_dir = _join(self.input_dir, subdir)
         names = set(_os.listdir(input_dir))
+
+        if "_transom_ignore_files" in names:
+            return
 
         if "_transom_ignore_resources" in names:
             return
@@ -320,10 +327,10 @@ class Transom:
             input_path = _join(self.input_dir, path)
 
             if _is_file(input_path):
-                if path not in self.files_by_path:
-                    _Resource(self, path)
+                if path not in self.resources_by_path:
+                    _File(self, path)
             elif _is_dir(input_path):
-                self.traverse_input_resources(path)
+                self.traverse_input_files(path)
 
     def get_url(self, output_path):
         path = output_path[len(self.output_dir) + 1:]
@@ -339,7 +346,7 @@ class Transom:
         message = message.format(*args)
         print("Warning! {}".format(message))
 
-class _File(object):
+class _Resource(object):
     def __init__(self, site, path):
         self.site = site
         self.path = path
@@ -348,8 +355,8 @@ class _File(object):
         self.output_path = _join(self.site.output_dir, self.path)
         self.url = self.site.get_url(self.output_path)
 
-        self.site.files.append(self)
-        self.site.files_by_path[self.path] = self
+        self.site.resources.append(self)
+        self.site.resources_by_path[self.path] = self
 
     def init(self):
         self.site.link_targets.add(self.url)
@@ -395,16 +402,16 @@ class _File(object):
     def __repr__(self):
         return _format_repr(self, self.path)
 
-class _Resource(_File):
+class _File(_Resource):
     def __init__(self, site, path):
-        super(_Resource, self).__init__(site, path)
+        super(_File, self).__init__(site, path)
 
-        self.site.resources.append(self)
+        self.site.files.append(self)
 
     def save_output(self):
         _copy_file(self.input_path, self.output_path)
 
-class _Page(_File):
+class _Page(_Resource):
     def __init__(self, site, path, parent):
         super(_Page, self).__init__(site, path)
 

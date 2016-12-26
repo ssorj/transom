@@ -30,7 +30,7 @@ build:
 .PHONY: install
 install: build
 	scripts/install-files -n \*.py python ${DESTDIR}${TRANSOM_HOME}/python
-	scripts/install-files resources ${DESTDIR}${TRANSOM_HOME}/resources
+	scripts/install-files files ${DESTDIR}${TRANSOM_HOME}/files
 	scripts/install-files build/bin ${DESTDIR}${PREFIX}/bin
 
 .PHONY: test
