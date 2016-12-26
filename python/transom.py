@@ -93,8 +93,7 @@ class Transom:
                 self.template_path = path
 
         if not _is_file(self.template_path):
-            m = "No template found at '{}'".format(self.template_path)
-            raise Exception(m)
+            raise Exception("No template found")
             
         self.template_content = _read_file(self.template_path)
 
