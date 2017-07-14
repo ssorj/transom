@@ -73,7 +73,7 @@ class Transom:
             "markdown-in-html": True,
             "metadata": True,
             "tables": True,
-            }
+        }
 
         self.markdown = _markdown2.Markdown(extras=extras)
 
