@@ -31,22 +31,10 @@ import tempfile as _tempfile
 import time as _time
 
 from collections import defaultdict as _defaultdict
+from urllib.parse import urljoin as _urljoin
+from urllib.parse import urlsplit as _urlsplit
+from urllib.request import urlopen as _urlopen
 from xml.etree.ElementTree import XML as _XML
-
-try:
-    from urllib.request import urlopen as _urlopen
-except:
-    from urllib2 import urlopen as _urlopen
-
-try:
-    from urllib.parse import urlsplit as _urlsplit
-except:
-    from urlparse import urlsplit as _urlsplit
-
-try:
-    from urllib.parse import urljoin as _urljoin
-except:
-    from urlparse import urljoin as _urljoin
 
 _title_regex = _re.compile(r"<([hH][12]).*?>(.*?)</\1>")
 _tag_regex = _re.compile(r"<.+?>")
@@ -80,6 +68,7 @@ class Transom:
 
         self.markdown = _markdown2.Markdown(extras=extras)
         self.executor = _futures.ThreadPoolExecutor()
+        self.phase_tracker = _PhaseTracker(self)
 
         self.resources = list()
         self.resources_by_path = dict()
@@ -108,30 +97,24 @@ class Transom:
         else:
             self.config_env = init_globals
 
-        timer = _PhaseTimer(self)
-
         self.traverse_input_pages("", None)
 
-        timer.end_phase("traverse_input_pages")
+        self.phase_tracker.end_phase("traverse_input_pages")
 
         self.traverse_input_files("")
 
-        timer.end_phase("traverse_input_files")
+        self.phase_tracker.end_phase("traverse_input_files")
 
         for resource in self.resources:
             resource.init()
 
-        timer.end_phase("init_resources")
-
-        timer.report()
+        self.phase_tracker.end_phase("init_resources")
 
     def render(self):
-        timer = _PhaseTimer(self)
-
         for page in self.pages:
             page.load_input()
 
-        timer.end_phase("load_input")
+        self.phase_tracker.end_phase("load_input")
 
         try:
             futures = [self.executor.submit(page.convert) for page in self.pages]
@@ -140,17 +123,17 @@ class Transom:
             self.executor.shutdown()
             raise
 
-        timer.end_phase("convert")
+        self.phase_tracker.end_phase("convert")
 
         for page in self.pages:
             page.process()
 
-        timer.end_phase("process")
+        self.phase_tracker.end_phase("process")
 
         for page in self.pages:
             page.render()
 
-        timer.end_phase("render")
+        self.phase_tracker.end_phase("render")
 
         for page in self.pages:
             page.save_output()
@@ -161,8 +144,8 @@ class Transom:
         if self.home is not None:
             self.copy_default_files()
 
-        timer.end_phase("save_output")
-        timer.report()
+        self.phase_tracker.end_phase("save_output")
+        self.phase_tracker.report()
 
     def copy_default_files(self):
         from_dir = _join(self.home, "files")
@@ -381,7 +364,7 @@ class Transom:
         message = message.format(*args)
         print("Warning! {}".format(message))
 
-class _PhaseTimer:
+class _PhaseTracker:
     def __init__(self, site):
         self.site = site
 
@@ -638,7 +621,7 @@ class _Page(_Resource):
             path = _tempfile.mkstemp(".xml")[1]
             msg = "{} fails to parse; {}; see {}".format(self, str(e), path)
 
-            with _open_file(path, "w") as file:
+            with open(path, "w") as file:
                 file.write(xml)
 
             raise Exception(msg)
@@ -684,17 +667,14 @@ def _make_dir(dir):
     if not _os.path.exists(dir):
         _os.makedirs(dir)
 
-def _open_file(path, mode):
-    return _codecs.open(path, mode, "utf8", "replace", _buffer_size)
-
 def _read_file(path):
-    with _open_file(path, "r") as file:
+    with open(path, "r") as file:
         return file.read()
 
 def _write_file(path, content):
     _make_dir(_split(path)[0])
 
-    with _open_file(path, "w") as file:
+    with open(path, "w") as file:
         return file.write(content)
 
 # Adapted from http://stackoverflow.com/questions/22078621/python-how-to-copy-files-fast

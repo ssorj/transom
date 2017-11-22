@@ -36,7 +36,7 @@ install: build
 .PHONY: test
 test: PREFIX := ${PWD}/install
 test: install
-	transom input output --verbose
+	transom input output
 
 .PHONY: devel
 devel: PREFIX := ${PWD}/install
