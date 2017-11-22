@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,6 +20,7 @@
 from __future__ import print_function
 
 import codecs as _codecs
+import concurrent.futures as _futures
 import fnmatch as _fnmatch
 import markdown2 as _markdown2
 import os as _os
@@ -27,6 +28,7 @@ import re as _re
 import runpy as _runpy
 import sys as _sys
 import tempfile as _tempfile
+import time as _time
 
 from collections import defaultdict as _defaultdict
 from xml.etree.ElementTree import XML as _XML
@@ -59,13 +61,14 @@ class Transom:
         self.home = home
 
         self.verbose = False
+        self.quiet = False
 
         self.template_path = _join(self.input_dir, "_transom_template.html")
         self.config_path = _join(self.input_dir, "_transom_config.py")
 
         self.template_content = None
         self.config_env = None
-        
+
         extras = {
             "code-friendly": True,
             "footnotes": True,
@@ -76,6 +79,7 @@ class Transom:
         }
 
         self.markdown = _markdown2.Markdown(extras=extras)
+        self.executor = _futures.ThreadPoolExecutor()
 
         self.resources = list()
         self.resources_by_path = dict()
@@ -94,7 +98,7 @@ class Transom:
 
         if not _is_file(self.template_path):
             raise Exception("No template found")
-            
+
         self.template_content = _read_file(self.template_path)
 
         init_globals = {"site_url": self.site_url}
@@ -104,24 +108,49 @@ class Transom:
         else:
             self.config_env = init_globals
 
+        timer = _PhaseTimer(self)
+
         self.traverse_input_pages("", None)
+
+        timer.end_phase("traverse_input_pages")
+
         self.traverse_input_files("")
 
-        for file in self.resources:
-            file.init()
+        timer.end_phase("traverse_input_files")
+
+        for resource in self.resources:
+            resource.init()
+
+        timer.end_phase("init_resources")
+
+        timer.report()
 
     def render(self):
+        timer = _PhaseTimer(self)
+
         for page in self.pages:
             page.load_input()
 
-        for page in self.pages:
-            page.convert()
+        timer.end_phase("load_input")
+
+        try:
+            futures = [self.executor.submit(page.convert) for page in self.pages]
+            _futures.wait(futures)
+        except:
+            self.executor.shutdown()
+            raise
+
+        timer.end_phase("convert")
 
         for page in self.pages:
             page.process()
 
+        timer.end_phase("process")
+
         for page in self.pages:
             page.render()
+
+        timer.end_phase("render")
 
         for page in self.pages:
             page.save_output()
@@ -131,6 +160,9 @@ class Transom:
 
         if self.home is not None:
             self.copy_default_files()
+
+        timer.end_phase("save_output")
+        timer.report()
 
     def copy_default_files(self):
         from_dir = _join(self.home, "files")
@@ -189,7 +221,7 @@ class Transom:
 
                 if name == "transom":
                     continue
-                
+
                 self.traverse_output_resources(path, resources)
 
     def check_links(self, internal=True, external=False):
@@ -206,13 +238,13 @@ class Transom:
             if internal and link.startswith(self.site_url):
                 if link[len(self.site_url):].startswith("/transom"):
                     continue
-                
+
                 if link not in self.link_targets:
                     errors_by_link[link].append("Link has no target")
 
             if external and not link.startswith(self.site_url):
                 code, error = self.check_external_link(link)
-            
+
                 if code >= 400:
                     msg = "HTTP error code {}".format(code)
                     errors_by_link[link].append(msg)
@@ -253,7 +285,7 @@ class Transom:
             return filter(retain, links)
 
         return links
-                
+
     def check_external_link(self, link):
         sock, code, error = None, None, None
 
@@ -341,11 +373,36 @@ class Transom:
         if self.verbose:
             print(message.format(*args))
 
+    def notice(self, message, *args):
+        if not self.quiet:
+            print(message.format(*args))
+
     def warn(self, message, *args):
         message = message.format(*args)
         print("Warning! {}".format(message))
 
-class _Resource(object):
+class _PhaseTimer:
+    def __init__(self, site):
+        self.site = site
+
+        self.phases = list()
+
+        self.start_ts = _time.time()
+        self.curr_ts = self.start_ts
+
+    def end_phase(self, name):
+        prev_ts = self.curr_ts
+        curr_ts = _time.time()
+
+        self.phases.append((name, curr_ts - prev_ts, curr_ts - self.start_ts))
+
+        self.curr_ts = curr_ts
+
+    def report(self):
+        for name, phase_time, cumulative_time in self.phases:
+            self.site.notice("Phase {:20}    {:0.3f}ms    {:0.3f}ms", name, phase_time, cumulative_time)
+
+class _Resource:
     def __init__(self, site, path):
         self.site = site
         self.path = path
@@ -353,6 +410,8 @@ class _Resource(object):
         self.input_path = _join(self.site.input_dir, self.path)
         self.output_path = _join(self.site.output_dir, self.path)
         self.url = self.site.get_url(self.output_path)
+
+        self.input_mtime = None
 
         self.site.resources.append(self)
         self.site.resources_by_path[self.path] = self
@@ -372,7 +431,7 @@ class _Resource(object):
             if token[:2] != "{{" or token[-2:] != "}}":
                 out.append(token)
                 continue
-            
+
             token_content = token[2:-2]
 
             if page_vars and token_content in page_vars:
@@ -381,7 +440,7 @@ class _Resource(object):
 
             expr = token_content
             env = self.site.config_env
-            
+
             try:
                 result = eval(expr, env)
             except Exception as e:
@@ -405,10 +464,18 @@ class _File(_Resource):
     def __init__(self, site, path):
         super(_File, self).__init__(site, path)
 
+        self.input_mtime = _os.path.getmtime(self.input_path)
+
         self.site.files.append(self)
 
     def save_output(self):
-        _copy_file(self.input_path, self.output_path)
+        if _os.path.exists(self.output_path):
+            output_mtime = _os.path.getmtime(self.output_path)
+
+            if output_mtime < self.input_mtime:
+                _copy_file(self.input_path, self.output_path)
+        else:
+            _copy_file(self.input_path, self.output_path)
 
 class _Page(_Resource):
     def __init__(self, site, path, parent):
@@ -421,7 +488,7 @@ class _Page(_Resource):
 
         self.title = None
         self.attributes = dict()
-        
+
         self.site.pages.append(self)
 
     def init(self):
@@ -435,13 +502,13 @@ class _Page(_Resource):
         super(_Page, self).init()
 
         self.template_content = self.site.template_content
-        
+
         input_dir, name = _split(self.input_path)
         template_path = _join(input_dir, "_transom_template.html")
 
         if _is_file(template_path):
             self.template_content = _read_file(template_path)
-        
+
     def load_input(self):
         self.site.info("Loading {}", self)
         self.content = _read_file(self.input_path)
@@ -629,7 +696,7 @@ def _write_file(path, content):
 
     with _open_file(path, "w") as file:
         return file.write(content)
-    
+
 # Adapted from http://stackoverflow.com/questions/22078621/python-how-to-copy-files-fast
 
 _read_flags = _os.O_RDONLY
@@ -638,7 +705,7 @@ _eof = b""
 
 def _copy_file(src, dst):
     _make_dir(_split(dst)[0])
-    
+
     try:
         fin = _os.open(src, _read_flags)
         fout = _os.open(dst, _write_flags)
