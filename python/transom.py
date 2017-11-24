@@ -68,7 +68,6 @@ class Transom:
 
         self.markdown = _markdown2.Markdown(extras=extras)
         self.executor = _futures.ThreadPoolExecutor()
-        self.phase_tracker = _PhaseTracker(self)
 
         self.resources = list()
         self.resources_by_path = dict()
@@ -78,6 +77,8 @@ class Transom:
 
         self.links = _defaultdict(set)
         self.link_targets = set()
+
+        self.start_ts = None
 
     def init(self):
         if not _is_file(self.template_path):
@@ -97,55 +98,35 @@ class Transom:
         else:
             self.config_env = init_globals
 
-        self.traverse_input_pages("", None)
+        self.start_ts = _time.time()
 
-        self.phase_tracker.end_phase("traverse_input_pages")
+        with _Phase(self, "Finding input files"):
+            self.traverse_input_pages("", None)
+            self.traverse_input_files("")
 
-        self.traverse_input_files("")
-
-        self.phase_tracker.end_phase("traverse_input_files")
-
-        for resource in self.resources:
-            resource.init()
-
-        self.phase_tracker.end_phase("init_resources")
+            for resource in self.resources:
+                resource.init()
 
     def render(self):
-        for page in self.pages:
-            page.load_input()
+        with _Phase(self, "Loading pages"):
+            for page in self.pages:
+                page.load_input()
 
-        self.phase_tracker.end_phase("load_input")
-
-        try:
-            futures = [self.executor.submit(page.convert) for page in self.pages]
+        with _Phase(self, "Converting pages"):
+            futures = [self.executor.submit(x.convert) for x in self.pages]
             _futures.wait(futures)
-        except:
-            self.executor.shutdown()
-            raise
 
-        self.phase_tracker.end_phase("convert")
+        with _Phase(self, "Processing pages"):
+            for page in self.pages:
+                page.process()
 
-        for page in self.pages:
-            page.process()
+        with _Phase(self, "Rendering pages"):
+            for page in self.pages:
+                page.render()
 
-        self.phase_tracker.end_phase("process")
-
-        for page in self.pages:
-            page.render()
-
-        self.phase_tracker.end_phase("render")
-
-        for page in self.pages:
-            page.save_output()
-
-        for file_ in self.files:
-            file_.save_output()
-
-        if self.home is not None:
-            self.copy_default_files()
-
-        self.phase_tracker.end_phase("save_output")
-        self.phase_tracker.report()
+        with _Phase(self, "Writing output files"):
+            for resource in self.resources:
+                resource.save_output()
 
     def copy_default_files(self):
         from_dir = _join(self.home, "files")
@@ -364,26 +345,30 @@ class Transom:
         message = message.format(*args)
         print("Warning! {}".format(message))
 
-class _PhaseTracker:
-    def __init__(self, site):
+class _Phase:
+    def __init__(self, site, message, *args):
         self.site = site
+        self.message = message
+        self.args = args
 
-        self.phases = list()
+        self.start_ts = None
+        self.end_ts = None
 
+    def __enter__(self):
         self.start_ts = _time.time()
-        self.curr_ts = self.start_ts
 
-    def end_phase(self, name):
-        prev_ts = self.curr_ts
-        curr_ts = _time.time()
+        if not self.site.verbose:
+            message = self.message.format(*self.args)
+            print("{:30}".format(message), end="")
 
-        self.phases.append((name, curr_ts - prev_ts, curr_ts - self.start_ts))
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end_ts = _time.time()
 
-        self.curr_ts = curr_ts
+        phase_dur = self.end_ts - self.start_ts
+        total_dur = self.end_ts - self.site.start_ts
 
-    def report(self):
-        for name, phase_time, cumulative_time in self.phases:
-            self.site.notice("Phase {:20}    {:0.3f}ms    {:0.3f}ms", name, phase_time, cumulative_time)
+        if not self.site.verbose:
+            print("  {:0.3f}ms  {:0.3f}ms".format(phase_dur, total_dur))
 
 class _Resource:
     def __init__(self, site, path):
@@ -496,12 +481,8 @@ class _Page(_Resource):
         self.site.info("Loading {}", self)
         self.content = _read_file(self.input_path)
 
-    def save_output(self, path=None):
+    def save_output(self):
         self.site.info("Saving {} to {}", self, self.output_path)
-
-        if path is None:
-            path = self.output_path
-
         _write_file(self.output_path, self.content)
 
     def load_output(self):
