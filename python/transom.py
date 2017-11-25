@@ -22,7 +22,7 @@ from __future__ import print_function
 import codecs as _codecs
 import concurrent.futures as _futures
 import fnmatch as _fnmatch
-import markdown2 as _markdown2
+import markdown2 as _markdown
 import os as _os
 import re as _re
 import runpy as _runpy
@@ -41,6 +41,15 @@ _tag_regex = _re.compile(r"<.+?>")
 _page_extensions = ".md", ".html.in", ".html", ".css", ".js"
 _buffer_size = 128 * 1024
 
+_markdown_extras = {
+    "code-friendly": True,
+    "footnotes": True,
+    "header-ids": True,
+    "markdown-in-html": True,
+    "metadata": True,
+    "tables": True,
+}
+
 class Transom:
     def __init__(self, site_url, input_dir, output_dir, home=None):
         self.site_url = site_url
@@ -57,18 +66,6 @@ class Transom:
         self.template_content = None
         self.config_env = None
 
-        extras = {
-            "code-friendly": True,
-            "footnotes": True,
-            "header-ids": True,
-            "markdown-in-html": True,
-            "metadata": True,
-            "tables": True,
-        }
-
-        self.markdown = _markdown2.Markdown(extras=extras)
-        self.executor = _futures.ThreadPoolExecutor()
-
         self.resources = list()
         self.resources_by_path = dict()
 
@@ -78,6 +75,7 @@ class Transom:
         self.links = _defaultdict(set)
         self.link_targets = set()
 
+        self.executor = _futures.ThreadPoolExecutor()
         self.start_ts = None
 
     def init(self):
@@ -502,7 +500,7 @@ class _Page(_Resource):
         content_lines = [x for x in content_lines if not x.startswith(";;")]
 
         content = _os.linesep.join(content_lines)
-        content = self.site.markdown.convert(content)
+        content = _markdown.markdown(content, extras=_markdown_extras)
 
         self.content = self.apply_template(content)
         self.attributes.update(content.metadata)
