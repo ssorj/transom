@@ -96,13 +96,14 @@ class Transom:
 
         self.start_time = _time.time()
 
+    def find_input_files(self):
         with _Phase(self, "Finding input files"):
-            self.traverse_input_files("")
+            self._traverse_input_files("")
 
             for file_ in self.files:
                 file_.init()
 
-    def traverse_input_files(self, subdir, parent_page=None, ignore_pages=False):
+    def _traverse_input_files(self, subdir, parent_page=None, ignore_pages=False):
         input_dir = _join(self.input_dir, subdir)
         names = set(_os.listdir(input_dir))
 
@@ -136,9 +137,9 @@ class Transom:
                 else:
                     _File(self, path)
             elif _is_dir(input_path):
-                self.traverse_input_files(path, parent_page, ignore_pages)
+                self._traverse_input_files(path, parent_page, ignore_pages)
 
-    def traverse_output_files(self, subdir, files):
+    def _traverse_output_files(self, subdir, files):
         output_dir = _join(self.output_dir, subdir)
         names = set(_os.listdir(output_dir))
 
@@ -155,9 +156,11 @@ class Transom:
                 if name == "transom":
                     continue
 
-                self.traverse_output_files(path, files)
+                self._traverse_output_files(path, files)
 
     def render(self):
+        self.find_input_files()
+
         with _Phase(self, "Loading pages"):
             for page in self.pages:
                 page.load_input()
@@ -178,9 +181,9 @@ class Transom:
             for file_ in self.files:
                 file_.save_output()
 
-            self.copy_default_files()
+            self._copy_default_files()
 
-    def copy_default_files(self):
+    def _copy_default_files(self):
         if self.home is None:
             return
 
@@ -200,62 +203,64 @@ class Transom:
 
             _copy_file(from_file, to_file)
 
-    def check_output_files(self):
-        expected_files = set()
-        found_files = set()
+    def check_files(self):
+        self.find_input_files()
 
-        for file_ in self.files:
-            expected_files.add(file_.output_path)
+        with _Phase(self, "Checking output files"):
+            expected_files = set()
+            found_files = set()
 
-        self.traverse_output_files("", found_files)
+            for file_ in self.files:
+                expected_files.add(file_.output_path)
 
-        missing_files = expected_files.difference(found_files)
-        extra_files = found_files.difference(expected_files)
+            self._traverse_output_files("", found_files)
+
+            missing_files = expected_files.difference(found_files)
+            extra_files = found_files.difference(expected_files)
 
         if missing_files:
-            print("Missing files:")
+            print("Missing output files:")
 
             for path in sorted(missing_files):
                 print("  {}".format(path))
 
         if extra_files:
-            print("Extra files:")
+            print("Extra output files:")
 
             for path in sorted(extra_files):
                 print("  {}".format(path))
 
     def check_links(self, internal=True, external=False):
-        for page in self.pages:
-            page.load_output()
+        self.find_input_files()
 
-        for page in self.pages:
-            page.find_links()
+        with _Phase(self, "Finding links"):
+            for page in self.pages:
+                page.load_output()
 
-        errors_by_link = _defaultdict(list)
-        links = self.filter_links(self.links)
+            for page in self.pages:
+                page.find_links()
 
-        for link in links:
-            if internal and link.startswith(self.site_url):
-                if link[len(self.site_url):].startswith("/transom"):
-                    continue
+        with _Phase(self, "Checking links"):
+            errors_by_link = _defaultdict(list)
+            links = self.filter_links(self.links)
 
-                if link not in self.link_targets:
-                    errors_by_link[link].append("Link has no target")
+            for link in links:
+                if internal and link.startswith(self.site_url):
+                    if link[len(self.site_url):].startswith("/transom"):
+                        continue
 
-            if external and not link.startswith(self.site_url):
-                code, error = self.check_external_link(link)
+                    if link not in self.link_targets:
+                        errors_by_link[link].append("Link has no target")
 
-                if code >= 400:
-                    msg = "HTTP error code {}".format(code)
-                    errors_by_link[link].append(msg)
+                if external and not link.startswith(self.site_url):
+                    code, error = self.check_external_link(link)
 
-                if error:
-                    errors_by_link[link].append(error.message)
+                    if code >= 400:
+                        msg = "HTTP error code {}".format(code)
+                        errors_by_link[link].append(msg)
 
-            _sys.stdout.write(".")
-            _sys.stdout.flush()
-
-        print()
+                    if error:
+                        errors_by_link[link].append(error.message)
 
         for link in errors_by_link:
             print("Link: {}".format(link))
