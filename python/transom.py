@@ -65,10 +65,8 @@ class Transom:
         self.template_content = None
         self.config_env = None
 
-        self.resources = list()
-        self.resources_by_path = dict()
-
         self.files = list()
+        self.files_by_path = dict()
         self.pages = list()
 
         self.links = _defaultdict(set)
@@ -98,12 +96,12 @@ class Transom:
         self.start_time = _time.time()
 
         with _Phase(self, "Finding input files"):
-            self.traverse_input_resources("")
+            self.traverse_input_files("")
 
-            for resource in self.resources:
-                resource.init()
+            for file_ in self.files:
+                file_.init()
 
-    def traverse_input_resources(self, subdir, parent_page=None, ignore_pages=False):
+    def traverse_input_files(self, subdir, parent_page=None, ignore_pages=False):
         input_dir = _join(self.input_dir, subdir)
         names = set(_os.listdir(input_dir))
 
@@ -137,9 +135,9 @@ class Transom:
                 else:
                     _File(self, path)
             elif _is_dir(input_path):
-                self.traverse_input_resources(path, parent_page, ignore_pages)
+                self.traverse_input_files(path, parent_page, ignore_pages)
 
-    def traverse_output_resources(self, subdir, resources):
+    def traverse_output_files(self, subdir, files):
         output_dir = _join(self.output_dir, subdir)
         names = set(_os.listdir(output_dir))
 
@@ -148,7 +146,7 @@ class Transom:
             output_path = _join(self.output_dir, path)
 
             if _is_file(output_path):
-                resources.add(output_path)
+                files.add(output_path)
             elif _is_dir(output_path):
                 if name == ".svn":
                     continue
@@ -156,7 +154,7 @@ class Transom:
                 if name == "transom":
                     continue
 
-                self.traverse_output_resources(path, resources)
+                self.traverse_output_files(path, files)
 
     def render(self):
         with _Phase(self, "Loading pages"):
@@ -176,8 +174,8 @@ class Transom:
                 page.render()
 
         with _Phase(self, "Writing output files"):
-            for resource in self.resources:
-                resource.save_output()
+            for file_ in self.files:
+                file_.save_output()
 
             self.copy_default_files()
 
@@ -201,28 +199,28 @@ class Transom:
 
             _copy_file(from_file, to_file)
 
-    def check_output_resources(self):
-        expected_resources = set()
-        found_resources = set()
+    def check_output_files(self):
+        expected_files = set()
+        found_files = set()
 
-        for resource in self.resources:
-            expected_resources.add(resource.output_path)
+        for file_ in self.files:
+            expected_files.add(file_.output_path)
 
-        self.traverse_output_resources("", found_resources)
+        self.traverse_output_files("", found_files)
 
-        missing_resources = expected_resources.difference(found_resources)
-        extra_resources = found_resources.difference(expected_resources)
+        missing_files = expected_files.difference(found_files)
+        extra_files = found_files.difference(expected_files)
 
-        if missing_resources:
-            print("Missing resources:")
+        if missing_files:
+            print("Missing files:")
 
-            for path in sorted(missing_resources):
+            for path in sorted(missing_files):
                 print("  {}".format(path))
 
-        if extra_resources:
-            print("Extra resources:")
+        if extra_files:
+            print("Extra files:")
 
-            for path in sorted(extra_resources):
+            for path in sorted(extra_files):
                 print("  {}".format(path))
 
     def check_links(self, internal=True, external=False):
@@ -348,7 +346,7 @@ class _Phase:
         if not self.site.verbose:
             print("{:0.3f}ms  [{:0.3f}ms]".format(phase_dur, total_dur))
 
-class _Resource:
+class _File:
     def __init__(self, site, path):
         self.site = site
         self.path = path
@@ -359,60 +357,17 @@ class _Resource:
 
         self.input_mtime = None
 
-        self.site.resources.append(self)
-        self.site.resources_by_path[self.path] = self
+        self.site.files.append(self)
+        self.site.files_by_path[self.path] = self
 
     def init(self):
+        self.input_mtime = _os.path.getmtime(self.input_path)
+
         self.site.link_targets.add(self.url)
 
         if self.url.endswith("/index.html"):
             self.site.link_targets.add(self.url[:-10])
             self.site.link_targets.add(self.url[:-11])
-
-    def replace_placeholders(self, content, page_vars):
-        out = list()
-        tokens = _re.split("({{.+?}})", content)
-
-        for token in tokens:
-            if token[:2] != "{{" or token[-2:] != "}}":
-                out.append(token)
-                continue
-
-            token_content = token[2:-2]
-
-            if page_vars and token_content in page_vars:
-                out.append(page_vars[token_content])
-                continue
-
-            expr = token_content
-            env = self.site.config_env
-
-            try:
-                result = eval(expr, env)
-            except Exception as e:
-                msg = "Expression '{}'; file '{}'; {}"
-                args = expr, self.input_path, e
-
-                print(msg.format(*args))
-
-                out.append(token)
-                continue
-
-            if result is not None:
-                out.append(str(result))
-
-        return "".join(out)
-
-    def __repr__(self):
-        return _format_repr(self, self.path)
-
-class _File(_Resource):
-    def __init__(self, site, path):
-        super(_File, self).__init__(site, path)
-
-        self.input_mtime = _os.path.getmtime(self.input_path)
-
-        self.site.files.append(self)
 
     def save_output(self):
         if _os.path.exists(self.output_path):
@@ -423,7 +378,10 @@ class _File(_Resource):
         else:
             _copy_file(self.input_path, self.output_path)
 
-class _Page(_Resource):
+    def __repr__(self):
+        return _format_repr(self, self.path)
+
+class _Page(_File):
     def __init__(self, site, path, parent):
         super(_Page, self).__init__(site, path)
 
@@ -538,6 +496,40 @@ class _Page(_Resource):
         links = u"".join((u"<li>{}</li>".format(x) for x in reversed(links)))
 
         return u"<ul id=\"-path-navigation\">{}</ul>".format(links)
+
+    def replace_placeholders(self, content, page_vars):
+        out = list()
+        tokens = _re.split("({{.+?}})", content)
+
+        for token in tokens:
+            if token[:2] != "{{" or token[-2:] != "}}":
+                out.append(token)
+                continue
+
+            token_content = token[2:-2]
+
+            if page_vars and token_content in page_vars:
+                out.append(page_vars[token_content])
+                continue
+
+            expr = token_content
+            env = self.site.config_env
+
+            try:
+                result = eval(expr, env)
+            except Exception as e:
+                msg = "Expression '{}'; file '{}'; {}"
+                args = expr, self.input_path, e
+
+                print(msg.format(*args))
+
+                out.append(token)
+                continue
+
+            if result is not None:
+                out.append(str(result))
+
+        return "".join(out)
 
     def find_links(self):
         if not self.output_path.endswith(".html"):
