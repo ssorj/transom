@@ -26,6 +26,7 @@ import markdown2 as _markdown
 import os as _os
 import re as _re
 import runpy as _runpy
+import shutil as _shutil
 import sys as _sys
 import tempfile as _tempfile
 import time as _time
@@ -628,25 +629,9 @@ def _write_file(path, content):
     with open(path, "w") as file:
         return file.write(content)
 
-# Adapted from http://stackoverflow.com/questions/22078621/python-how-to-copy-files-fast
-
-_buffer_size = 128 * 1024
-_read_flags = _os.O_RDONLY
-_write_flags = _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC
-_eof = b""
-
-def _copy_file(src, dst):
-    _make_dir(_split(dst)[0])
-
-    try:
-        fin = _os.open(src, _read_flags)
-        fout = _os.open(dst, _write_flags)
-
-        for x in iter(lambda: _os.read(fin, _buffer_size), _eof):
-            _os.write(fout, x)
-    finally:
-        _os.close(fin)
-        _os.close(fout)
+def _copy_file(from_path, to_path):
+    _make_dir(_split(to_path)[0])
+    _shutil.copy(from_path, to_path)
 
 def _format_repr(obj, *args):
     cls = obj.__class__.__name__
