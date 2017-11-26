@@ -38,7 +38,7 @@ from xml.etree.ElementTree import XML as _XML
 
 _title_regex = _re.compile(r"<([hH][12]).*?>(.*?)</\1>")
 _tag_regex = _re.compile(r"<.+?>")
-_page_extensions = ".md", ".html.in", ".html", ".css", ".js"
+_page_extensions = ".md", ".html.in", ".css", ".js"
 _buffer_size = 128 * 1024
 
 _markdown_extras = {
@@ -180,6 +180,9 @@ class Transom:
             self.copy_default_files()
 
     def copy_default_files(self):
+        if self.home is None:
+            return
+
         from_dir = _join(self.home, "files")
         to_dir = _join(self.output_dir, "transom")
         subpaths = list()
