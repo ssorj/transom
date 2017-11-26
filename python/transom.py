@@ -76,7 +76,7 @@ class Transom:
         self.link_targets = set()
 
         self.executor = _futures.ThreadPoolExecutor()
-        self.start_ts = None
+        self.start_time = None
 
     def init(self):
         if not _is_file(self.template_path):
@@ -96,14 +96,65 @@ class Transom:
         else:
             self.config_env = init_globals
 
-        self.start_ts = _time.time()
+        self.start_time = _time.time()
 
         with _Phase(self, "Finding input files"):
-            self.traverse_input_pages("", None)
-            self.traverse_input_files("")
+            self.traverse_input_resources("", None)
 
             for resource in self.resources:
                 resource.init()
+
+    def traverse_input_resources(self, subdir, parent_page):
+        input_dir = _join(self.input_dir, subdir)
+        names = set(_os.listdir(input_dir))
+
+        for name in ("index.md", "index.html", "index.html.in"):
+            if name in names:
+                names.remove(name)
+                parent_page = _Page(self, _join(subdir, name), parent_page)
+                break
+
+        for name in sorted(names):
+            if name.startswith("_transom_"):
+                continue
+
+            if name == ".svn":
+                continue
+
+            path = _join(subdir, name)
+            input_path = _join(self.input_dir, path)
+
+            if _is_file(input_path):
+                if input_path.endswith(".html.in"):
+                    ext = ".html.in"
+                else:
+                    stem, ext = _os.path.splitext(name)
+
+                if ext in _page_extensions:
+                    _Page(self, path, parent_page)
+                else:
+                    _File(self, path)
+            elif _is_dir(input_path):
+                self.traverse_input_resources(path, parent_page)
+
+    def traverse_output_resources(self, subdir, resources):
+        output_dir = _join(self.output_dir, subdir)
+        names = set(_os.listdir(output_dir))
+
+        for name in names:
+            path = _join(subdir, name)
+            output_path = _join(self.output_dir, path)
+
+            if _is_file(output_path):
+                resources.add(output_path)
+            elif _is_dir(output_path):
+                if name == ".svn":
+                    continue
+
+                if name == "transom":
+                    continue
+
+                self.traverse_output_resources(path, resources)
 
     def render(self):
         with _Phase(self, "Loading pages"):
@@ -125,6 +176,8 @@ class Transom:
         with _Phase(self, "Writing output files"):
             for resource in self.resources:
                 resource.save_output()
+
+            self.copy_default_files()
 
     def copy_default_files(self):
         from_dir = _join(self.home, "files")
@@ -166,25 +219,6 @@ class Transom:
 
             for path in sorted(extra_resources):
                 print("  {}".format(path))
-
-    def traverse_output_resources(self, subdir, resources):
-        output_dir = _join(self.output_dir, subdir)
-        names = set(_os.listdir(output_dir))
-
-        for name in names:
-            path = _join(subdir, name)
-            output_path = _join(self.output_dir, path)
-
-            if _is_file(output_path):
-                resources.add(output_path)
-            elif _is_dir(output_path):
-                if name == ".svn":
-                    continue
-
-                if name == "transom":
-                    continue
-
-                self.traverse_output_resources(path, resources)
 
     def check_links(self, internal=True, external=False):
         for page in self.pages:
@@ -262,69 +296,6 @@ class Transom:
 
         return code, error
 
-    def traverse_input_pages(self, subdir, parent_page):
-        input_dir = _join(self.input_dir, subdir)
-        names = set(_os.listdir(input_dir))
-
-        if "_transom_ignore_pages" in names:
-            return
-
-        if "_transom_ignore_resources" in names:
-            return
-
-        for name in ("index.md", "index.html", "index.html.in"):
-            if name in names:
-                names.remove(name)
-                parent_page = _Page(self, _join(subdir, name), parent_page)
-                break
-
-        for name in sorted(names):
-            if name.startswith("_transom_"):
-                continue
-
-            if name == ".svn":
-                continue
-
-            path = _join(subdir, name)
-            input_path = _join(self.input_dir, path)
-
-            if _is_file(input_path):
-                if input_path.endswith(".html.in"):
-                    ext = ".html.in"
-                else:
-                    stem, ext = _os.path.splitext(name)
-
-                if ext in _page_extensions:
-                    _Page(self, path, parent_page)
-            elif _is_dir(input_path):
-                self.traverse_input_pages(path, parent_page)
-
-    def traverse_input_files(self, subdir):
-        input_dir = _join(self.input_dir, subdir)
-        names = set(_os.listdir(input_dir))
-
-        if "_transom_ignore_files" in names:
-            return
-
-        if "_transom_ignore_resources" in names:
-            return
-
-        for name in sorted(names):
-            if name.startswith("_transom_"):
-                continue
-
-            if name == ".svn":
-                continue
-
-            path = _join(subdir, name)
-            input_path = _join(self.input_dir, path)
-
-            if _is_file(input_path):
-                if path not in self.resources_by_path:
-                    _File(self, path)
-            elif _is_dir(input_path):
-                self.traverse_input_files(path)
-
     def get_url(self, output_path):
         path = output_path[len(self.output_dir) + 1:]
         path = path.replace(_os.path.sep, "/")
@@ -349,21 +320,21 @@ class _Phase:
         self.message = message
         self.args = args
 
-        self.start_ts = None
-        self.end_ts = None
+        self.start_time = None
+        self.end_time = None
 
     def __enter__(self):
-        self.start_ts = _time.time()
+        self.start_time = _time.time()
 
         if not self.site.verbose:
             message = self.message.format(*self.args)
             print("{:30}".format(message), end="")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.end_ts = _time.time()
+        self.end_time = _time.time()
 
-        phase_dur = self.end_ts - self.start_ts
-        total_dur = self.end_ts - self.site.start_ts
+        phase_dur = self.end_time - self.start_time
+        total_dur = self.end_time - self.site.start_time
 
         if not self.site.verbose:
             print("  {:0.3f}ms  {:0.3f}ms".format(phase_dur, total_dur))
