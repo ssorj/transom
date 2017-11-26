@@ -38,8 +38,7 @@ from xml.etree.ElementTree import XML as _XML
 
 _title_regex = _re.compile(r"<([hH][12]).*?>(.*?)</\1>")
 _tag_regex = _re.compile(r"<.+?>")
-_page_extensions = ".md", ".html.in", ".css", ".js"
-_buffer_size = 128 * 1024
+_page_extensions = ".md", ".html.in", ".html", ".css", ".js"
 
 _markdown_extras = {
     "code-friendly": True,
@@ -99,14 +98,17 @@ class Transom:
         self.start_time = _time.time()
 
         with _Phase(self, "Finding input files"):
-            self.traverse_input_resources("", None)
+            self.traverse_input_resources("")
 
             for resource in self.resources:
                 resource.init()
 
-    def traverse_input_resources(self, subdir, parent_page):
+    def traverse_input_resources(self, subdir, parent_page=None, ignore_pages=False):
         input_dir = _join(self.input_dir, subdir)
         names = set(_os.listdir(input_dir))
+
+        if "_transom_ignore_pages" in names:
+            ignore_pages = True
 
         for name in ("index.md", "index.html", "index.html.in"):
             if name in names:
@@ -130,12 +132,12 @@ class Transom:
                 else:
                     stem, ext = _os.path.splitext(name)
 
-                if ext in _page_extensions:
+                if ext in _page_extensions and not ignore_pages:
                     _Page(self, path, parent_page)
                 else:
                     _File(self, path)
             elif _is_dir(input_path):
-                self.traverse_input_resources(path, parent_page)
+                self.traverse_input_resources(path, parent_page, ignore_pages)
 
     def traverse_output_resources(self, subdir, resources):
         output_dir = _join(self.output_dir, subdir)
@@ -331,16 +333,20 @@ class _Phase:
 
         if not self.site.verbose:
             message = self.message.format(*self.args)
-            print("{:30}".format(message), end="")
+            print("{:30}  ".format(message), end="", flush=True)
 
     def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            print("FAILED")
+            return
+
         self.end_time = _time.time()
 
         phase_dur = self.end_time - self.start_time
         total_dur = self.end_time - self.site.start_time
 
         if not self.site.verbose:
-            print("  {:0.3f}ms  {:0.3f}ms".format(phase_dur, total_dur))
+            print("{:0.3f}ms  [{:0.3f}ms]".format(phase_dur, total_dur))
 
 class _Resource:
     def __init__(self, site, path):
@@ -632,6 +638,7 @@ def _write_file(path, content):
 
 # Adapted from http://stackoverflow.com/questions/22078621/python-how-to-copy-files-fast
 
+_buffer_size = 128 * 1024
 _read_flags = _os.O_RDONLY
 _write_flags = _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC
 _eof = b""
