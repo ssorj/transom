@@ -20,6 +20,7 @@
 from __future__ import print_function
 
 import codecs as _codecs
+import commandant as _commandant
 import concurrent.futures as _futures
 import fnmatch as _fnmatch
 import markdown2 as _markdown
@@ -337,7 +338,7 @@ class _Phase:
 
         if not self.site.verbose:
             message = self.message.format(*self.args)
-            print("{:30}  ".format(message), end="", flush=True)
+            print("{:.<30} ".format(message + " "), end="", flush=True)
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is not None:
@@ -350,7 +351,7 @@ class _Phase:
         total_dur = self.end_time - self.site.start_time
 
         if not self.site.verbose:
-            print("{:0.3f}ms  [{:0.3f}ms]".format(phase_dur, total_dur))
+            print("{:0.3f}s [{:0.3f}s]".format(phase_dur, total_dur))
 
 class _File:
     def __init__(self, site, path):
@@ -614,6 +615,74 @@ class _Page(_File):
             link_targets.add(target)
 
         return link_targets
+
+class TransomCommand(_commandant.Command):
+    def __init__(self, home=None):
+        super(TransomCommand, self).__init__(home, "transom")
+
+        self.description = "Generate a website from Markdown source files"
+
+        self.add_argument("--site-url", metavar="URL",
+                          help="Prefix site links with URL")
+
+        subparsers = self.add_subparsers()
+
+        render = subparsers.add_parser("render")
+        render.set_defaults(func=self.render_command)
+        render.add_argument("input_dir", metavar="INPUT-DIR",
+                            help="Read input files from INPUT-DIR")
+        render.add_argument("output_dir", metavar="OUTPUT-DIR",
+                            help="Write output files to OUTPUT-DIR")
+
+        check_links = subparsers.add_parser("check-links")
+        check_links.set_defaults(func=self.check_links_command)
+        check_links.add_argument("input_dir", metavar="INPUT-DIR",
+                                 help="Check input files in INPUT-DIR")
+        check_links.add_argument("output_dir", metavar="OUTPUT-DIR",
+                                 help="Check output files in OUTPUT-DIR")
+        check_links.add_argument("--all", action="store_true",
+                                 help="Check external links as well as internal ones")
+
+        check_files = subparsers.add_parser("check-files")
+        check_files.set_defaults(func=self.check_files_command)
+        check_files.add_argument("input_dir", metavar="INPUT-DIR",
+                                 help="Check input files in INPUT-DIR")
+        check_files.add_argument("output_dir", metavar="OUTPUT-DIR",
+                                 help="Check output files in OUTPUT-DIR")
+
+        self.lib = None
+
+    def init(self):
+        assert self.lib is None
+
+        super(TransomCommand, self).init()
+
+        if "func" not in self.args:
+            print("Error! Missing subcommand", file=_sys.stderr)
+            _sys.exit(1)
+
+        site_url = self.args.site_url
+
+        if site_url is None:
+            site_url = "file:{}".format(_os.path.abspath(self.args.output_dir))
+
+        self.lib = Transom(site_url, self.args.input_dir, self.args.output_dir, self.home)
+        self.lib.verbose = self.args.verbose
+        self.lib.quiet = self.args.quiet
+
+        self.lib.init()
+
+    def run(self):
+        self.args.func()
+
+    def render_command(self):
+        self.lib.render()
+
+    def check_links_command(self):
+        self.lib.check_links(internal=True, external=self.args.all)
+
+    def check_files_command(self):
+        self.lib.check_files()
 
 _join = _os.path.join
 _split = _os.path.split
