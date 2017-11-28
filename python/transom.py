@@ -620,7 +620,7 @@ class TransomCommand(_commandant.Command):
     def __init__(self, home=None):
         super(TransomCommand, self).__init__(home, "transom")
 
-        self.description = "Generate a website from Markdown source files"
+        self.description = "Render static websites from Markdown and Python"
 
         self.add_argument("--site-url", metavar="URL",
                           help="Prefix site links with URL")
