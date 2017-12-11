@@ -28,12 +28,10 @@ system.
 
 ## Search issues
 
-<div class="indent">
-  <form id="-jira-search-form">
-    <input name="text" type="text"/>
-    <button type="submit">Search</button>
-  </form>
-</div>
+<form id="-jira-search-form">
+  <input name="text" type="text"/>
+  <button type="submit">Search</button>
+</form>
 
 ## Report a bug
 
@@ -63,33 +61,31 @@ important fields are *Summary*, *Environment*, and *Description*.
 Bug reports are highly useful contributions.  We appreciate the time
 you give to make Qpid better.
 
-<div class="three-column" markdown="1">
+<div class="flex" markdown="1">
 <section markdown="1">
 
-### Qpid
+### Qpid C++, Java, and Python
 
  - [Report a bug](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12310520&amp;issuetype=1&amp;priority=3)
- - [Create a new issue of another type](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12310520)
+ - [Create a new issue](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12310520)
  - [JIRA project page](https://issues.apache.org/jira/browse/QPID)
 
 </section>
+<section markdown="1">
 
-;;<section markdown="1">
-;;
-;;### Qpid JMS
-;;
-;; - [Report a bug](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12314524&amp;issuetype=1&amp;priority=3)
-;; - [Create a new issue of another type](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12314524)
-;; - [JIRA project page](https://issues.apache.org/jira/browse/QPIDJMS)
-;;
-;;</section>
+### Qpid JMS
 
+ - [Report a bug](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12314524&amp;issuetype=1&amp;priority=3)
+ - [Create a new issue](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12314524)
+ - [JIRA project page](https://issues.apache.org/jira/browse/QPIDJMS)
+
+</section>
 <section markdown="1">
 
 ### Qpid Proton
 
  - [Report a bug](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12313720&amp;issuetype=1&amp;priority=3)
- - [Create a new issue of another type](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12313720)
+ - [Create a new issue](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12313720)
  - [JIRA project page](https://issues.apache.org/jira/browse/PROTON)
 
 </section>
@@ -98,23 +94,19 @@ you give to make Qpid better.
 ### Qpid Dispatch
 
  - [Report a bug](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12315321&amp;issuetype=1&amp;priority=3)
- - [Create a new issue of another type](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12315321)
+ - [Create a new issue](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12315321)
  - [JIRA project page](https://issues.apache.org/jira/browse/DISPATCH)
 
 </section>
 </div>
 
-## Common operations
-
- - [Sign up for an account](https://issues.apache.org/jira/secure/Signup!default.jspa)
- - <form id="-jira-goto-form">Go to issue <input name="jira" value=""/></form>
-
 ## Notifications
 
 Alerts for new and updated issues are directed to the
-[developer list]({{site_url}}/discussion.html#developer-list).
+[developer list]({{site_url}}/discussion.html#mailing-lists).
 
 ## More information
 
+ - [Sign up for an account](https://issues.apache.org/jira/secure/Signup!default.jspa)
  - [JIRA product page](http://www.atlassian.com/software/jira/overview)
  - [JIRA documentation](http://www.atlassian.com/software/jira/docs/latest/)

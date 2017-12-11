@@ -2,7 +2,7 @@
 
 ### Search this site
 
-<form id="-site-search-form" action="http://www.google.com/search" method="get">
+<form id="-site-search-form" action="https://www.google.com/search" method="get">
   <input type="hidden" name="sitesearch" value="qpid.apache.org"/>
   <input type="text" name="q" maxlength="255" autofocus="autofocus" tabindex="1"/>
   <button type="submit">Search</button>
@@ -26,7 +26,7 @@
 
 ### Search the wiki
 
-<form id="-wiki-search-form" action="http://www.google.com/search" method="get">
+<form id="-wiki-search-form" action="https://www.google.com/search" method="get">
   <input type="hidden" name="sitesearch" value="cwiki.apache.org/confluence/display/qpid"/>
   <input type="text" name="q" maxlength="255" value="" tabindex="4"/>
   <button type="submit">Search</button>

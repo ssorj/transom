@@ -27,18 +27,23 @@ contributions.  If you'd like to become a contributor, learn how to
 
 ;; Use the output of scripts/list-current-committers to refresh this list
 
-As of 8 November 2013, the following committers have been active in
+As of 28 September 2015, the following committers have been active in
 the past year.
 
 <div class="four-column" markdown="1">
 
  - Alan Conway
+ - Andrew MacBean
  - Andrew Stitcher
+ - Bo&#382;o Dragojevic
  - Chuck Rolke
  - Cliff Jansen
  - Darryl Pierce
+ - Dominic Evans
+ - Ernie Allen
  - Fraser Adams
  - Gordon Sim
+ - Jakub Scholz
  - Justin Ross
  - Keith Wall
  - Ken Giusti
@@ -46,14 +51,13 @@ the past year.
  - Mick Goulish
  - Oleksandr Rudyy
  - Pavel Moravec
- - Phil Harvey
  - Rafael Schloming
  - Rajith Attapattu
  - Rob Godfrey
  - Robbie Gemmell
  - Steve Huston
  - Ted Ross
- - Weston Price
+ - Tim Bish
 
 </div>
 
@@ -75,8 +79,10 @@ the past year.
  - Martin Ritchie
  - Nuno Santos
  - Paul Fremantle
+ - Phil Harvey
  - Robert Greig
  - Rupert Smith
+ - Weston Price
  - Yoav Shapira
 
 </div>
@@ -114,16 +120,16 @@ improve ours.
 
  - <img class="company-logo" src="{{site_url}}/images/coverity.png"/>
    [Coverity](http://www.coverity.com/) for granting us use of their
-   static analysis tools for Qpid C++ and Java code.
+   static analysis tools for Qpid C++ and Qpid for Java code.
  
  - <img class="company-logo" src="{{site_url}}/images/jprofiler.png"/>
    [ej-technologies](http://www.ej-technologies.com/) for giving us a
-   free team license for profiling Qpid Java code.
+   free team license for profiling Qpid for Java code.
 
  - <img class="company-logo" src="{{site_url}}/images/structure101.jpg"/>
    [Headway Software](http://structure101.com/) for giving us free
    licenses of Structure101 for analyzing and managing the
-   architecture of Qpid Java code.
+   architecture of Qpid for Java code.
 
 ## Apache sponsors
 

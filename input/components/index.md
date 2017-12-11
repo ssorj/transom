@@ -19,69 +19,80 @@
 
 # Components
 
+The Qpid project offers two kinds of components, *messaging APIs* for
+building AMQP applications, and *messaging servers* for deploying AMQP
+networks.  You can use them together to build robust distributed
+applications.
+
+**Messaging APIs** give your application a tool for efficient,
+high-level interprocess communication.
+
+Qpid offers three messaging APIs.
+[Qpid Proton]({{site_url}}/proton/index.html) is a reactive API with
+full-spectrum AMQP control. In addition to being a messaging API, Qpid
+Proton is used by other Qpid components to implement AMQP 1.0 protocol
+support.  [Qpid JMS](jms/index.html) is an AMQP-fluent implementation
+of the widely used
+[Java Message Service](http://en.wikipedia.org/wiki/Java_Message_Service)
+API.  The [Qpid Messaging API](messaging-api/index.html) is a
+connection-oriented API that supports many languages.
+
+The term "client" is often used to refer to messaging APIs, but some
+messaging APIs, such as Qpid Proton, can be used to implement any kind
+of messaging component, including clients, servers, bridges, and
+proxies.
+
+**Messaging servers** are message-transfer intermediaries that provide
+additional behaviors such as store-and-forward for improved
+reliability.
+
+The Qpid message brokers are full-featured
+[message-oriented middleware](http://en.wikipedia.org/wiki/Message-oriented_middleware)
+brokers.  They offer specialized queueing behaviors, message
+persistence, and manageability.  Qpid offers pure-Java and native-code
+implementations, the [Broker-J](broker-j/index.html) and the
+[C++ broker](cpp-broker/index.html).
+
+[Dispatch router](dispatch-router/index.html) is a new kind of
+messaging server.  It allows you to build redundant router networks
+connecting clients, brokers, and standalone services.
+
 ## Messaging APIs
 
-Qpid's messaging APIs can help you make your application speak AMQP.
-
- - [AMQP Messenger](messenger/index.html) - A simple but powerful message-oriented API that supports many languages
- - [AMQP Protocol Engine](protocol-engine/index.html) - Fine-grained control over AMQP 1.0
- - [Qpid JCA](qpid-jca/index.html) - A JCA resource adapter for AMQP brokers
- - [Qpid JMS](qpid-jms/index.html) - An AMQP-fluent [Java Message Service](http://en.wikipedia.org/wiki/Java_Message_Service) implementation
+ - [Qpid Proton]({{site_url}}/proton/index.html) - A toolkit allowing any application to speak AMQP
+ - [Qpid JMS](jms/index.html) - An AMQP-fluent [Java Message Service](http://en.wikipedia.org/wiki/Java_Message_Service) implementation
  - [Qpid Messaging API](messaging-api/index.html) - A connection-oriented messaging API that supports many languages
- - [Qpid WCF](qpid-wcf/index.html) - An AMQP [Windows Communication Foundation](http://msdn.microsoft.com/en-us/library/ms731082.aspx) implementation
 
-## Servers and tools
+## Messaging servers
 
-Use these components to build a messaging fabric for any AMQP
-application.
-
-Qpid's message brokers are full-featured [message-oriented
-middleware](http://en.wikipedia.org/wiki/Message-oriented_middleware)
-brokers.  They offer specialized queueing behaviors, message
-persistence, and manageability.
-
+ - [Broker-J](broker-j/index.html) - A pure-Java AMQP message broker
  - [C++ broker](cpp-broker/index.html) - A native-code AMQP message broker
  - [Dispatch router](dispatch-router/index.html) - An AMQP router for scalable messaging interconnect
- - [Java broker](java-broker/index.html) - A pure-Java AMQP message broker
- - [QMF](qmf/index.html) - Management built on Qpid messaging
- 
+
+## Messaging tools
+
+- [Qpid Interop Test](interop-test/index.html) - An AMQP 1.0 interoperability test suite
+
 ## Compatibility
 
 <div class="scroll" markdown="1">
 
 | Component | Languages | Platforms | AMQP versions |
 | --------- | --------- | --------- | ------------- |
-| [AMQP Messenger]({{site_url}}/components/messenger/index.html) | C, Java, Perl, PHP, Python, Ruby | Linux, OS X, JVM | 1.0 |
-| [AMQP Protocol Engine]({{site_url}}/components/protocol-engine/index.html) | C, Java, Perl, PHP, Python, Ruby | Linux, OS X, JVM | 1.0 |
-| [C++ broker]({{site_url}}/components/cpp-broker/index.html) | C++ | Linux, Windows | 1.0, 0-10 |
-| [Dispatch router]({{site_url}}/components/dispatch-router/index.html) | C | Linux | 1.0 |
-| [Java broker]({{site_url}}/components/java-broker/index.html) | Java | JVM | 1.0, 0-10, 0-9-1, 0-9, 0-8 |
-| [Qpid JCA]({{site_url}}/components/qpid-jca/index.html) | Java | JVM | 0-10 |
-| [Qpid JMS]({{site_url}}/components/qpid-jms/index.html) | Java | JVM | 1.0, 0-10, 0-9-1, 0-9, 0-8 |
+| [C++ broker]({{site_url}}/components/cpp-broker/index.html) | - | Linux, Windows | 1.0, 0-10 |
+| [Dispatch router]({{site_url}}/components/dispatch-router/index.html) | - | Linux | 1.0 |
+| [Broker-J]({{site_url}}/components/broker-j/index.html) | - | JVM | 1.0, 0-10, 0-9-1, 0-9, 0-8 |
+| [Qpid JMS]({{site_url}}/components/jms/index.html) | Java | JVM | 1.0, 0-10, 0-9-1, 0-9, 0-8 |
 | [Qpid Messaging API]({{site_url}}/components/messaging-api/index.html) | C++, Perl, Python, Ruby, .NET | Linux, Windows | 1.0, 0-10 |
-| [Qpid WCF]({{site_url}}/components/qpid-wcf/index.html) | .NET | Windows | 0-10 |
-| [QMF]({{site_url}}/components/qmf/index.html) | C++, Python | Linux | 0-10 |
+| [Qpid Proton]({{site_url}}/proton/index.html) | C, C++, Java, JavaScript, Python, Ruby | JVM, Linux, Windows | 1.0 |
+| [Qpid Interop Test](interop-test/index.html) | - | Linux | 1.0 |
+
+Any Qpid components that share an AMQP version can interoperate.  For
+instance, the brokers are implemented in C++ and Java respectively,
+but they do not require C++ or JMS clients for communication.
 
 </div>
 
-;; ## Servers
-
-;; Messaging architectures use reliable intermediaries (usually network
-;; servers) to decouple the parts of a distributed application so that
-;; each part can operate independently and the system as a whole can
-;; tolerate failures.
-
-;; ### Routers, proxies, bridges, and more
-
-;; Traditional message brokers aren't the only kind of intermediary in an
-;; AMQP ecosystem.  The future of messaging offers a wide variety of
-;; architecture components to support robust internet-wide distributed
-;; applications.  The Qpid community is right now building the
-;; foundations for these new technologies.
-
-## Deprecated components
-
-The following components are no longer supported.
-
- - The `qpid::client` API, replaced by the [Qpid Messaging API](messaging-api/index.html)
- - The `qpid::management` API, replaced by [QMF](qmf/index.html)
+;;## Other components
+;;
+;; - [Qpid Interop Test](interop-test/index.html) - Tests for interoperability of AMQP components

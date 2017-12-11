@@ -17,38 +17,40 @@
 ;; under the License.
 ;;
 
-# C++ Broker
+<div id="-left-column" markdown="1">
 
-A message broker written in C++ that stores, routes, and forwards
-messages using AMQP.
+# Qpid C++ Broker
 
-  || *Platforms* || Linux, Windows ||
-  || *AMQP versions* || 1.0, 0-10 ||
-  || *Download* || [qpid-cpp-{{current_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/qpid-cpp-{{current_release}}.tar.gz.sha1)\], [qpid-tools-{{current_release}}.tar.gz](http://www.apache.org/dyn/closer.cgi/qpid/{{current_release}}/qpid-tools-{{current_release}}.tar.gz) \[[ASC](http://www.apache.org/dist/qpid/{{current_release}}/qpid-tools-{{current_release}}.tar.gz.asc), [MD5](http://www.apache.org/dist/qpid/{{current_release}}/qpid-tools-{{current_release}}.tar.gz.md5), [SHA1](http://www.apache.org/dist/qpid/{{current_release}}/qpid-tools-{{current_release}}.tar.gz.sha1)\] ||
-  || *Source location* ||  <http://svn.apache.org/repos/asf/qpid/trunk/qpid/cpp/>, <http://svn.apache.org/repos/asf/qpid/trunk/qpid/tools/> ||
+<div class="feature" markdown="1">
+
+A [message-oriented middleware][mom] message broker written in C++
+that stores, routes, and forwards messages using AMQP.
+
+[mom]:http://en.wikipedia.org/wiki/Message-oriented_middleware
+
+</div>
 
 ## Features
 
 <div class="two-column" markdown="1">
 
- - Speaks and translates between AMQP 1.0 and 0-10
- - [Management]({{current_release_url}}/cpp-broker/book/chapter-Managing-CPP-Broker.html#section-Managing-CPP-Broker) via [QMF]({{site_url}}/components/qmf/index.html)
+ - Speaks AMQP 1.0 and 0-10
+ - Runs on Linux and Windows
  - Access control lists
- - [Federation]({{current_release_url}}/cpp-broker/book/chap-Messaging_User_Guide-Broker_Federation.html)
  - Flexible logging
  - Header-based routing
  - Heartbeats
- - [High availability]({{current_release_url}}/cpp-broker/book/chapter-ha.html)
- - [Message groups]({{current_release_url}}/cpp-broker/book/Using-message-groups.html)
+ - [High availability]({{current_cpp_release_url}}/cpp-broker/book/chapter-ha.html)
+ - [Message groups]({{current_cpp_release_url}}/cpp-broker/book/Using-message-groups.html)
  - Message TTLs and arrival timestamps
  - Pluggable persistence
- - [Pluggable authentication via SASL]({{current_release_url}}/cpp-broker/book/chap-Messaging_User_Guide-Security.html)
- - [Producer flow control]({{current_release_url}}/cpp-broker/book/producer-flow-control.html)
- - [Queue replication]({{current_release_url}}/cpp-broker/book/ha-queue-replication.html)
+ - [Pluggable authentication via SASL]({{current_cpp_release_url}}/cpp-broker/book/chap-Messaging_User_Guide-Security.html)
+ - [Producer flow control]({{current_cpp_release_url}}/cpp-broker/book/producer-flow-control.html)
+ - [Queue replication]({{current_cpp_release_url}}/cpp-broker/book/ha-queue-replication.html)
  - Resource limits
  - Secure connection via SSL
  - [Server-side selectors](https://issues.apache.org/jira/browse/QPID-4558?focusedCommentId=13592659&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-13592659)
- - Specialized queueing with [last value queue]({{current_release_url}}/cpp-broker/book/ch01s06.html), priority queue, and ring queue
+ - Specialized queueing with [last value queue]({{current_cpp_release_url}}/cpp-broker/book/ch01s06.html), priority queue, and ring queue
  - [Threshold alerts](https://issues.apache.org/jira/browse/QPID-3002)
  - Transactions
  - Undeliverable message handling
@@ -57,40 +59,38 @@ messages using AMQP.
 
 ## Documentation
 
-This is the documentation for the current released version.  You can
-find previous versions with our
-[past releases]({{site_url}}/releases/index.html#past-releases).
-
 <div class="two-column" markdown="1">
 
- - [C++ broker book]({{current_release_url}}/cpp-broker/book/index.html)
- - [Managing the C++ broker]({{current_release_url}}/cpp-broker/book/chapter-Managing-CPP-Broker.html#section-Managing-CPP-Broker)
- - [Installing Qpid C++](http://svn.apache.org/repos/asf/qpid/tags/{{current_release}}/qpid/cpp/INSTALL)
+ - [C++ broker book]({{current_cpp_release_url}}/cpp-broker/book/index.html)
+ - [Managing the C++ broker]({{current_cpp_release_url}}/cpp-broker/book/chapter-Managing-CPP-Broker.html#section-Managing-CPP-Broker)
+ - [Installing Qpid C++](https://raw.githubusercontent.com/apache/qpid-cpp/master/INSTALL.txt)
  - [Qpid extensions to AMQP](https://cwiki.apache.org/confluence/display/qpid/qpid+extensions+to+amqp)
 
 </div>
+</div>
+
+<div id="-right-column" class="right-column-adjusted" markdown="1">
+
+## Releases
+
+ - {{current_cpp_release_link}}
+ - [Past releases]({{site_url}}/releases/index.html#past-releases)
 
 ## Issues
 
-For more information about finding and reporting bugs, see
-[Qpid issues]({{site_url}}/issues.html).
+ - [Report a bug](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12310520&issuetype=1&priority=3)
+ - [Request an improvement](https://issues.apache.org/jira/secure/CreateIssue.jspa?pid=12310520&issuetype=4&priority=3)
+ - <form id="-jira-goto-form">Go to issue <input name="jira" value="QPID-"/></form>
+ - [JIRA project page](https://issues.apache.org/jira/browse/QPID)
 
-<div class="indent">
-  <form id="jira-search-form">
-    <input type="hidden" name="jql" value="project = QPID and component in ('C++ Broker', 'Python Tools') and text ~ '{}' order by updatedDate desc"/>
-    <input type="text" name="text"/>
-    <button type="submit">Search</button>
-  </form>
-</div>
+## Source code
 
-<div class="two-column" markdown="1">
+ - [Browse via GitHub](https://github.com/apache/qpid-cpp)
+ - [Git clone URL](https://git-wip-us.apache.org/repos/asf/qpid-cpp.git)
 
- - [Open bugs](https://issues.apache.org/jira/issues/?jql=resolution%20%3D%20EMPTY%20and%20issuetype%20%3D%20%22Bug%22%20and%20component%20in%20\(%22C%2B%2B%20Broker%22%2C%20%22Python%20Tools%22\)%20and%20project%20%3D%20%22QPID%22)
- - [Fixed bugs](https://issues.apache.org/jira/issues/?jql=resolution%20%3D%20Fixed%20and%20issuetype%20%3D%20%22Bug%22%20and%20component%20in%20\(%22C%2B%2B%20Broker%22%2C%20%22Python%20Tools%22\)%20and%20project%20%3D%20%22QPID%22)
- - [Requested enhancements](https://issues.apache.org/jira/issues/?jql=resolution%20%3D%20EMPTY%20and%20issuetype%20in%20\(%22New%20Feature%22%2C%20%22Improvement%22\)%20and%20component%20in%20\(%22C%2B%2B%20Broker%22%2C%20%22Python%20Tools%22\)%20and%20project%20%3D%20%22QPID%22)
- - [Completed enhancements](https://issues.apache.org/jira/issues/?jql=resolution%20%3D%20Fixed%20and%20issuetype%20in%20\(%22New%20Feature%22%2C%20%22Improvement%22\)%20and%20component%20in%20\(%22C%2B%2B%20Broker%22%2C%20%22Python%20Tools%22\)%20and%20project%20%3D%20%22QPID%22)
- - [Report a bug](http://issues.apache.org/jira/secure/CreateIssueDetails!init.jspa?pid=12310520&issuetype=1&priority=3&summary=[Enter%20a%20brief%20description]&components=12311395)
- - [Request an enhancement](http://issues.apache.org/jira/secure/CreateIssueDetails!init.jspa?pid=12310520&issuetype=4&priority=3&summary=[Enter%20a%20brief%20description]&components=12311395)
- - [Jira summary page](http://issues.apache.org/jira/browse/QPID/component/12311395)
+## Resources
+
+ - [Security](security.html)
+ - [Qpid extensions to AMQP](https://cwiki.apache.org/confluence/display/qpid/qpid+extensions+to+amqp)
 
 </div>

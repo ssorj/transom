@@ -1,7 +1,3 @@
----
-extra_headers: <link rel="arbitrary" href="arbitrary"/>
----
-
 ;;
 ;; Licensed to the Apache Software Foundation (ASF) under one
 ;; or more contributor license agreements.  See the NOTICE file
@@ -68,10 +64,11 @@ you if you're not using Java.
 
 ## Qpid and AMQP
 
-[AMQP](amqp.html) is the first open standard wire protocol for
-messaging.  AMQP is foremost about the choices it gives you.  You can
-choose any AMQP solution you prefer, and if the one you chose doesn't
-work out, you can switch.  Your application will still work.
+[AMQP]({{site_url}}/amqp/index.html) is the first open standard wire
+protocol for messaging.  AMQP is foremost about the choices it gives
+you.  You can choose any AMQP solution you prefer, and if the one you
+chose doesn't work out, you can switch.  Your application will still
+work.
 
 The Qpid project aims to spur the growth of the AMQP ecosystem.  We
 offer messaging APIs and message brokers for use in your application,
@@ -92,7 +89,7 @@ and core libraries for making AMQP part of your own messaging product.
  - *Messaging infrastructure* - You can design and deploy an AMQP
    network that integrates with other services in your organization.
    See our
-   [messaging servers and tools]({{site_url}}/components/index.html#servers-and-tools).
+   [messaging servers]({{site_url}}/components/index.html#messaging-servers).
 
  - *Your messaging product* - We know that there are many established
    messaging systems, and we want to make it easy for them to speak

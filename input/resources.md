@@ -27,11 +27,13 @@
 [Contact us]({{site_url}}/discussion.html) if you write about Qpid and
 would like your blog linked here.
 
- - [Dial M for Messaging](http://dialmformessaging.blogspot.com/) by Mick Goulish
- - [IPBabble](http://www.ipbabble.com/) by William Henry
- - [Rajith's Column](http://rajith.2rlabs.com/) by Rajith Attapattu
- - [Sajini's Blog](http://sajinid.blogspot.com/) by Sajini De Silva
- - [Steve Huston's Networked Programming Blog](http://stevehuston.wordpress.com/) by Steve Huston
+ - [AMQP Essentials refcard](https://dzone.com/refcardz/amqp-essentials) by Paolo Patierno
+ - [AMQP Illustrated](https://chugrolke.wordpress.com/) by Chuck Rolke
+ - [Awesome AMQP links](https://github.com/xinchen10/awesome-amqp) by Xin Chen
+ - [NETPROTOTALK](https://netprototalk.wordpress.com/) by Ted Ross
+ - [Paolo Patierno's AMQP blog posts](https://paolopatierno.wordpress.com/?s=amqp)
+ - [Steve Huston's Networked Programming Blog](http://stevehuston.wordpress.com/)
+ - [The Infobahn Offramp](http://mcpierce.blogspot.com/search/label/messaging) by Darryl Pierce
 
 </section>
 <section markdown="1">
@@ -48,30 +50,46 @@ Qpid contributors often use
 </section>
 <section markdown="1">
 
+## Continuous integration
+
+Qpid uses [Jenkins](http://jenkins-ci.org/) to perform
+[continuous integration](http://en.wikipedia.org/wiki/Continuous_integration)
+of the latest changes.
+
+ - [Qpid test builds in Jenkins](https://builds.apache.org//view/M-R/view/Qpid/)
+ - [Overview of Qpid CI](https://cwiki.apache.org/confluence/display/qpid/continuous+integration)
+ - [Apache Jenkins overview](http://wiki.apache.org/general/Jenkins)
+ - [Apache build services](https://ci.apache.org/)
+
 ## Coverity scans
 
-To view these you must
-[sign up with Coverity](https://scan.coverity.com/users/sign_up).
+Coverity finds defects using static code analysis.  To view these you
+must [sign up with Coverity](https://scan.coverity.com/users/sign_up).
 
  - [Qpid C++ scans](https://scan.coverity.com/projects/6)
- - [Qpid Java scans](https://scan.coverity.com/projects/572)
+ - [Qpid Broker-J scans](https://scan.coverity.com/projects/572)
 
 </section>
 <section markdown="1">
 
 ## Related projects
 
- - [ActiveMQ and AMQP using Qpid Proton](http://activemq.apache.org/amqp.html)
- - [Apache Camel and AMQP using Qpid](http://camel.apache.org/amqp.html)
- - [Apache Axis and AMQP using Qpid](http://axis.apache.org/axis2/c/core/docs/axis2c_manual.html#amqptrans)
-
+ - [AMQP.Net Lite](https://github.com/Azure/amqpnetlite)
+ - [ActiveMQ and AMQP](http://activemq.apache.org/amqp.html)
+ - [ActiveMQ Artemis](https://activemq.apache.org/artemis/)
+ - [Apache Axis and AMQP](http://axis.apache.org/axis2/c/core/docs/axis2c_manual.html#amqptrans)
+ - [Apache Camel and AMQP](http://camel.apache.org/amqp.html)
+ - [Apache Spark Streaming connector for AMQP](https://github.com/radanalyticsio/streaming-amqp)
+ - [Kafka AMQP bridge](https://github.com/rhiot/amqp-kafka-bridge)
+ - [Vert.x AMQP bridge](https://github.com/vert-x3/vertx-amqp-bridge)
+ - [Vert.x Proton](https://github.com/vert-x3/vertx-proton)
+ 
 </section>
 <section markdown="1">
 
 ## Wiki
 
  - [Wiki home](https://cwiki.apache.org/confluence/display/qpid/)
- - [FAQ](https://cwiki.apache.org/confluence/display/qpid/faq)
  - [Developer pages](https://cwiki.apache.org/confluence/display/qpid/developer+pages)
  - [Qpid releases](https://cwiki.apache.org/confluence/display/qpid/Releases)
 
@@ -81,22 +99,10 @@ To view these you must
 ## More
 
  - [About this site]({{site_url}}/site.html)
- - [Qpid packages]({{site_url}}/packages.html)
+ - [Issues]({{site_url}}/issues.html)
+ - [Packages]({{site_url}}/packages.html)
  - [Qpid via Maven]({{site_url}}/maven.html)
+ - [Source code]({{site_url}}/source-code.html)
 
 </section>
 </div>
-
-;; http://planet.apache.org/committers/
-;; http://blogs.apache.org/
-;; http://blogs.apache.org/infra/
-;; http://planet.apache.org/committers/atom.xml
-;; http://www.apache.org/dev/project-blogs
-
-;; https://analysis.apache.org/
-
-;; http://ci.apache.org/
-;; http://jenkins-ci.org/
-
-;; An Apache section
-

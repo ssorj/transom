@@ -61,8 +61,8 @@ clean:
 .PHONY: test
 test: PREFIX := ${PWD}/install
 test: build
-	transom --help 1>/dev/null
-	transom render --help 1>/dev/null
+	transom --help 1> /dev/null
+	transom render --help 1> /dev/null
 	transom render input output
 
 build/prefix.txt:

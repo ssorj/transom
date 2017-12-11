@@ -19,39 +19,28 @@
 
 # Qpid via Maven
 
-Qpid JMS is available via the [Maven central
-repository](http://maven.apache.org/guides/mini/guide-central-repository-upload.html). The
-following dependencies can be added to the POM for your Maven build.
+The following dependencies can be added to the POM for your Maven build to utilise the artifacts via the [Maven central repository](http://search.maven.org/).
 
 ;; Fragments generated with 'pygmentize -l xml -f html ~/maven.xml > ~/maven.html'
 
-## Qpid JMS
+## Qpid JMS (AMQP 1.0)
+
+<div class="highlight"><pre>
+<span class="nt">&lt;dependency&gt;</span>
+  <span class="nt">&lt;groupId&gt;</span>org.apache.qpid<span class="nt">&lt;/groupId&gt;</span>
+  <span class="nt">&lt;artifactId&gt;</span>qpid-jms-client<span class="nt">&lt;/artifactId&gt;</span>
+  <span class="nt">&lt;version&gt;</span>{{current_jms_release}}<span class="nt">&lt;/version&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</pre></div>
+
+## Qpid AMQP 0-x JMS Client
 
 <div class="highlight"><pre>
 <span class="nt">&lt;dependency&gt;</span>
   <span class="nt">&lt;groupId&gt;</span>org.apache.qpid<span class="nt">&lt;/groupId&gt;</span>
   <span class="nt">&lt;artifactId&gt;</span>qpid-client<span class="nt">&lt;/artifactId&gt;</span>
-  <span class="nt">&lt;version&gt;</span>{{current_release}}<span class="nt">&lt;/version&gt;</span>
+  <span class="nt">&lt;version&gt;</span>{{current_jms_amqp_0_x_release}}<span class="nt">&lt;/version&gt;</span>
 <span class="nt">&lt;/dependency&gt;</span>
-</pre></div>
-
-## Qpid AMQP 1.0 JMS
-
-<div class="highlight"><pre>
-<span class="nt">&lt;dependency&gt;</span>
-  <span class="nt">&lt;groupId&gt;</span>org.apache.qpid<span class="nt">&lt;/groupId&gt;</span>
-  <span class="nt">&lt;artifactId&gt;</span>qpid-amqp-1-0-client-jms<span class="nt">&lt;/artifactId&gt;</span>
-  <span class="nt">&lt;version&gt;</span>{{current_release}}<span class="nt">&lt;/version&gt;</span>
-<span class="nt">&lt;/dependency&gt;</span>
-</pre></div>
-
-## JMS interface definition
-
-You will need the JMS interface definition if it is not already
-available in your environment.  An example dependency for this would
-be the following.
-
-<div class="highlight"><pre>
 <span class="nt">&lt;dependency&gt;</span>
   <span class="nt">&lt;groupId&gt;</span>org.apache.geronimo.specs<span class="nt">&lt;/groupId&gt;</span>
   <span class="nt">&lt;artifactId&gt;</span>geronimo-jms_1.1_spec<span class="nt">&lt;/artifactId&gt;</span>
@@ -59,8 +48,17 @@ be the following.
 <span class="nt">&lt;/dependency&gt;</span>
 </pre></div>
 
+## Qpid Proton-J
+
+<div class="highlight"><pre>
+<span class="nt">&lt;dependency&gt;</span>
+  <span class="nt">&lt;groupId&gt;</span>org.apache.qpid<span class="nt">&lt;/groupId&gt;</span>
+  <span class="nt">&lt;artifactId&gt;</span>proton-j<span class="nt">&lt;/artifactId&gt;</span>
+  <span class="nt">&lt;version&gt;</span>{{current_proton_j_release}}<span class="nt">&lt;/version&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</pre></div>
+
 ## More information
 
  - [Snapshot repository](https://repository.apache.org/content/repositories/snapshots/)
  - [Maven project](http://maven.apache.org/)
- - [Maven central repository](http://maven.apache.org/guides/mini/guide-central-repository-upload.html)
