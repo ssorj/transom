@@ -1,4 +1,2 @@
-build
-install
-output
-dist
+build/
+output/
