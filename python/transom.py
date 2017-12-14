@@ -61,10 +61,11 @@ class Transom:
         self.verbose = False
         self.quiet = False
 
-        self.template_path = _join(self.input_dir, "_transom_template.html")
-        self.config_path = _join(self.input_dir, "_transom_config.py")
+        self.outer_template_path = _join(self.input_dir, ".transom", "outer-template.html")
+        self.inner_template_path = _join(self.input_dir, ".transom", "inner-template.html")
+        self.config_path = _join(self.input_dir, ".transom", "config.py")
 
-        self.template_content = None
+        self.template = None
         self.config_env = None
 
         self.files = list()
@@ -78,15 +79,21 @@ class Transom:
         self.start_time = None
 
     def init(self):
-        if not _is_file(self.template_path):
-            if self.home is not None:
-                path = _join(self.home, "files", "template.html")
-                self.template_path = path
+        if self.home is not None:
+            if not _is_file(self.outer_template_path):
+                self.outer_template_path = _join(self.home, "files", "outer-template.html")
 
-        if not _is_file(self.template_path):
-            raise Exception("No template found")
+            if not _is_file(self.inner_template_path):
+                self.inner_template_path = _join(self.home, "files", "inner-template.html")
 
-        self.template_content = _read_file(self.template_path)
+        if not _is_file(self.outer_template_path):
+            raise Exception("No outer template found")
+
+        if not _is_file(self.inner_template_path):
+            raise Exception("No inner template found")
+
+        self.outer_template = _read_file(self.outer_template_path)
+        self.inner_template = _read_file(self.inner_template_path)
 
         init_globals = {"site_url": self.site_url}
 
@@ -107,6 +114,9 @@ class Transom:
     def _traverse_input_files(self, subdir, parent_page=None, ignore_pages=False):
         input_dir = _join(self.input_dir, subdir)
         names = set(_os.listdir(input_dir))
+
+        if input_dir == _join(self.input_dir, ".transom"):
+            return
 
         if "_transom_ignore_pages" in names:
             ignore_pages = True
@@ -395,7 +405,7 @@ class _Page(_File):
         self.parent = parent
 
         self.content = None
-        self.template_content = None
+        self.template = None
 
         self.title = None
         self.attributes = dict()
@@ -412,13 +422,17 @@ class _Page(_File):
 
         super(_Page, self).init()
 
-        self.template_content = self.site.template_content
+        # XXX
 
-        input_dir, name = _split(self.input_path)
-        template_path = _join(input_dir, "_transom_template.html")
+        self.template = self.site.outer_template.replace("@inner_template@", self.site.inner_template, 1)
 
-        if _is_file(template_path):
-            self.template_content = _read_file(template_path)
+        # XXX revisit this stuff - use per-page configured template paths
+
+        # input_dir, name = _split(self.input_path)
+        # template_path = _join(input_dir, "_transom_template.html")
+
+        # if _is_file(template_path):
+        #     self.template = _read_file(template_path)
 
     def load_input(self):
         self.site.info("Loading {}", self)
@@ -455,7 +469,9 @@ class _Page(_File):
         self.content = self.apply_template(self.content)
 
     def apply_template(self, content):
-        return self.template_content.replace("{{content}}", content)
+
+
+        return self.template.replace("@content@", content, 1)
 
     def process(self):
         self.site.info("Processing {}", self)
