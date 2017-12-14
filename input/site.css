@@ -7,9 +7,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -31,37 +31,41 @@ lighter indigo: #d0c6e7
 shady indigo: #7d778b
 */
 
-@font-face {
-  font-family: "Oswald";
-  font-style: normal;
-  font-weight: 300;
-  src: url(fonts/Oswald/Oswald-Light.woff) format("woff");
+/*
+@import url("https://fonts.googleapis.com/css?family=Raleway:300,400,500,600,700,800,900");
+@import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,500");
+@import url("https://fonts.googleapis.com/css?family=Cabin:400,500,600,700");
+@import url("https://fonts.googleapis.com/css?family=Cabin+Condensed:400,500,600,700");
+@import url("https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700");
+@import url("https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300,400,600,700");
+@import url("https://fonts.googleapis.com/css?family=Inconsolata:400,700");
+@import url('https://fonts.googleapis.com/css?family=Biryani:200,300,400,600,700,800,900|Cabin:400,400i,500,500i,600,600i,700,700i|Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i|Rubik:300,300i,400,400i,500,500i,700,700i,900,900i|Sansita:400,400i,700,700i,800,800i,900,900i');
+*/
+
+@import url('https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i|Open+Sans:300,300i,400,400i,600,600i,700,700i,800,800i|Ubuntu+Mono:400,400i,700,700i');
+
+h1, h2, h3, h4, h5, h6,
+th, td > em, th > em,
+#-global-navigation, #-download-link, #-components-link {
+    font-family: "Nunito", sans-serif;
+    font-weight: 700;
 }
 
-@font-face {
-  font-family: "Oswald";
-  font-style: normal;
-  src: url(fonts/Oswald/Oswald-Regular.woff) format("woff");
+/* Fonts */
+
+body {
+    font-family: "Open Sans", sans-serif;
+    font-weight: 400;
+    font-size: 12pt;
+    line-height: 20pt;
 }
 
-@font-face {
-  font-family: "Roboto Condensed";
-  font-style: normal;
-  src: url(fonts/Roboto/Roboto-Condensed-Light.woff) format("woff");
+code, pre {
+    font-family: "Ubuntu Mono", monospace;
+    font-weight: 400;
 }
 
-@font-face {
-  font-family: "Roboto Condensed";
-  font-style: italic;
-  src: url(fonts/Roboto/Roboto-Condensed-Light-Italic.woff) format("woff");
-}
-
-@font-face {
-  font-family: "Roboto Condensed";
-  font-style: normal;
-  font-weight: 700;
-  src: url(fonts/Roboto/Roboto-Condensed-Bold.woff) format("woff");
-}
+/* Reset defaults */
 
 * {
     margin: 1em 0;
@@ -81,23 +85,69 @@ html, body, div, a, br {
     margin: 0;
 }
 
+/* High-level layout */
+
+body {
+    color: rgba(0, 0, 0, 0.9);
+    background-color: #0d567f;
+}
+
+body > div {
+    margin: 0;
+    /* border: 1px dashed red; */
+}
+
+body > div.header-container {
+    border-top: 4px solid #053753;
+}
+
+body > div.path-navigation {
+    background-color: #8bb9d8;
+    padding: 0.8em 0;
+}
+
+body > div.main-container {
+    background-color: white;
+}
+
+body > div.footer-container {
+    border-top: 4px solid #8bb9d8;
+}
+
+header, main, footer {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+header {
+    color: white;
+}
+
+main {
+    padding: 2em 0;
+}
+
+footer {
+    color: white;
+    padding: 2em 0;
+}
+
+header a[href],
+header a[href]:visited,
+footer a[href],
+footer a[href]:visited {
+    color: white;
+}
+
+/*
 section, div.section {
     margin: 1em 0;
 }
+*/
 
-body {
-    font-family: "Roboto Condensed", sans-serif;
-    font-weight: 400;
-    font-size: 13.5pt;
-    line-height: 18pt;
-    text-rendering: optimizeLegibility;
-    color: rgba(0, 0, 0, 0.9);
-}
+/* To be named */
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: "Oswald", sans-serif;
-    font-weight: 400;
-    clear: left;
     color: rgba(0, 0, 0, 0.8);
     line-height: 100%;
 }
@@ -119,6 +169,22 @@ h3 {
 h4 {
     font-size: 1em;
     font-weight: 300;
+}
+
+h2:hover a.heading-link,
+h3:hover a.heading-link,
+h4:hover a.heading-link,
+h5:hover a.heading-link,
+h6:hover a.heading-link {
+    display: inline;
+}
+
+h2.selected a.heading-link,
+h3.selected a.heading-link,
+h4.selected a.heading-link,
+h5.selected a.heading-link,
+h6.selected a.heading-link {
+    display: inline;
 }
 
 hr {
@@ -178,13 +244,34 @@ li > p:last-child, dd > p:last-child {
     justify-content: space-between;
 }
 
-.flex > section, .flex > div {
+.flex > section,
+.flex > div {
     flex: 1 0 0;
     margin: 0;
 }
 
+.hidden {
+    display: none;
+}
+
 a > img {
     border: none;
+}
+
+a[href] {
+    text-decoration: none;
+    color: #0d6dad;
+}
+
+a[href]:visited {
+    color: #0d567f;
+}
+
+a.heading-link {
+    display: none;
+    font-weight: 300;
+    padding-left: 0.3em;
+    padding-right: 0.3em;
 }
 
 input, button {
@@ -205,6 +292,7 @@ button {
 }
 
 table {
+    font-size: 0.9em;
     border: none;
     border-collapse: collapse;
 }
@@ -226,9 +314,7 @@ td {
 }
 
 th, td > em, th > em {
-    font-family: "Oswald", sans-serif;
     font-size: 0.95em;
-    font-weight: 300;
     font-style: normal;
     color: rgba(80, 80, 75, 0.8);
 }
@@ -251,18 +337,46 @@ pre, .scroll {
     padding: 1.5em;
 }
 
-#-content {
-    max-width: 60em;
-    margin-left: auto;
-    margin-right: auto;
-    border-top: none;
+/*
+display: grid;
+grid-template-columns: 1fr 1fr 1fr;
+*/
+
+/*
+#-head, #-extra-head, #-body, #-foot {
 }
 
-#-top {
-    padding-top: 0.5em;
-    padding-bottom: 0.5em;
-    border-bottom: 1px solid #d4d4ca;
+#-head > *, #-extra-head > *, #-body > *, #-foot > * {
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
 }
+
+#-head {
+    padding: 1em 2em;
+    border-bottom: 1px solid #ddd;
+    background-color: #0d567f;
+}
+
+#-head, #-head a {
+    color: white;
+}
+
+#-extra-head {
+    display: none;
+    padding: 1em;
+    border-bottom: 1px solid #ddd;
+}
+
+#-body {
+    padding: 2em;
+}
+
+#-foot {
+    border-top: 1px solid #ddd;
+    padding: 1em 2em;
+}
+*/
 
 #-nameplate {
     font-size: 2.5em;
@@ -277,40 +391,31 @@ pre, .scroll {
 }
 
 #-logotype {
-    font-weight: 400;
-}
-
-#-menu-link, #-search-link {
-    float: right;
-    margin-left: 1em;
-}
-
-#-menu-link > img, #-search-link > img {
-    vertical-align: -0.1em;
+    font-weight: 700;
 }
 
 #-global-navigation {
-    font-family: "Oswald", sans-serif;
-    font-weight: 300;
-    font-size: 0.95em;
-    line-height: 100%;
+    display: flex;
+    font-weight: 600;
     padding: 0;
-    margin-top: 0;
-    margin-bottom: 0.25em;
+    margin: 0;
 }
 
-#-global-navigation > li {
-    display: inline;
-    padding-right: 1em;
+#-global-navigation > a {
+    padding: 0.6em 0;
+    margin: 0 2em 0 0;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+#-global-navigation > a:hover,
+#-global-navigation > a:first-child {
+    color: rgba(255, 255, 255, 1.0);
 }
 
 #-path-navigation {
-    margin-left: 0;
-    margin-bottom: 1.2em;
     padding: 0;
     font-size: 0.9em;
     line-height: 100%;
-    display: none;
 }
 
 #-path-navigation > li {
@@ -325,34 +430,9 @@ pre, .scroll {
     content: none;
 }
 
-#-left-column {
-    float: left;
-    width: 67%;
-    margin-bottom: 1em;
-}
-
 #-components-link {
-    font-family: "Oswald", sans-serif;
     font-weight: 300;
     font-size: 1.15em;
-}
-
-#-right-column {
-    float: right;
-    width: 30%;
-    min-height: 32em;
-    border-left: 1px solid #d4d4ca;
-    margin-bottom: 1em;
-    padding-left: 2.5%
-}
-
-.right-column-adjusted {
-    position: relative;
-    top: -2em;
-}
-
-#-right-column h2 {
-    font-weight: 300;
 }
 
 #-download-link {
@@ -363,7 +443,6 @@ pre, .scroll {
 #-download-link > a {
     padding: 0.2em 0.6em;
     display: inline;
-    font-family: "Oswald", sans-serif;
     font-weight: 400;
     border: 0.15em solid #0d6dad;
 }
@@ -378,6 +457,16 @@ pre, .scroll {
     display: inline;
 }
 
+#-apache-navigation > li:after {
+    content: "\2022";
+    margin: 0 0.15em 0 0.35em;
+    color: #d4d4ca;
+}
+
+#-apache-navigation > li:last-child:after {
+    content: none;
+}
+
 #-apache-feather {
     display: inline;
     vertical-align: -0.07em;
@@ -388,77 +477,61 @@ pre, .scroll {
     clear: both;
 }
 
-/* Style adjustments for mobile devices */
+/* Dashboard */
 
-@media screen and (max-width: 800px) {
-    .flex {
-        display: block;
-    }
-
-    .flex > section,
-    .flex > div {
-        margin: 1em 0;
-    }
-
-    .flex > section:first-child,
-    .flex > div:first-child {
-        margin-top: 0;
-    }
-
-    .flex > section:last-child,
-    .flex > div:last-child {
-        margin-bottom: 0;
-    }
+#-jira-goto-form {
+    display: inline;
+    margin: 0;
 }
 
-@media screen and (max-width: 640px) {
-    #-global-navigation > li:nth-child(3),
-    #-global-navigation > li:nth-child(4) {
-        display: none;
-    }
-
-    #-nameplate {
-        font-size: 2em;
-    }
-
-    h1 {
-        font-size: 1.5em;
-    }
-
-    .feature {
-        padding: 0.8em;
-    }
-
-    table, pre {
-        font-size: 0.7em;
-        margin-bottom: 1.2em;
-    }
-
-    .two-column, .three-column, .four-column {
-        -webkit-column-count: 1;
-        -moz-column-count: 1;
-        column-count: 1;
-    }
-
-    .panel {
-        padding: 1em;
-    }
-
-    #-left-column {
-        float: none;
-        width: 100%;
-    }
-
-    #-right-column {
-        float: none;
-        width: 100%;
-        border-left: none;
-        border-top: 1px solid #d4d4ca;
-        margin: 1em 0;
-        padding: 1em 0 0 0;
-    }
-
-    .right-column-adjusted {
-        position: inherit;
-    }
+#-jira-goto-form input {
+    width: 6em;
 }
+
+#-viewvc-goto-form {
+    display: inline;
+    margin: 0;
+}
+
+#-viewvc-goto-form input {
+    width: 6em;
+}
+
+#-dashboard-forms {
+    float: right;
+}
+
+#-dashboard-forms > form {
+    margin: 0 1.2em 0 0;
+    display: inline-block;
+}
+
+#-dashboard-forms > form:last-child {
+    margin-right: 0;
+}
+
+#-dashboard-forms > #-jira-search-form {
+    float: right;
+}
+
+#-dashboard-forms > #-jira-search-form input {
+    width: 8em;
+}
+
+#-source-modules > table {
+    width: 100%;
+}
+
+#-source-modules td, #-source-modules th {
+    border: none;
+}
+
+#-source-modules > table th:nth-child(4) {
+    width: 33%;
+}
+
+#-dashboard-links {
+    font-size: 0.9em;
+}
+
+/* Adjustments for mobile devices */

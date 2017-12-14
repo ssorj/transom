@@ -32,10 +32,6 @@ body {
     background: linear-gradient(to bottom, #f4f7fa, #fcfcfb 32em, #fcfcfb) no-repeat, #fcfcfb;
 }
 
-code, pre {
-    font-family: "Share Tech Mono", monospace;
-}
-
 blockquote, pre {
     color: #222;
     background-color: #fcfcfb;
@@ -61,10 +57,6 @@ button {
 button:hover {
     background: #fcfcfc;
     background: linear-gradient(to bottom, white, #fcfcfc 10%) no-repeat;
-}
-
-ul {
-    list-style-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAL0lEQVQoz2P4//8/AymYgb4aePPWlfDmrr2OgoFiuDVAFP1Hw9eHlAZSPT04Ig4AsFqLgI4Un7IAAAAASUVORK5CYII=");
 }
 
 h2.selected, h3.selected, h4.selected, h5.selected, h6.selected {
@@ -204,61 +196,6 @@ a[href]:visited {
 
 #-apache-navigation > li:last-child:after {
     content: none;
-}
-
-#-jira-goto-form {
-    display: inline;
-    margin: 0;
-}
-
-#-jira-goto-form input {
-    width: 6em;
-}
-
-#-viewvc-goto-form {
-    display: inline;
-    margin: 0;
-}
-
-#-viewvc-goto-form input {
-    width: 6em;
-}
-
-#-dashboard-forms {
-    float: right;
-}
-
-#-dashboard-forms > form {
-    margin: 0 1.2em 0 0;
-    display: inline-block;
-}
-
-#-dashboard-forms > form:last-child {
-    margin-right: 0;
-}
-
-#-dashboard-forms > #-jira-search-form {
-    float: right;
-}
-
-#-dashboard-forms > #-jira-search-form input {
-    width: 8em;
-}
-
-#-source-modules > table {
-    width: 100%;
-}
-
-#-source-modules td, #-source-modules th {
-    border: none;
-}
-
-#-source-modules > table th:nth-child(4) {
-    width: 33%;
-}
-
-#-dashboard-links {
-    font-size: 0.9em;
 }
 
 /* Pygments */
