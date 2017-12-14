@@ -422,18 +422,6 @@ class _Page(_File):
 
         super(_Page, self).init()
 
-        # XXX
-
-        self.template = self.site.outer_template.replace("@inner_template@", self.site.inner_template, 1)
-
-        # XXX revisit this stuff - use per-page configured template paths
-
-        # input_dir, name = _split(self.input_path)
-        # template_path = _join(input_dir, "_transom_template.html")
-
-        # if _is_file(template_path):
-        #     self.template = _read_file(template_path)
-
     def load_input(self):
         self.site.info("Loading {}", self)
         self.content = _read_file(self.input_path)
@@ -461,17 +449,39 @@ class _Page(_File):
         content = _os.linesep.join(content_lines)
         content = _markdown.markdown(content, extras=_markdown_extras)
 
-        self.content = self.apply_template(content)
         self.attributes.update(content.metadata)
+
+        self.content = self.apply_template(content)
 
     def convert_from_html_in(self):
         self.site.info("Converting {} from html.in", self)
         self.content = self.apply_template(self.content)
 
     def apply_template(self, content):
+        outer_template = self.site.outer_template
+        inner_template = self.site.inner_template
 
+        if "outer_template" in self.attributes:
+            outer_template_path = self.attributes["outer_template"]
 
-        return self.template.replace("@content@", content, 1)
+            if _is_file(outer_template_path):
+                outer_template = _read_file(outer_template_path)
+            else:
+                raise Exception("Outer template {} not found".format(outer_template_path))
+
+        if "inner_template" in self.attributes:
+            inner_template_path = self.attributes["inner_template"]
+
+            if inner_template_path == "none":
+                inner_template = "@content@"
+            elif _is_file(inner_template_path):
+                inner_template = _read_file(inner_template_path)
+            else:
+                raise Exception("Inner template {} not found".format(inner_template_path))
+
+        template = outer_template.replace("@inner_template@", inner_template, 1)
+
+        return template.replace("@content@", content, 1)
 
     def process(self):
         self.site.info("Processing {}", self)

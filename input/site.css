@@ -110,11 +110,21 @@ body > div.main-container {
     background-color: white;
 }
 
+body > div.feature-container {
+    background-color: #8bb9d8;
+}
+
+body > div.section-container {
+    background-color: gray;
+}
+
 body > div.footer-container {
     border-top: 4px solid #8bb9d8;
 }
 
-header, main, footer {
+header, main, footer,
+div.feature-container > section,
+div.section-container > section {
     max-width: 960px;
     margin: 0 auto;
 }
@@ -125,10 +135,20 @@ header {
 
 main {
     padding: 2em 0;
+    border: 1px dashed red;
 }
 
 footer {
     color: white;
+    padding: 2em 0;
+}
+
+div.feature-container > section {
+    color: white;
+    padding: 2em 0;
+}
+
+div.section-container > section {
     padding: 2em 0;
 }
 
