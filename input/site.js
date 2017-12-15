@@ -465,10 +465,3 @@ if (path === "/index.html" || path === "/") {
     _addEventListener(window, "hashchange", _updateHeadingSelection);
     _addEventListener(window, "hashchange", _focusJiraSearchForm);
 }
-
-_log("Calling deferred functions")
-
-for (var i = 0; i < _deferredFunctions.length; i++) {
-    var func = _deferredFunctions[i];
-    func();
-}
