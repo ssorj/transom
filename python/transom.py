@@ -479,9 +479,13 @@ class _Page(_File):
             else:
                 raise Exception("Inner template {} not found".format(inner_template_path))
 
-        template = outer_template.replace("@inner_template@", inner_template, 1)
+        extra_headers = self.attributes.get("extra_headers", "")
 
-        return template.replace("@content@", content, 1)
+        template = outer_template.replace("@inner_template@", inner_template, 1)
+        template = template.replace("@extra_headers@", extra_headers, 1)
+        output = template.replace("@content@", content, 1)
+
+        return output
 
     def process(self):
         self.site.info("Processing {}", self)

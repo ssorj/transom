@@ -25,48 +25,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="stylesheet" href="{{site_url}}/site.css" type="text/css" async="async"/>
     <script type="text/javascript" src="{{site_url}}/site.js" defer="defer"></script>
+    
+@extra_headers@
+
   </head>
   <body>
-    <div class="header-wrapper">
-      <header>
-        <nav id="-global-navigation">
-          <a id="-logotype" href="{{site_url}}/index.html">Apache Qpid<span class="tm">&#8482</span></a>
-          <a href="{{site_url}}/components/index.html">APIs</a>
-          <a href="{{site_url}}/components/index.html">Servers</a>
-        </ul>
-      </header>
-    </div>
-
-    <div class="hidden path-navigation">
-      <header>
-        {{path_navigation}}
-      </header>
-    </div>
+    <header id="-primary-header">
+      <nav id="-global-navigation">
+        <a id="-logotype" href="{{site_url}}/index.html">Apache Qpid<span class="tm">&#8482</span></a>
+        <a href="{{site_url}}/components/index.html">Components</a>
+        <a href="{{site_url}}/releases/index.html">Releases</a>
+        <a href="{{site_url}}/discussion.html">Discussion</a>
+      </ul>
+    </header>
 
 @inner_template@
 
-    <div class="footer-wrapper">
-      <footer>
-        <ul id="-apache-navigation">
-          <li><a href="http://www.apache.org/">Apache</a></li>
-          <li><a href="http://www.apache.org/licenses/">License</a></li>
-          <li><a href="http://www.apache.org/foundation/sponsorship.html">Sponsorship</a></li>
-          <li><a href="http://www.apache.org/foundation/thanks.html">Thanks!</a></li>
-          <li><a href="{{site_url}}/security.html">Security</a></li>
-          <li><a href="http://www.apache.org/"><img id="-apache-feather" width="48" height="14" src="" alt="Apache"/></a></li>
-        </ul>
+    <footer id="-primary-footer">
+      <nav id="-apache-navigation">
+        <a href="http://www.apache.org/">Apache</a>
+        <a href="http://www.apache.org/licenses/">License</a>
+        <a href="http://www.apache.org/foundation/sponsorship.html">Sponsorship</a>
+        <a href="http://www.apache.org/foundation/thanks.html">Thanks!</a>
+        <a href="{{site_url}}/security.html">Security</a>
+        <a href="http://www.apache.org/"><img id="-apache-feather" width="48" height="14" src="" alt="Apache"/></a>
+      </nav>
 
-        <p id="-legal">
-          Apache Qpid, Messaging built on AMQP; Copyright &#169; 2017
-          The Apache Software Foundation; Licensed under
-          the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache
-          License, Version 2.0</a>; Apache Qpid, Qpid, Qpid Proton,
-          Proton, Apache, the Apache feather logo, and the Apache Qpid
-          project logo are trademarks of The Apache Software
-          Foundation; All other marks mentioned may be trademarks or
-          registered trademarks of their respective owners
-        </p>
-      </footer>
-    </div>
+      <p id="-legal">
+        Apache Qpid, Messaging built on AMQP; Copyright &#169; 2017
+        The Apache Software Foundation; Licensed under
+        the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+        License, Version 2.0</a>; Apache Qpid, Qpid, Qpid Proton,
+        Proton, Apache, the Apache feather logo, and the Apache Qpid
+        project logo are trademarks of The Apache Software
+        Foundation; All other marks mentioned may be trademarks or
+        registered trademarks of their respective owners
+      </p>
+    </footer>
   </body>
 </html>

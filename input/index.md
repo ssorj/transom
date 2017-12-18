@@ -1,67 +1,87 @@
 ---
 title: Home
 inner_template: none
+extra_headers: <link rel="stylesheet" href="{{site_url}}/index.css" type="text/css" async="async"/>
 ---
 
-<div class="intro-wrapper">
-  <section id="qpid-intro" markdown="1">
-    <h1>Messaging built on AMQP</h1>
+<section id="-qpid-intro" markdown="1">
 
-    <h2>Messaging APIs and servers for multiple languages and platforms</h2>
-  </section>
-</div>
+# Messaging built on AMQP
 
-<div class="section-wrapper">
-  <div class="grid-2">
-    <section id="amqp-intro">
-      <p><a href="{{site_url}}/amqp/index.html">AMQP</a> is an open
-        internet protocol for reliably sending and receiving messages.  It
-        makes it possible for everyone to build a diverse, coherent
-        messaging ecosystem.</p>
+## APIs and servers for multiple languages and platforms
 
-      <p>More about <a href="{{site_url}}/overview.html">Qpid and
-        AMQP</a>.</p>
-    </section>
+</section>
 
-    <section>
-      {{lipsum}}
-    </section>
-  </div>
-</div>
+<section id="-components" markdown="1">
+<section id="-messaging-apis" markdown="1">
 
-<div class="section-wrapper">
-  <div class="grid-3">
-    <section>
-      <h2>About Qpid</h2>
+## Messaging APIs
 
-      <ul>
-        <li>Qpid is an <a href="http://www.apache.org/">Apache</a> project</li>
-        <li>Our code is <a href="http://www.apache.org/licenses/LICENSE-2.0">open source</a></li>
-        <li>Thank you, <a href="{{site_url}}/contributors.html">contributors</a>!</li>
-        <li><a href="{{site_url}}/get-involved.html">How to get involved</a></li>
-      </ul>
-    </section>
+<nav id="-messaging-api-navigation">
+  <a href="">C++</a>
+  <a href="">Go</a>
+  <a href="">Java</a>
+  <a href="">JavaScript</a>
+  <a href="">Python</a>
+  <a href="">Ruby</a>
+</nav>
 
-    <section>
-      <h2>About Apache</h2>
+</section>
+<section id="-messaging-servers" markdown="1">
 
-      <ul>
-        <li><a href="http://www.apache.org/licenses/">License</a></li>
-        <li><a href="http://www.apache.org/foundation/sponsorship.html">Sponsorship</a></li>
-        <li>Thank you, <a href="http://www.apache.org/foundation/thanks.html">sponsors</a>!</li>
-      </ul>
-    </section>
+## Messaging servers
 
-    <section>
-      <h2>Resources</h2>
+<nav id="-messaging-server-navigation">
+  <a href="">A pure-Java broker</a>
+  <a href="">A native-code broker</a>
+  <a href="">A lightweight router</a>
+</nav>
 
-      <ul>
-        <li><a href="{{site_url}}/discussion.html">Discussion</a></li>
-        <li><a href="{{site_url}}/components/index.html">Components</a></li>
-        <li><a href="{{site_url}}/releases/index.html">Releases</a></li>
-        <li><a href="{{site_url}}/security.html">Security</a></li>
-        <li><a href="{{site_url}}/resources.html">More resources</a></li>
-      </ul>
-    </section>
-  </div>
-</div>
+</section>
+</section>
+
+<section id="-about-topics" markdown="1">
+<section id="-about-amqp" markdown="1">
+
+## About AMQP
+
+[AMQP]({{site_url}}/amqp/index.html) is an open internet protocol for
+reliably sending and receiving messages.
+
+Learn more about [Qpid and AMQP]({{site_url}}/overview.html).
+
+</section>
+<section id="-about-qpid" markdown="1">
+
+## About Qpid
+
+ - Qpid is an [Apache](http://www.apache.org/) project
+ - Our code is [open source](http://www.apache.org/licenses/LICENSE-2.0)
+ - Thank you, [contributors]({{site_url}}/contributors.html)!
+ - How to [get involved]({{site_url}}/get-involved.html)
+
+</section>
+<section id="-about-apache" markdown="1">
+
+## About Apache
+
+ - [License](http://www.apache.org/licenses/)
+ - [Sponsorship](http://www.apache.org/foundation/sponsorship.html)
+ - Thank you, [sponsors](http://www.apache.org/foundation/thanks.html)!
+
+</section>
+</section>
+
+<section id="-resources" markdown="1">
+
+## Resources
+
+ - [Components]({{site_url}}/components/index.html)
+ - [Releases]({{site_url}}/releases/index.html)
+ - [Discussion]({{site_url}}/discussion.html)
+ - [Security]({{site_url}}/security.html)
+ - [More resources]({{site_url}}/resources.html)
+
+</section>
+
+<div id="-xxx"></div>
