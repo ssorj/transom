@@ -32,7 +32,7 @@
     --blue: #0d6dad;
     --dark-blue: #0d567f;
     --darkest-blue: #003d5f;
-    --lightest-orange: #f9f8fd;
+    --lightest-orange: #ffdec3;
     --light-orange: #d0c6e7;
     --orange: #ff8d2b;
     --dark-orange: red;
@@ -114,8 +114,8 @@ section {
 
 footer {
     grid-area: f;
-    border-top: 2px solid var(--orange);
-    padding-top: 1.5em;
+    border-top: 3px solid var(--lightest-orange);
+    padding-top: 1.3em;
 }
 
 /* */
