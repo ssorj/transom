@@ -192,28 +192,6 @@ class Transom:
             for file_ in self.files:
                 file_.save_output()
 
-            self._copy_default_files()
-
-    def _copy_default_files(self):
-        if self.home is None:
-            return
-
-        from_dir = _join(self.home, "files")
-        to_dir = _join(self.output_dir, "transom")
-        subpaths = list()
-
-        for root, dirs, files in _os.walk(from_dir):
-            dir_ = root[len(from_dir) + 1:]
-
-            for file_ in files:
-                subpaths.append(_join(dir_, file_))
-
-        for subpath in subpaths:
-            from_file = _join(from_dir, subpath)
-            to_file = _join(to_dir, subpath)
-
-            _copy_file(from_file, to_file)
-
     def check_files(self):
         self.find_input_files()
 
@@ -674,7 +652,7 @@ class TransomCommand(_commandant.Command):
         init.description = "Prepare an input directory"
         init.set_defaults(func=self.init_command)
         init.add_argument("input_dir", metavar="INPUT-DIR",
-                          help="Place standard input files in INPUT-DIR")
+                          help="Place default input files in INPUT-DIR")
 
         render = subparsers.add_parser("render")
         render.description = "Generate the output files"
@@ -710,7 +688,7 @@ class TransomCommand(_commandant.Command):
         if "func" not in self.args:
             self.fail("Missing subcommand")
 
-        if self.args.func is not self.init_command:
+        if self.args.func != self.init_command:
             self.init_lib()
 
     def init_lib(self):
@@ -732,15 +710,16 @@ class TransomCommand(_commandant.Command):
 
     def init_command(self):
         if self.home is None:
-            self.fail("Home is not set")
+            self.fail("I can't find the default input files")
 
         def copy(file_name, to_path):
             if _os.path.exists(to_path):
+                self.notice("Skipping '{}'. It already exists.", to_path)
                 return
 
             _copy_file(_join(self.home, "files", file_name), to_path)
 
-            print(to_path)
+            self.notice("Creating '{}'", to_path)
 
         config_dir = _join(self.args.input_dir, ".transom")
 
