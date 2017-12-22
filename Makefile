@@ -35,7 +35,7 @@ FILE_SOURCES := $(shell find files -type f)
 FILE_TARGETS := ${FILE_SOURCES:%=build/transom/%}
 
 PYTHON_SOURCES := $(shell find python -type f -name \*.py)
-PYTHON_TARGETS := ${PYTHON_SOURCES:%=build/transom/%} ${PYTHON_SOURCES:%.in=build/transom/%}
+PYTHON_TARGETS := ${PYTHON_SOURCES:%=build/transom/%}
 
 .PHONY: default
 default: build
