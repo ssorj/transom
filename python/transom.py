@@ -705,15 +705,17 @@ class TransomCommand(_commandant.Command):
         self.lib = None
 
     def init(self):
-        assert self.lib is None
-
         super().init()
 
         if "func" not in self.args:
-            print("Error! Missing subcommand", file=_sys.stderr)
-            _sys.exit(1)
+            self.fail("Missing subcommand")
+
+        if self.args.func is not self.init_command:
+            self.init_lib()
 
     def init_lib(self):
+        assert self.lib is None
+
         site_url = self.args.site_url
 
         if site_url is None:
@@ -732,16 +734,15 @@ class TransomCommand(_commandant.Command):
         if self.home is None:
             self.fail("Home is not set")
 
-        source_dir = _join(self.home, "files")
-        config_dir = _join(self.args.input_dir, ".transom")
-
         def copy(file_name, to_path):
             if _os.path.exists(to_path):
                 return
 
-            _copy_file(_join(source_dir, file_name), to_path)
+            _copy_file(_join(self.home, "files", file_name), to_path)
 
             print(to_path)
+
+        config_dir = _join(self.args.input_dir, ".transom")
 
         copy("outer-template.html", _join(config_dir, "outer-template.html"))
         copy("inner-template.html", _join(config_dir, "inner-template.html"))
@@ -752,15 +753,12 @@ class TransomCommand(_commandant.Command):
         copy("index.md", _join(self.args.input_dir, "index.md"))
 
     def render_command(self):
-        self.init_lib()
         self.lib.render()
 
     def check_links_command(self):
-        self.init_lib()
         self.lib.check_links(internal=True, external=self.args.all)
 
     def check_files_command(self):
-        self.init_lib()
         self.lib.check_files()
 
 _join = _os.path.join
