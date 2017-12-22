@@ -24,12 +24,15 @@ PREFIX := ${HOME}/.local
 INSTALLED_TRANSOM_HOME = ${PREFIX}/share/transom
 
 export TRANSOM_HOME = ${PWD}/build/transom
-export PATH := ${PWD}/install/bin:${PATH}
+export PATH := ${PWD}/build/bin:${PATH}
 
 VERSION := $(shell cat VERSION.txt)
 
 BIN_SOURCES := $(shell find bin -type f -name \*.in)
 BIN_TARGETS := ${BIN_SOURCES:%.in=build/%}
+
+FILE_SOURCES := $(shell find files -type f)
+FILE_TARGETS := ${FILE_SOURCES:%=build/transom/%}
 
 PYTHON_SOURCES := $(shell find python -type f -name \*.py)
 PYTHON_TARGETS := ${PYTHON_SOURCES:%=build/transom/%} ${PYTHON_SOURCES:%.in=build/transom/%}
@@ -45,7 +48,7 @@ help:
 	@echo "test           Run the tests"
 
 .PHONY: build
-build: ${BIN_TARGETS} ${PYTHON_TARGETS} build/prefix.txt
+build: ${BIN_TARGETS} ${FILE_TARGETS} ${PYTHON_TARGETS} build/prefix.txt
 #	scripts/run-smoke-tests
 
 .PHONY: install
@@ -59,7 +62,6 @@ clean:
 	rm -rf build
 
 .PHONY: test
-test: PREFIX := ${PWD}/install
 test: build
 	transom --help 1> /dev/null
 	transom render --help 1> /dev/null
@@ -76,6 +78,10 @@ build/transom/python/transom/%: python/transom/% python/transom/common.py python
 	cp $< $@
 
 build/transom/python/%: python/%
+	@mkdir -p ${@D}
+	cp $< $@
+
+build/transom/files/%: files/%
 	@mkdir -p ${@D}
 	cp $< $@
 

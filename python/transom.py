@@ -646,18 +646,38 @@ class _Page(_File):
 
         return link_targets
 
+_description = """
+Generate static websites from Markdown and Python
+"""
+
+_epilog = """
+subcommands:
+  init                  Prepare an input directory
+  render                Generate the output files
+  check-links           Check for broken links
+  check-files           Check for missing or extra files
+"""
+
 class TransomCommand(_commandant.Command):
     def __init__(self, home=None):
         super(TransomCommand, self).__init__(home, "transom")
 
-        self.description = "Render static websites from Markdown and Python"
+        self.description = _description
+        self.epilog = _epilog
 
         self.add_argument("--site-url", metavar="URL",
                           help="Prefix site links with URL")
 
         subparsers = self.add_subparsers()
 
+        init = subparsers.add_parser("init")
+        init.description = "Prepare an input directory"
+        init.set_defaults(func=self.init_command)
+        init.add_argument("input_dir", metavar="INPUT-DIR",
+                          help="Place standard input files in INPUT-DIR")
+
         render = subparsers.add_parser("render")
+        render.description = "Generate the output files"
         render.set_defaults(func=self.render_command)
         render.add_argument("input_dir", metavar="INPUT-DIR",
                             help="Read input files from INPUT-DIR")
@@ -665,6 +685,7 @@ class TransomCommand(_commandant.Command):
                             help="Write output files to OUTPUT-DIR")
 
         check_links = subparsers.add_parser("check-links")
+        check_links.description = "Check for broken links"
         check_links.set_defaults(func=self.check_links_command)
         check_links.add_argument("input_dir", metavar="INPUT-DIR",
                                  help="Check input files in INPUT-DIR")
@@ -674,6 +695,7 @@ class TransomCommand(_commandant.Command):
                                  help="Check external links as well as internal ones")
 
         check_files = subparsers.add_parser("check-files")
+        check_files.description = "Check for missing or extra files"
         check_files.set_defaults(func=self.check_files_command)
         check_files.add_argument("input_dir", metavar="INPUT-DIR",
                                  help="Check input files in INPUT-DIR")
@@ -691,6 +713,7 @@ class TransomCommand(_commandant.Command):
             print("Error! Missing subcommand", file=_sys.stderr)
             _sys.exit(1)
 
+    def init_lib(self):
         site_url = self.args.site_url
 
         if site_url is None:
@@ -705,13 +728,39 @@ class TransomCommand(_commandant.Command):
     def run(self):
         self.args.func()
 
+    def init_command(self):
+        if self.home is None:
+            self.fail("Home is not set")
+
+        source_dir = _join(self.home, "files")
+        config_dir = _join(self.args.input_dir, ".transom")
+
+        def copy(file_name, to_path):
+            if _os.path.exists(to_path):
+                return
+
+            _copy_file(_join(source_dir, file_name), to_path)
+
+            print(to_path)
+
+        copy("outer-template.html", _join(config_dir, "outer-template.html"))
+        copy("inner-template.html", _join(config_dir, "inner-template.html"))
+        copy("config.py", _join(config_dir, "config.py"))
+
+        copy("site.css", _join(self.args.input_dir, "site.css"))
+        copy("site.js", _join(self.args.input_dir, "site.js"))
+        copy("index.md", _join(self.args.input_dir, "index.md"))
+
     def render_command(self):
+        self.init_lib()
         self.lib.render()
 
     def check_links_command(self):
+        self.init_lib()
         self.lib.check_links(internal=True, external=self.args.all)
 
     def check_files_command(self):
+        self.init_lib()
         self.lib.check_files()
 
 _join = _os.path.join
