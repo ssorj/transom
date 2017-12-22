@@ -400,7 +400,7 @@ class _File:
 
 class _Page(_File):
     def __init__(self, site, path, parent):
-        super(_Page, self).__init__(site, path)
+        super().__init__(site, path)
 
         self.parent = parent
 
@@ -420,7 +420,7 @@ class _Page(_File):
 
         self.url = self.site.get_url(self.output_path)
 
-        super(_Page, self).init()
+        super().init()
 
     def load_input(self):
         self.site.info("Loading {}", self)
@@ -660,7 +660,7 @@ subcommands:
 
 class TransomCommand(_commandant.Command):
     def __init__(self, home=None):
-        super(TransomCommand, self).__init__(home, "transom")
+        super().__init__(home, "transom")
 
         self.description = _description
         self.epilog = _epilog
@@ -707,7 +707,7 @@ class TransomCommand(_commandant.Command):
     def init(self):
         assert self.lib is None
 
-        super(TransomCommand, self).init()
+        super().init()
 
         if "func" not in self.args:
             print("Error! Missing subcommand", file=_sys.stderr)
