@@ -63,8 +63,10 @@ clean:
 
 .PHONY: test
 test: build
-	transom --help 1> /dev/null
-	transom render --help 1> /dev/null
+	transom-test
+
+.PHONY: render
+render: build
 	transom render input output
 
 build/prefix.txt:
