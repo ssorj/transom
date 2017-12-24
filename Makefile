@@ -25,6 +25,7 @@ INSTALLED_TRANSOM_HOME = ${PREFIX}/share/transom
 
 export TRANSOM_HOME = ${PWD}/build/transom
 export PATH := ${PWD}/build/bin:${PATH}
+export PYTHONPATH := ${PWD}/python:${PYTHONPATH}
 
 VERSION := $(shell cat VERSION.txt)
 

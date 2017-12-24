@@ -75,6 +75,15 @@ class Transom:
         self.links = _defaultdict(set)
         self.link_targets = set()
 
+        self.ignored_file_patterns = [
+            "/.transom",
+            "*/.git",
+            "*/.svn",
+        ]
+
+        self.ignored_page_patterns = list()
+        self.ignored_link_patterns = list()
+
         self.executor = _futures.ThreadPoolExecutor()
         self.start_time = None
 
@@ -95,7 +104,12 @@ class Transom:
         self.outer_template = _read_file(self.outer_template_path)
         self.inner_template = _read_file(self.inner_template_path)
 
-        init_globals = {"site_url": self.site_url}
+        init_globals = {
+            "site_url": self.site_url,
+            "ignored_files": self.ignored_file_patterns,
+            "ignored_pages": self.ignored_page_patterns,
+            "ignored_links": self.ignored_link_patterns,
+        }
 
         if _is_file(self.config_path):
             self.config_env = _runpy.run_path(self.config_path, init_globals)
@@ -111,15 +125,9 @@ class Transom:
             for file_ in self.files:
                 file_.init()
 
-    def _traverse_input_files(self, subdir, parent_page=None, ignore_pages=False):
+    def _traverse_input_files(self, subdir, parent_page=None):
         input_dir = _join(self.input_dir, subdir)
         names = set(_os.listdir(input_dir))
-
-        if input_dir == _join(self.input_dir, ".transom"):
-            return
-
-        if "_transom_ignore_pages" in names:
-            ignore_pages = True
 
         for name in ("index.md", "index.html", "index.html.in"):
             if name in names:
@@ -128,14 +136,12 @@ class Transom:
                 break
 
         for name in sorted(names):
-            if name.startswith("_transom_"):
-                continue
-
-            if name == ".svn":
-                continue
-
             path = _join(subdir, name)
+            filter_path = "/" + path
             input_path = _join(self.input_dir, path)
+
+            if self._is_ignored_file(filter_path):
+                continue
 
             if _is_file(input_path):
                 if input_path.endswith(".html.in"):
@@ -143,12 +149,26 @@ class Transom:
                 else:
                     stem, ext = _os.path.splitext(name)
 
-                if ext in _page_extensions and not ignore_pages:
+                if ext in _page_extensions and not self._is_ignored_page(filter_path):
                     _Page(self, path, parent_page)
                 else:
                     _File(self, path)
             elif _is_dir(input_path):
-                self._traverse_input_files(path, parent_page, ignore_pages)
+                self._traverse_input_files(path, parent_page)
+
+    def _is_ignored_file(self, path):
+        for pattern in self.ignored_file_patterns:
+            if _fnmatch.fnmatch(path, pattern):
+                return True
+
+        return False
+
+    def _is_ignored_page(self, path):
+        for pattern in self.ignored_page_patterns:
+            if _fnmatch.fnmatch(path, pattern):
+                return True
+
+        return False
 
     def _traverse_output_files(self, subdir, files):
         output_dir = _join(self.output_dir, subdir)
