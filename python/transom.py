@@ -130,14 +130,17 @@ class Transom:
         names = set(_os.listdir(input_dir))
 
         for name in ("index.md", "index.html", "index.html.in"):
-            if name in names:
+            path = _join(subdir, name)
+            filter_path = _join("/", path)
+
+            if name in names and not self._is_ignored_page(filter_path):
                 names.remove(name)
-                parent_page = _Page(self, _join(subdir, name), parent_page)
+                parent_page = _Page(self, path, parent_page)
                 break
 
         for name in sorted(names):
             path = _join(subdir, name)
-            filter_path = "/" + path
+            filter_path = _join("/", path)
             input_path = _join(self.input_dir, path)
 
             if self._is_ignored_file(filter_path):
@@ -255,9 +258,6 @@ class Transom:
 
             for link in links:
                 if internal and link.startswith(self.site_url):
-                    if link[len(self.site_url):].startswith("/transom"):
-                        continue
-
                     if link not in self.link_targets:
                         errors_by_link[link].append("Link has no target")
 
@@ -281,24 +281,16 @@ class Transom:
                 print("  Source: {}".format(source))
 
     def filter_links(self, links):
-        config_path = _join(self.input_dir, "_transom_ignore_links")
+        def retain(link):
+            for pattern in self.ignored_link_patterns:
+                path = link[len(self.site_url):]
 
-        if _is_file(config_path):
-            ignore_patterns = _read_file(config_path).splitlines()
+                if _fnmatch.fnmatch(path, pattern):
+                    return False
 
-            def retain(link):
-                for pattern in ignore_patterns:
-                    pattern = pattern.strip()
-                    path = link[len(self.site_url) + 1:]
+            return True
 
-                    if _fnmatch.fnmatch(path, pattern):
-                        return False
-
-                return True
-
-            return filter(retain, links)
-
-        return links
+        return filter(retain, links)
 
     def check_external_link(self, link):
         sock, code, error = None, None, None

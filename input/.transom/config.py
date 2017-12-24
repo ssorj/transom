@@ -144,7 +144,7 @@ ignored_pages += [
 
 ignored_links += [
     "/releases/qpid-*/java-broker/book/*",
-    "/releases/qpid-broker-j*/book/*"
+    "/releases/qpid-broker-j-*/book/*"
     "/releases/qpid-*/jms-client-0-8/book/*",
     "/releases/qpid-java-*/jms-client-0-10/book/images/callouts/*",
 ]
