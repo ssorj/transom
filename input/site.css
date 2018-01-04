@@ -347,12 +347,12 @@ pre, .scroll {
 }
 
 #-path-navigation > a {
-    padding: 1em;
+    padding: 0;
     margin: auto 0;
 }
 
 #-path-navigation > a:after {
-    content: " \003e\00a0";
+    content: " \003e\00a0 ";
 }
 
 #-path-navigation > a:last-child:after {

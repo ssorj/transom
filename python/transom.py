@@ -21,12 +21,10 @@ from __future__ import print_function
 
 import codecs as _codecs
 import commandant as _commandant
-import concurrent.futures as _futures
 import fnmatch as _fnmatch
 import markdown2 as _markdown
 import os as _os
 import re as _re
-import runpy as _runpy
 import shutil as _shutil
 import sys as _sys
 import tempfile as _tempfile
@@ -38,9 +36,10 @@ from urllib.parse import urlsplit as _urlsplit
 from urllib.request import urlopen as _urlopen
 from xml.etree.ElementTree import XML as _XML
 
-_title_regex = _re.compile(r"<([hH][12]).*?>(.*?)</\1>")
-_tag_regex = _re.compile(r"<.+?>")
-_page_extensions = ".md", ".html.in", ".html", ".css", ".js"
+_html_title_regex = _re.compile(r"<([hH][12]).*?>(.*?)</\1>")
+_html_tag_regex = _re.compile(r"<.+?>")
+
+_markdown_title_regex = _re.compile(r"(#|##)(.+)")
 
 _markdown_extras = {
     "code-friendly": True,
@@ -50,6 +49,8 @@ _markdown_extras = {
     "metadata": True,
     "tables": True,
 }
+
+_variable_regex = _re.compile("({{.+?}})")
 
 class Transom:
     def __init__(self, site_url, input_dir, output_dir, home=None):
@@ -61,30 +62,35 @@ class Transom:
         self.verbose = False
         self.quiet = False
 
-        self.outer_template_path = _join(self.input_dir, ".transom", "outer-template.html")
-        self.inner_template_path = _join(self.input_dir, ".transom", "inner-template.html")
-        self.config_path = _join(self.input_dir, ".transom", "config.py")
+        self.config_dir = _join(self.input_dir, ".transom")
+        self.config_file = _join(self.config_dir, "config.py")
+        self.config = None
 
-        self.template = None
-        self.config_env = None
+        self.outer_template_path = _join(self.config_dir, "outer-template.html")
+        self.inner_template_path = _join(self.config_dir, "inner-template.html")
 
-        self.files = list()
-        self.files_by_path = dict()
-        self.pages = list()
+        self.input_files = list()
+        self.output_files = list()
+
+        self.config_files = list()
+        self.css_files = list()
+        self.html_files = list()
+        self.html_in_files = list()
+        self.javascript_files = list()
+        self.markdown_files = list()
 
         self.links = _defaultdict(set)
         self.link_targets = set()
 
         self.ignored_file_patterns = [
-            "/.transom",
             "*/.git",
             "*/.svn",
         ]
 
-        self.ignored_page_patterns = list()
         self.ignored_link_patterns = list()
 
-        self.executor = _futures.ThreadPoolExecutor()
+        self._markdown_converter = _markdown.Markdown(extras=_markdown_extras)
+
         self.start_time = None
 
     def init(self):
@@ -104,17 +110,14 @@ class Transom:
         self.outer_template = _read_file(self.outer_template_path)
         self.inner_template = _read_file(self.inner_template_path)
 
-        init_globals = {
+        self.config = {
             "site_url": self.site_url,
             "ignored_files": self.ignored_file_patterns,
-            "ignored_pages": self.ignored_page_patterns,
             "ignored_links": self.ignored_link_patterns,
         }
 
-        if _is_file(self.config_path):
-            self.config_env = _runpy.run_path(self.config_path, init_globals)
-        else:
-            self.config_env = init_globals
+        if _is_file(self.config_file):
+            exec(_read_file(self.config_file), self.config)
 
         self.start_time = _time.time()
 
@@ -122,56 +125,51 @@ class Transom:
         with _Phase(self, "Finding input files"):
             self._traverse_input_files("")
 
-            for file_ in self.files:
+            for file_ in self.input_files:
                 file_.init()
 
-    def _traverse_input_files(self, subdir, parent_page=None):
+    def _traverse_input_files(self, subdir, parent=None):
         input_dir = _join(self.input_dir, subdir)
         names = set(_os.listdir(input_dir))
 
-        for name in ("index.md", "index.html", "index.html.in"):
-            path = _join(subdir, name)
-            filter_path = _join("/", path)
-
-            if name in names and not self._is_ignored_page(filter_path):
+        for name in ("index.md", "index.html.in", "index.html"):
+            if name in names:
                 names.remove(name)
-                parent_page = _Page(self, path, parent_page)
+                parent = self._create_file(_join(subdir, name), parent)
                 break
 
-        for name in sorted(names):
+        for name in names:
             path = _join(subdir, name)
-            filter_path = _join("/", path)
             input_path = _join(self.input_dir, path)
 
-            if self._is_ignored_file(filter_path):
+            if self._is_ignored_file(path):
                 continue
 
-            if _is_file(input_path):
-                if input_path.endswith(".html.in"):
-                    ext = ".html.in"
-                else:
-                    stem, ext = _os.path.splitext(name)
-
-                if ext in _page_extensions and not self._is_ignored_page(filter_path):
-                    _Page(self, path, parent_page)
-                else:
-                    _File(self, path)
-            elif _is_dir(input_path):
-                self._traverse_input_files(path, parent_page)
+            if _is_dir(input_path):
+                self._traverse_input_files(path, parent)
+            else:
+                self._create_file(path, parent)
 
     def _is_ignored_file(self, path):
+        filter_path = _join("/", path)
+
         for pattern in self.ignored_file_patterns:
-            if _fnmatch.fnmatch(path, pattern):
+            if _fnmatch.fnmatch(filter_path, pattern):
                 return True
 
         return False
 
-    def _is_ignored_page(self, path):
-        for pattern in self.ignored_page_patterns:
-            if _fnmatch.fnmatch(path, pattern):
-                return True
+    def _create_file(self, path, parent):
+        if path.startswith(".transom"): return _ConfigFile(self, path)
 
-        return False
+        if path.endswith(".html.in"):   ext = ".html.in"
+        else:                        _, ext = _os.path.splitext(path)
+
+        if   ext == ".md":              return _MarkdownFile(self, path, parent)
+        elif ext == ".css":             return _CssFile(self, path, parent)
+        elif ext == ".html.in":         return _HtmlInFile(self, path, parent)
+        elif ext == ".js":              return _JavaScriptFile(self, path, parent)
+        else:                           return _StaticFile(self, path, parent)
 
     def _traverse_output_files(self, subdir, files):
         output_dir = _join(self.output_dir, subdir)
@@ -181,39 +179,33 @@ class Transom:
             path = _join(subdir, name)
             output_path = _join(self.output_dir, path)
 
-            if _is_file(output_path):
-                files.add(output_path)
-            elif _is_dir(output_path):
-                if name == ".svn":
-                    continue
-
-                if name == "transom":
-                    continue
-
+            if _is_dir(output_path):
                 self._traverse_output_files(path, files)
+            else:
+                files.add(output_path)
 
     def render(self):
         self.find_input_files()
 
-        with _Phase(self, "Loading pages"):
-            for page in self.pages:
-                page.load_input()
+        print("  Input files        {:>10,}".format(len(self.input_files)))
+        print("  Output files       {:>10,}".format(len(self.output_files)))
+        print("  Config files       {:>10,}".format(len(self.config_files)))
+        print("  CSS files          {:>10,}".format(len(self.css_files)))
+        print("  HTML-in files      {:>10,}".format(len(self.html_in_files)))
+        print("  Markdown files     {:>10,}".format(len(self.markdown_files)))
+        print("  JavaScript files   {:>10,}".format(len(self.javascript_files)))
 
-        with _Phase(self, "Converting pages"):
-            futures = [self.executor.submit(x.convert) for x in self.pages]
-            _futures.wait(futures)
+        with _Phase(self, "Processing input files"):
+            for file_ in self.input_files:
+                file_.process_input()
 
-        with _Phase(self, "Processing pages"):
-            for page in self.pages:
-                page.process()
+        force = any([x.modified() for x in self.config_files])
 
-        with _Phase(self, "Rendering pages"):
-            for page in self.pages:
-                page.render()
+        with _Phase(self, "Rendering output files"):
+            for file_ in self.output_files:
+                file_.render_output(force)
 
-        with _Phase(self, "Writing output files"):
-            for file_ in self.files:
-                file_.save_output()
+        _os.utime(self.output_dir)
 
     def check_files(self):
         self.find_input_files()
@@ -222,7 +214,7 @@ class Transom:
             expected_files = set()
             found_files = set()
 
-            for file_ in self.files:
+            for file_ in self.output_files:
                 expected_files.add(file_.output_path)
 
             self._traverse_output_files("", found_files)
@@ -246,15 +238,15 @@ class Transom:
         self.find_input_files()
 
         with _Phase(self, "Finding links"):
-            for page in self.pages:
-                page.load_output()
+            for file_ in self.html_in_files:
+                file_.find_links()
 
-            for page in self.pages:
-                page.find_links()
+            for file_ in self.markdown_files:
+                file_.find_links()
 
         with _Phase(self, "Checking links"):
             errors_by_link = _defaultdict(list)
-            links = self.filter_links(self.links)
+            links = self._filter_links(self.links)
 
             for link in links:
                 if internal and link.startswith(self.site_url):
@@ -262,7 +254,7 @@ class Transom:
                         errors_by_link[link].append("Link has no target")
 
                 if external and not link.startswith(self.site_url):
-                    code, error = self.check_external_link(link)
+                    code, error = self._check_external_link(link)
 
                     if code >= 400:
                         msg = "HTTP error code {}".format(code)
@@ -280,7 +272,7 @@ class Transom:
             for source in self.links[link]:
                 print("  Source: {}".format(source))
 
-    def filter_links(self, links):
+    def _filter_links(self, links):
         def retain(link):
             for pattern in self.ignored_link_patterns:
                 path = link[len(self.site_url):]
@@ -292,7 +284,7 @@ class Transom:
 
         return filter(retain, links)
 
-    def check_external_link(self, link):
+    def _check_external_link(self, link):
         sock, code, error = None, None, None
 
         try:
@@ -338,10 +330,10 @@ class _Phase:
 
         if not self.site.verbose:
             message = self.message.format(*self.args)
-            print("{:.<30} ".format(message + " "), end="", flush=True)
+            print("{:.<40} ".format(message + " "), end="", flush=True)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is not None:
+        if not self.site.verbose and exc_type is not None:
             print("FAILED")
             return
 
@@ -353,101 +345,99 @@ class _Phase:
         if not self.site.verbose:
             print("{:0.3f}s [{:0.3f}s]".format(phase_dur, total_dur))
 
-class _File:
+class _InputFile:
     def __init__(self, site, path):
         self.site = site
         self.path = path
 
         self.input_path = _join(self.site.input_dir, self.path)
-        self.output_path = _join(self.site.output_dir, self.path)
-        self.url = self.site.get_url(self.output_path)
-
         self.input_mtime = None
 
-        self.site.files.append(self)
-        self.site.files_by_path[self.path] = self
+        if self.input_path.endswith(".html.in"):
+            self.input_extension = ".html.in"
+        else:
+            _, self.input_extension = _os.path.splitext(self.input_path)
+
+        self.site.input_files.append(self)
+
+    def __repr__(self):
+        return _format_repr(self, self.path)
 
     def init(self):
         self.input_mtime = _os.path.getmtime(self.input_path)
 
+    def process_input(self):
+        pass
+
+    def _load_input(self):
+        self.site.info("Loading {}", self)
+        self.content = _read_file(self.input_path)
+
+    def modified(self):
+        return True
+
+class _ConfigFile(_InputFile):
+    def __init__(self, site, path):
+        super().__init__(site, path)
+
+        self.output_mtime = None
+
+        self.site.config_files.append(self)
+
+    def modified(self):
+        if not _exists(self.site.output_dir):
+            return True
+
+        if self.output_mtime is None:
+            self.output_mtime = _os.path.getmtime(self.site.output_dir)
+
+        return self.input_mtime > self.output_mtime
+
+class _OutputFile(_InputFile):
+    def __init__(self, site, path, parent):
+        super().__init__(site, path)
+
+        self.parent = parent
+
+        self.output_path = _join(self.site.output_dir, self.path)
+        self.output_mtime = None
+
+        self.content = None
+        self.template = None
+
+        self.url = None
+        self.title = None
+        self.attributes = dict()
+
+        self.site.output_files.append(self)
+
+    def init(self):
+        super().init()
+
+        self.url = self.site.get_url(self.output_path)
         self.site.link_targets.add(self.url)
 
         if self.url.endswith("/index.html"):
             self.site.link_targets.add(self.url[:-10])
             self.site.link_targets.add(self.url[:-11])
 
-    def save_output(self):
-        if _os.path.exists(self.output_path):
-            output_mtime = _os.path.getmtime(self.output_path)
+    def process_input(self):
+        self.site.info("Processing {}", self)
+        self._load_input()
 
-            if output_mtime < self.input_mtime:
-                _copy_file(self.input_path, self.output_path)
-        else:
-            _copy_file(self.input_path, self.output_path)
+    def modified(self):
+        if not _exists(self.output_path):
+            return True
 
-    def __repr__(self):
-        return _format_repr(self, self.path)
+        if self.output_mtime is None:
+            self.output_mtime = _os.path.getmtime(self.output_path)
 
-class _Page(_File):
-    def __init__(self, site, path, parent):
-        super().__init__(site, path)
+        return self.input_mtime > self.output_mtime
 
-        self.parent = parent
+    def render_output(self, force=False):
+        raise NotImplementedError()
 
-        self.content = None
-        self.template = None
-
-        self.title = None
-        self.attributes = dict()
-
-        self.site.pages.append(self)
-
-    def init(self):
-        if self.output_path.endswith(".md"):
-            self.output_path = "{}.html".format(self.output_path[:-3])
-        elif self.output_path.endswith(".html.in"):
-            self.output_path = self.output_path[:-3]
-
-        self.url = self.site.get_url(self.output_path)
-
-        super().init()
-
-    def load_input(self):
-        self.site.info("Loading {}", self)
-        self.content = _read_file(self.input_path)
-
-    def save_output(self):
-        self.site.info("Saving {} to {}", self, self.output_path)
-        _write_file(self.output_path, self.content)
-
-    def load_output(self):
-        self.content = _read_file(self.output_path)
-
-    def convert(self):
-        if self.path.endswith(".md"):
-            self.convert_from_markdown()
-        elif self.path.endswith(".html.in"):
-            self.convert_from_html_in()
-
-    def convert_from_markdown(self):
-        self.site.info("Converting {} from markdown", self)
-
-        # Strip out comments
-        content_lines = self.content.splitlines()
-        content_lines = [x for x in content_lines if not x.startswith(";;")]
-
-        content = _os.linesep.join(content_lines)
-        content = _markdown.markdown(content, extras=_markdown_extras)
-
-        self.attributes.update(content.metadata)
-
-        self.content = self.apply_template(content)
-
-    def convert_from_html_in(self):
-        self.site.info("Converting {} from html.in", self)
-        self.content = self.apply_template(self.content)
-
-    def apply_template(self, content):
+    def _apply_template(self):
         outer_template = self.site.outer_template
         inner_template = self.site.inner_template
 
@@ -473,60 +463,19 @@ class _Page(_File):
 
         template = outer_template.replace("@inner_template@", inner_template, 1)
         template = template.replace("@extra_headers@", extra_headers, 1)
-        output = template.replace("@content@", content, 1)
 
-        return output
+        self.content = template.replace("@content@", self.content, 1)
 
-    def process(self):
-        self.site.info("Processing {}", self)
-
-        dir, name = _split(self.output_path)
-        self.title = name
-
-        if isinstance(self.title, bytes):
-            self.title = self.title.decode("utf8")
-
-        match = _title_regex.search(self.content)
-
-        if match:
-            self.title = match.group(2)
-
-        self.title = _tag_regex.sub("", self.title)
-        self.title = self.title.strip()
-
-        self.title = self.attributes.get("title", self.title)
-
-    def render(self):
-        self.site.info("Rendering {}", self)
+    def _replace_variables(self):
+        self.site.info("Replacing variables in {}", self)
 
         page_vars = {
-            "title": self.title,
-            "path_navigation": self.render_path_navigation(),
-            "extra_headers" : self.attributes.get("extra_headers", ""),
+            "title": self.title if self.title is not None else "[none]",
+            "path_navigation": self._render_path_navigation(),
         }
 
-        self.content = self.replace_placeholders(self.content, page_vars)
-
-    def render_link(self):
-        return u"<a href=\"{}\">{}</a>".format(self.url, self.title)
-
-    def render_path_navigation(self):
-        links = list()
-        page = self.parent
-
-        links.append(self.title)
-
-        while page:
-            links.append(page.render_link())
-            page = page.parent
-
-        links = u"".join((u"<li>{}</li>".format(x) for x in reversed(links)))
-
-        return u"<ul id=\"-path-navigation\">{}</ul>".format(links)
-
-    def replace_placeholders(self, content, page_vars):
         out = list()
-        tokens = _re.split("({{.+?}})", content)
+        tokens = _variable_regex.split(self.content)
 
         for token in tokens:
             if token[:2] != "{{" or token[-2:] != "}}":
@@ -540,10 +489,9 @@ class _Page(_File):
                 continue
 
             expr = token_content
-            env = self.site.config_env
 
             try:
-                result = eval(expr, env)
+                result = eval(expr, self.site.config)
             except Exception as e:
                 msg = "Expression '{}'; file '{}'; {}"
                 args = expr, self.input_path, e
@@ -556,22 +504,40 @@ class _Page(_File):
             if result is not None:
                 out.append(str(result))
 
-        return "".join(out)
+        self.content = "".join(out)
+
+    def _render_link(self):
+        return "<a href=\"{}\">{}</a>".format(self.url, self.title)
+
+    def _render_path_navigation(self):
+        links = list()
+        file_ = self
+
+        while file_ is not None:
+            links.append(file_._render_link())
+            file_ = file_.parent
+
+        links = "".join(reversed(links))
+
+        return "<nav id=\"-path-navigation\">{}</nav>".format(links)
+
+    def _save_output(self):
+        self.site.info("Saving {}", self)
+        _write_file(self.output_path, self.content)
 
     def find_links(self):
-        if not self.output_path.endswith(".html"):
-            return
-
         self.site.info("Finding links in {}", self)
 
+        self._load_output()
+
         try:
-            root = self.parse_xml(self.content)
+            root = self._parse_xml(self.content)
         except Exception as e:
-            self.site.warn(str(e))
+            self.site.info(str(e))
             return
 
-        links = self.gather_links(root)
-        link_targets = self.gather_link_targets(root)
+        links = self._gather_links(root)
+        link_targets = self._gather_link_targets(root)
 
         for link in links:
             if link == "?":
@@ -592,7 +558,10 @@ class _Page(_File):
 
         self.site.link_targets.update(link_targets)
 
-    def parse_xml(self, xml):
+    def _load_output(self):
+        self.content = _read_file(self.output_path)
+
+    def _parse_xml(self, xml):
         try:
             return _XML(xml)
         except Exception as e:
@@ -604,7 +573,7 @@ class _Page(_File):
 
             raise Exception(msg)
 
-    def gather_links(self, root_elem):
+    def _gather_links(self, root_elem):
         links = set()
 
         for elem in root_elem.iter("*"):
@@ -618,7 +587,7 @@ class _Page(_File):
 
         return links
 
-    def gather_link_targets(self, root_elem):
+    def _gather_link_targets(self, root_elem):
         link_targets = set()
 
         for elem in root_elem.iter("*"):
@@ -635,6 +604,99 @@ class _Page(_File):
             link_targets.add(target)
 
         return link_targets
+
+class _CssFile(_OutputFile):
+    def __init__(self, site, path, parent):
+        super().__init__(site, path, parent)
+
+        self.site.css_files.append(self)
+
+    def render_output(self, force=False):
+        if self.modified() or force:
+            self.site.info("Rendering {}", self)
+
+            self._replace_variables()
+            self._save_output()
+
+class _JavaScriptFile(_OutputFile):
+    def __init__(self, site, path, parent):
+        super().__init__(site, path, parent)
+
+        self.site.javascript_files.append(self)
+
+    def render_output(self, force=False):
+        if self.modified() or force:
+            self.site.info("Rendering {}", self)
+
+            self._replace_variables()
+            self._save_output()
+
+class _HtmlInFile(_OutputFile):
+    def __init__(self, site, path, parent):
+        super().__init__(site, path, parent)
+
+        self.output_path = self.output_path[:-3]
+
+        self.site.html_in_files.append(self)
+
+    def process_input(self):
+        super().process_input()
+
+        match = _html_title_regex.search(self.content)
+
+        if match:
+            self.title = match.group(2).strip()
+            self.title = _html_tag_regex.sub("", self.title)
+
+    def render_output(self, force=False):
+        if self.modified() or force:
+            self.site.info("Converting {} to HTML", self)
+
+            self._apply_template()
+            self._replace_variables()
+            self._save_output()
+
+class _MarkdownFile(_OutputFile):
+    def __init__(self, site, path, parent):
+        super().__init__(site, path, parent)
+
+        self.output_path = "{}.html".format(self.output_path[:-3])
+
+        self.site.markdown_files.append(self)
+
+    def process_input(self):
+        super().process_input()
+
+        match = _markdown_title_regex.search(self.content)
+
+        if match:
+            self.title = match.group(2).strip()
+
+    def render_output(self, force=False):
+        if self.modified() or force:
+            self.site.info("Rendering {}", self)
+
+            # Strip out comments
+            content_lines = self.content.splitlines()
+            content_lines = [x for x in content_lines if not x.startswith(";;")]
+
+            self.content = _os.linesep.join(content_lines)
+            self.content = self.site._markdown_converter.convert(self.content)
+
+            self.attributes.update(self.content.metadata)
+
+            self._apply_template()
+            self._replace_variables()
+            self._save_output()
+
+class _StaticFile(_OutputFile):
+    def process_input(self):
+        pass
+
+    def render_output(self, force=False):
+        if self.modified() or force:
+            self.site.info("Saving {}", self)
+            _copy_file(self.input_path, self.output_path)
 
 _description = """
 Generate static websites from Markdown and Python
@@ -725,7 +787,7 @@ class TransomCommand(_commandant.Command):
             self.fail("I can't find the default input files")
 
         def copy(file_name, to_path):
-            if _os.path.exists(to_path):
+            if _exists(to_path):
                 self.notice("Skipping '{}'. It already exists.", to_path)
                 return
 
@@ -754,22 +816,22 @@ class TransomCommand(_commandant.Command):
 
 _join = _os.path.join
 _split = _os.path.split
+_exists = _os.path.exists
 _is_file = _os.path.isfile
 _is_dir = _os.path.isdir
 
-def _make_dir(dir):
-    if not _os.path.exists(dir):
-        _os.makedirs(dir)
+def _make_dir(path):
+    if not _exists(path):
+        _os.makedirs(path)
 
 def _read_file(path):
-    with open(path, "r") as file:
-        return file.read()
+    with open(path, "r") as file_:
+        return file_.read()
 
 def _write_file(path, content):
     _make_dir(_split(path)[0])
-
-    with open(path, "w") as file:
-        return file.write(content)
+    with open(path, "w") as file_:
+        return file_.write(content)
 
 def _copy_file(from_path, to_path):
     _make_dir(_split(to_path)[0])
@@ -779,3 +841,12 @@ def _format_repr(obj, *args):
     cls = obj.__class__.__name__
     strings = [str(x) for x in args]
     return "{}({})".format(cls, ",".join(strings))
+
+def _eprint(*args, **kwargs):
+    kwargs["file"] = _sys.stderr
+    print(*args, **kwargs)
+
+def _pprint(*args, **kwargs):
+    import pprint as _pprint
+    kwargs["stream"] = _sys.stderr
+    _pprint.pprint(*args, **kwargs)

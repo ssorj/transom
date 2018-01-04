@@ -135,13 +135,6 @@ nulla pariatur. Excepteur sint occaecat cupidatat non proident,
 sunt in culpa qui officia deserunt mollit anim id est laborum.
 """
 
-ignored_pages += [
-    "/releases/qpid-cpp-*/messaging-api/cpp/api/*",
-    "/releases/qpid-python-*/messaging-api/api/*",
-    "/releases/qpid-proton-*/proton/*/api/*",
-    "/releases/qpid-proton-j-*/api/*",
-]
-
 ignored_links += [
     "/releases/qpid-*/java-broker/book/*",
     "/releases/qpid-broker-j-*/book/*"

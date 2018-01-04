@@ -59,8 +59,9 @@ install: build
 
 .PHONY: clean
 clean:
-	find python -type d -name __pycache__ -delete
 	rm -rf build
+	rm -rf output
+	rm -rf python/__pycache__
 
 .PHONY: test
 test: build
@@ -69,6 +70,14 @@ test: build
 .PHONY: render
 render: build
 	transom render input output
+
+.PHONY: check-links
+check-links: build
+	transom check-links input output
+
+.PHONY: check-files
+check-files: build
+	transom check-files input output
 
 build/prefix.txt:
 	echo ${PREFIX} > build/prefix.txt
