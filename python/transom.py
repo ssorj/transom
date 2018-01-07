@@ -123,53 +123,77 @@ class Transom:
 
     def find_input_files(self):
         with _Phase(self, "Finding input files"):
-            self._traverse_input_files("")
+            input_files = list()
 
-            for file_ in self.input_files:
-                file_.init()
+            for root, dirs, files in _os.walk(self.input_dir):
+                for file_ in files:
+                    path = _join(root, file_)
+                    input_files.append(path)
 
-    def _traverse_input_files(self, subdir, parent=None):
-        input_dir = _join(self.input_dir, subdir)
-        names = set(_os.listdir(input_dir))
+            return input_files
 
-        for name in ("index.md", "index.html.in", "index.html"):
-            if name in names:
-                names.remove(name)
-                parent = self._create_file(_join(subdir, name), parent)
-                break
+    def prepare_input_files(self, input_paths):
+        parents_by_dir = dict()
 
-        for name in names:
-            path = _join(subdir, name)
-            input_path = _join(self.input_dir, path)
+        for input_path in sorted(input_paths):
+            if not self._is_ignored_file(input_path):
+                self._create_file(input_path)
 
-            if self._is_ignored_file(path):
+        for file_ in self.input_files:
+            file_.init()
+
+        index_files = dict()
+        other_files = _defaultdict(list)
+
+        for file_ in self.output_files:
+            path = file_.output_path[len(self.output_dir):]
+            dir_, name = _split(path)
+
+            if name == "index.html":
+                index_files[dir_] = file_
+            else:
+                other_files[dir_].append(file_)
+
+        for dir_ in index_files:
+            parent_dir = _split(dir_)[0]
+
+            if parent_dir == "/":
                 continue
 
-            if _is_dir(input_path):
-                self._traverse_input_files(path, parent)
-            else:
-                self._create_file(path, parent)
+            file_ = index_files[dir_]
+            file_.parent = index_files.get(parent_dir)
 
-    def _is_ignored_file(self, path):
-        filter_path = _join("/", path)
+        for dir_ in other_files:
+            parent = index_files.get(dir_)
+
+            for file_ in other_files[dir_]:
+                file_.parent = parent
+
+    def _is_ignored_file(self, input_path):
+        path = input_path[len(self.input_dir):]
 
         for pattern in self.ignored_file_patterns:
-            if _fnmatch.fnmatch(filter_path, pattern):
+            if _fnmatch.fnmatch(path, pattern):
                 return True
 
         return False
 
-    def _create_file(self, path, parent):
-        if path.startswith(".transom"): return _ConfigFile(self, path)
+    def _create_file(self, input_path):
+        config_dir = _join(self.input_dir, ".transom")
 
-        if path.endswith(".html.in"):   ext = ".html.in"
-        else:                        _, ext = _os.path.splitext(path)
+        if input_path.startswith(config_dir):
+            return _ConfigFile(self, input_path)
 
-        if   ext == ".md":              return _MarkdownFile(self, path, parent)
-        elif ext == ".css":             return _CssFile(self, path, parent)
-        elif ext == ".html.in":         return _HtmlInFile(self, path, parent)
-        elif ext == ".js":              return _JavaScriptFile(self, path, parent)
-        else:                           return _StaticFile(self, path, parent)
+        if input_path.endswith(".html.in"):
+            ext = ".html.in"
+        else:
+            _, ext = _os.path.splitext(input_path)
+
+        if   ext == ".md":              return _MarkdownFile(self, input_path)
+        elif ext == ".css":             return _CssFile(self, input_path)
+        elif ext == ".html.in":         return _HtmlInFile(self, input_path)
+        elif ext == ".js":              return _JavaScriptFile(self, input_path)
+        else:                           return _StaticFile(self, input_path)
 
     def _traverse_output_files(self, subdir, files):
         output_dir = _join(self.output_dir, subdir)
@@ -185,7 +209,10 @@ class Transom:
                 files.add(output_path)
 
     def render(self):
-        self.find_input_files()
+        input_files = self.find_input_files()
+
+        with _Phase(self, "Preparing input files"):
+            self.prepare_input_files(input_files)
 
         print("  Input files        {:>10,}".format(len(self.input_files)))
         print("  Output files       {:>10,}".format(len(self.output_files)))
@@ -346,22 +373,19 @@ class _Phase:
             print("{:0.3f}s [{:0.3f}s]".format(phase_dur, total_dur))
 
 class _InputFile:
-    def __init__(self, site, path):
+    def __init__(self, site, input_path):
         self.site = site
-        self.path = path
 
-        self.input_path = _join(self.site.input_dir, self.path)
+        self.input_path = input_path
         self.input_mtime = None
 
-        if self.input_path.endswith(".html.in"):
-            self.input_extension = ".html.in"
-        else:
-            _, self.input_extension = _os.path.splitext(self.input_path)
+        self.parent = None
 
         self.site.input_files.append(self)
 
     def __repr__(self):
-        return _format_repr(self, self.path)
+        path = self.input_path[len(self.site.input_dir) + 1:]
+        return _format_repr(self, path)
 
     def init(self):
         self.input_mtime = _os.path.getmtime(self.input_path)
@@ -377,8 +401,8 @@ class _InputFile:
         return True
 
 class _ConfigFile(_InputFile):
-    def __init__(self, site, path):
-        super().__init__(site, path)
+    def __init__(self, site, input_path):
+        super().__init__(site, input_path)
 
         self.output_mtime = None
 
@@ -394,17 +418,18 @@ class _ConfigFile(_InputFile):
         return self.input_mtime > self.output_mtime
 
 class _OutputFile(_InputFile):
-    def __init__(self, site, path, parent):
-        super().__init__(site, path)
+    def __init__(self, site, input_path):
+        super().__init__(site, input_path)
 
-        self.parent = parent
+        path = self.input_path[len(self.site.input_dir) + 1:]
 
-        self.output_path = _join(self.site.output_dir, self.path)
+        self.output_path = _join(self.site.output_dir, path)
         self.output_mtime = None
 
         self.content = None
         self.template = None
 
+        self.parent = None
         self.url = None
         self.title = None
         self.attributes = dict()
@@ -415,6 +440,7 @@ class _OutputFile(_InputFile):
         super().init()
 
         self.url = self.site.get_url(self.output_path)
+
         self.site.link_targets.add(self.url)
 
         if self.url.endswith("/index.html"):
@@ -606,8 +632,8 @@ class _OutputFile(_InputFile):
         return link_targets
 
 class _CssFile(_OutputFile):
-    def __init__(self, site, path, parent):
-        super().__init__(site, path, parent)
+    def __init__(self, site, input_path):
+        super().__init__(site, input_path)
 
         self.site.css_files.append(self)
 
@@ -619,8 +645,8 @@ class _CssFile(_OutputFile):
             self._save_output()
 
 class _JavaScriptFile(_OutputFile):
-    def __init__(self, site, path, parent):
-        super().__init__(site, path, parent)
+    def __init__(self, site, input_path):
+        super().__init__(site, input_path)
 
         self.site.javascript_files.append(self)
 
@@ -632,8 +658,8 @@ class _JavaScriptFile(_OutputFile):
             self._save_output()
 
 class _HtmlInFile(_OutputFile):
-    def __init__(self, site, path, parent):
-        super().__init__(site, path, parent)
+    def __init__(self, site, input_path):
+        super().__init__(site, input_path)
 
         self.output_path = self.output_path[:-3]
 
@@ -657,8 +683,8 @@ class _HtmlInFile(_OutputFile):
             self._save_output()
 
 class _MarkdownFile(_OutputFile):
-    def __init__(self, site, path, parent):
-        super().__init__(site, path, parent)
+    def __init__(self, site, input_path):
+        super().__init__(site, input_path)
 
         self.output_path = "{}.html".format(self.output_path[:-3])
 
