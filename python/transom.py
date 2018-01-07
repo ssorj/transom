@@ -71,13 +71,7 @@ class Transom:
 
         self.input_files = list()
         self.output_files = list()
-
         self.config_files = list()
-        self.css_files = list()
-        self.html_files = list()
-        self.html_in_files = list()
-        self.javascript_files = list()
-        self.markdown_files = list()
 
         self.links = _defaultdict(set)
         self.link_targets = set()
@@ -132,10 +126,8 @@ class Transom:
 
             return input_files
 
-    def prepare_input_files(self, input_paths):
-        parents_by_dir = dict()
-
-        for input_path in sorted(input_paths):
+    def init_input_files(self, input_paths):
+        for input_path in input_paths:
             if not self._is_ignored_file(input_path):
                 self._create_file(input_path)
 
@@ -211,16 +203,12 @@ class Transom:
     def render(self):
         input_files = self.find_input_files()
 
-        with _Phase(self, "Preparing input files"):
-            self.prepare_input_files(input_files)
+        with _Phase(self, "Initializing input files"):
+            self.init_input_files(input_files)
 
         print("  Input files        {:>10,}".format(len(self.input_files)))
         print("  Output files       {:>10,}".format(len(self.output_files)))
         print("  Config files       {:>10,}".format(len(self.config_files)))
-        print("  CSS files          {:>10,}".format(len(self.css_files)))
-        print("  HTML-in files      {:>10,}".format(len(self.html_in_files)))
-        print("  Markdown files     {:>10,}".format(len(self.markdown_files)))
-        print("  JavaScript files   {:>10,}".format(len(self.javascript_files)))
 
         with _Phase(self, "Processing input files"):
             for file_ in self.input_files:
@@ -265,10 +253,7 @@ class Transom:
         self.find_input_files()
 
         with _Phase(self, "Finding links"):
-            for file_ in self.html_in_files:
-                file_.find_links()
-
-            for file_ in self.markdown_files:
+            for file_ in self.output_files:
                 file_.find_links()
 
         with _Phase(self, "Checking links"):
@@ -552,6 +537,9 @@ class _OutputFile(_InputFile):
         _write_file(self.output_path, self.content)
 
     def find_links(self):
+        if not self.output_path.endswith(".html"):
+            return
+
         self.site.info("Finding links in {}", self)
 
         self._load_output()
@@ -632,11 +620,6 @@ class _OutputFile(_InputFile):
         return link_targets
 
 class _CssFile(_OutputFile):
-    def __init__(self, site, input_path):
-        super().__init__(site, input_path)
-
-        self.site.css_files.append(self)
-
     def render_output(self, force=False):
         if self.modified() or force:
             self.site.info("Rendering {}", self)
@@ -645,11 +628,6 @@ class _CssFile(_OutputFile):
             self._save_output()
 
 class _JavaScriptFile(_OutputFile):
-    def __init__(self, site, input_path):
-        super().__init__(site, input_path)
-
-        self.site.javascript_files.append(self)
-
     def render_output(self, force=False):
         if self.modified() or force:
             self.site.info("Rendering {}", self)
@@ -662,8 +640,6 @@ class _HtmlInFile(_OutputFile):
         super().__init__(site, input_path)
 
         self.output_path = self.output_path[:-3]
-
-        self.site.html_in_files.append(self)
 
     def process_input(self):
         super().process_input()
@@ -687,8 +663,6 @@ class _MarkdownFile(_OutputFile):
         super().__init__(site, input_path)
 
         self.output_path = "{}.html".format(self.output_path[:-3])
-
-        self.site.markdown_files.append(self)
 
     def process_input(self):
         super().process_input()
