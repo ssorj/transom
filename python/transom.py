@@ -121,8 +121,7 @@ class Transom:
 
             for root, dirs, files in _os.walk(self.input_dir):
                 for file_ in files:
-                    path = _join(root, file_)
-                    input_files.append(path)
+                    input_files.append(_join(root, file_))
 
             return input_files
 
@@ -188,19 +187,6 @@ class Transom:
         elif ext == ".js":              return _JavaScriptFile(self, input_path)
         else:                           return _StaticFile(self, input_path)
 
-    def _traverse_output_files(self, subdir, files):
-        output_dir = _join(self.output_dir, subdir)
-        names = set(_os.listdir(output_dir))
-
-        for name in names:
-            path = _join(subdir, name)
-            output_path = _join(self.output_dir, path)
-
-            if _is_dir(output_path):
-                self._traverse_output_files(path, files)
-            else:
-                files.add(output_path)
-
     def render(self):
         input_file_paths = self.find_input_files()
 
@@ -234,7 +220,7 @@ class Transom:
             for file_ in self.output_files:
                 expected_files.add(file_.output_path)
 
-            self._traverse_output_files("", found_files)
+            found_files = self._find_output_files()
 
             missing_files = expected_files.difference(found_files)
             extra_files = found_files.difference(expected_files)
@@ -250,6 +236,15 @@ class Transom:
 
             for path in sorted(extra_files):
                 print("  {}".format(path))
+
+    def _find_output_files(self):
+        output_files = set()
+
+        for root, dirs, files in _os.walk(self.output_dir):
+            for file_ in files:
+                output_files.add(_join(root, file_))
+
+        return output_files
 
     def check_links(self, internal=True, external=False):
         input_file_paths = self.find_input_files()
