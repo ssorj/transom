@@ -383,9 +383,6 @@ class _InputFile:
         self.site.info("Loading {}", self)
         self.content = _read_file(self.input_path)
 
-    def modified(self):
-        return True
-
 class _ConfigFile(_InputFile):
     __slots__ = "output_mtime",
 
