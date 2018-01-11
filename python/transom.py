@@ -127,12 +127,13 @@ class Transom:
             return input_files
 
     def init_input_files(self, input_paths):
-        for input_path in input_paths:
-            if not self._is_ignored_file(input_path):
-                self._create_file(input_path)
+        with _Phase(self, "Initializing input files"):
+            for input_path in input_paths:
+                if not self._is_ignored_file(input_path):
+                    self._create_file(input_path)
 
-        for file_ in self.input_files:
-            file_.init()
+            for file_ in self.input_files:
+                file_.init()
 
         index_files = dict()
         other_files = _defaultdict(list)
@@ -201,10 +202,9 @@ class Transom:
                 files.add(output_path)
 
     def render(self):
-        input_files = self.find_input_files()
+        input_file_paths = self.find_input_files()
 
-        with _Phase(self, "Initializing input files"):
-            self.init_input_files(input_files)
+        self.init_input_files(input_file_paths)
 
         print("  Input files        {:>10,}".format(len(self.input_files)))
         print("  Output files       {:>10,}".format(len(self.output_files)))
@@ -223,7 +223,9 @@ class Transom:
         _os.utime(self.output_dir)
 
     def check_files(self):
-        self.find_input_files()
+        input_file_paths = self.find_input_files()
+
+        self.init_input_files(input_file_paths)
 
         with _Phase(self, "Checking output files"):
             expected_files = set()
@@ -250,7 +252,9 @@ class Transom:
                 print("  {}".format(path))
 
     def check_links(self, internal=True, external=False):
-        self.find_input_files()
+        input_file_paths = self.find_input_files()
+
+        self.init_input_files(input_file_paths)
 
         with _Phase(self, "Finding links"):
             for file_ in self.output_files:
@@ -545,10 +549,12 @@ class _OutputFile(_InputFile):
         self._load_output()
 
         try:
-            root = self._parse_xml(self.content)
+            root = _XML(self.content)
         except Exception as e:
             self.site.info(str(e))
             return
+
+        assert root is not None, self.content
 
         links = self._gather_links(root)
         link_targets = self._gather_link_targets(root)
@@ -574,18 +580,6 @@ class _OutputFile(_InputFile):
 
     def _load_output(self):
         self.content = _read_file(self.output_path)
-
-    def _parse_xml(self, xml):
-        try:
-            return _XML(xml)
-        except Exception as e:
-            path = _tempfile.mkstemp(".xml")[1]
-            msg = "{} fails to parse; {}; see {}".format(self, str(e), path)
-
-            with open(path, "w") as file:
-                file.write(xml)
-
-            raise Exception(msg)
 
     def _gather_links(self, root_elem):
         links = set()
@@ -613,7 +607,7 @@ class _OutputFile(_InputFile):
             target = "{}#{}".format(self.url, id)
 
             if target in link_targets:
-                self.site.warn("Duplicate link target in '{}'", target)
+                self.site.info("Duplicate link target in '{}'", target)
 
             link_targets.add(target)
 
