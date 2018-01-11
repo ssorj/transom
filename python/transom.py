@@ -176,16 +176,13 @@ class Transom:
         if input_path.startswith(config_dir):
             return _ConfigFile(self, input_path)
 
-        if input_path.endswith(".html.in"):
-            ext = ".html.in"
-        else:
-            ext = _os.path.splitext(input_path)[1]
+        name, ext = _os.path.splitext(input_path)
 
-        if   ext == ".md":      return _MarkdownFile(self, input_path)
-        elif ext == ".css":     return _CssFile(self, input_path)
-        elif ext == ".html.in": return _HtmlInFile(self, input_path)
-        elif ext == ".js":      return _JavaScriptFile(self, input_path)
-        else:                   return _StaticFile(self, input_path)
+        if ext == ".md":               return _MarkdownFile(self, input_path)
+        elif ext == ".in":
+            if name.endswith(".html"): return _HtmlInFile(self, input_path)
+            else:                      return _InFile(self, input_path)
+        else:                          return _StaticFile(self, input_path)
 
     def render(self):
         input_file_paths = self.find_input_files()
@@ -411,6 +408,9 @@ class _OutputFile(_InputFile):
 
         path = self.input_path[len(self.site.input_dir) + 1:]
 
+        if path.endswith(".in"):
+            path = path[:-3]
+
         self.output_path = _join(self.site.output_dir, path)
         self.output_mtime = None
 
@@ -612,51 +612,6 @@ class _OutputFile(_InputFile):
 
         return link_targets
 
-class _CssFile(_OutputFile):
-    __slots__ = ()
-
-    def render_output(self, force=False):
-        if self.modified() or force:
-            self.site.info("Rendering {}", self)
-
-            self._replace_variables()
-            self._save_output()
-
-class _JavaScriptFile(_OutputFile):
-    __slots__ = ()
-
-    def render_output(self, force=False):
-        if self.modified() or force:
-            self.site.info("Rendering {}", self)
-
-            self._replace_variables()
-            self._save_output()
-
-class _HtmlInFile(_OutputFile):
-    __slots__ = ()
-
-    def __init__(self, site, input_path):
-        super().__init__(site, input_path)
-
-        self.output_path = self.output_path[:-3]
-
-    def process_input(self):
-        super().process_input()
-
-        match = _html_title_regex.search(self.content)
-
-        if match:
-            self.title = match.group(2).strip()
-            self.title = _html_tag_regex.sub("", self.title)
-
-    def render_output(self, force=False):
-        if self.modified() or force:
-            self.site.info("Converting {} to HTML", self)
-
-            self._apply_template()
-            self._replace_variables()
-            self._save_output()
-
 class _MarkdownFile(_OutputFile):
     __slots__ = ()
 
@@ -687,6 +642,36 @@ class _MarkdownFile(_OutputFile):
             self.attributes.update(self.content.metadata)
 
             self._apply_template()
+            self._replace_variables()
+            self._save_output()
+
+class _HtmlInFile(_OutputFile):
+    __slots__ = ()
+
+    def process_input(self):
+        super().process_input()
+
+        match = _html_title_regex.search(self.content)
+
+        if match:
+            self.title = match.group(2).strip()
+            self.title = _html_tag_regex.sub("", self.title)
+
+    def render_output(self, force=False):
+        if self.modified() or force:
+            self.site.info("Converting {} to HTML", self)
+
+            self._apply_template()
+            self._replace_variables()
+            self._save_output()
+
+class _InFile(_OutputFile):
+    __slots__ = ()
+
+    def render_output(self, force=False):
+        if self.modified() or force:
+            self.site.info("Rendering {}", self)
+
             self._replace_variables()
             self._save_output()
 
@@ -837,9 +822,9 @@ def _write_file(path, content):
 
 def _copy_file(from_path, to_path):
     _os.makedirs(_split(to_path)[0], exist_ok=True)
-    with open(from_path, "rb") as from_:
-        with open(to_path, "wb") as to_:
-            _shutil.copyfileobj(from_, to_, 4096)
+    with open(from_path, "rb") as from_file:
+        with open(to_path, "wb") as to_file:
+            _shutil.copyfileobj(from_file, to_file, 4096)
 
 def _format_repr(obj, *args):
     cls = obj.__class__.__name__
