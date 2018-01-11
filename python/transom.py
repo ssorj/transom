@@ -179,13 +179,13 @@ class Transom:
         if input_path.endswith(".html.in"):
             ext = ".html.in"
         else:
-            _, ext = _os.path.splitext(input_path)
+            ext = _os.path.splitext(input_path)[1]
 
-        if   ext == ".md":              return _MarkdownFile(self, input_path)
-        elif ext == ".css":             return _CssFile(self, input_path)
-        elif ext == ".html.in":         return _HtmlInFile(self, input_path)
-        elif ext == ".js":              return _JavaScriptFile(self, input_path)
-        else:                           return _StaticFile(self, input_path)
+        if   ext == ".md":      return _MarkdownFile(self, input_path)
+        elif ext == ".css":     return _CssFile(self, input_path)
+        elif ext == ".html.in": return _HtmlInFile(self, input_path)
+        elif ext == ".js":      return _JavaScriptFile(self, input_path)
+        else:                   return _StaticFile(self, input_path)
 
     def render(self):
         input_file_paths = self.find_input_files()
@@ -357,6 +357,8 @@ class _Phase:
             print("{:0.3f}s [{:0.3f}s]".format(phase_dur, total_dur))
 
 class _InputFile:
+    __slots__ = "site", "input_path", "input_mtime", "parent"
+
     def __init__(self, site, input_path):
         self.site = site
 
@@ -385,6 +387,8 @@ class _InputFile:
         return True
 
 class _ConfigFile(_InputFile):
+    __slots__ = "output_mtime",
+
     def __init__(self, site, input_path):
         super().__init__(site, input_path)
 
@@ -402,6 +406,9 @@ class _ConfigFile(_InputFile):
         return self.input_mtime > self.output_mtime
 
 class _OutputFile(_InputFile):
+    __slots__ = "output_path", "output_mtime", "content", "template", "parent", \
+                "url", "title", "attributes"
+
     def __init__(self, site, input_path):
         super().__init__(site, input_path)
 
@@ -609,6 +616,8 @@ class _OutputFile(_InputFile):
         return link_targets
 
 class _CssFile(_OutputFile):
+    __slots__ = ()
+
     def render_output(self, force=False):
         if self.modified() or force:
             self.site.info("Rendering {}", self)
@@ -617,6 +626,8 @@ class _CssFile(_OutputFile):
             self._save_output()
 
 class _JavaScriptFile(_OutputFile):
+    __slots__ = ()
+
     def render_output(self, force=False):
         if self.modified() or force:
             self.site.info("Rendering {}", self)
@@ -625,6 +636,8 @@ class _JavaScriptFile(_OutputFile):
             self._save_output()
 
 class _HtmlInFile(_OutputFile):
+    __slots__ = ()
+
     def __init__(self, site, input_path):
         super().__init__(site, input_path)
 
@@ -648,6 +661,8 @@ class _HtmlInFile(_OutputFile):
             self._save_output()
 
 class _MarkdownFile(_OutputFile):
+    __slots__ = ()
+
     def __init__(self, site, input_path):
         super().__init__(site, input_path)
 
@@ -679,6 +694,8 @@ class _MarkdownFile(_OutputFile):
             self._save_output()
 
 class _StaticFile(_OutputFile):
+    __slots__ = ()
+
     def process_input(self):
         pass
 
