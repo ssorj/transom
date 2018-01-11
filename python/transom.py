@@ -824,10 +824,7 @@ _is_file = _os.path.isfile
 _is_dir = _os.path.isdir
 
 def _make_dir(path):
-    try:
-        _os.makedirs(path)
-    except FileExistsError:
-        pass
+    _os.makedirs(path, exist_ok=True)
 
 def _read_file(path):
     with open(path, "r") as file_:
