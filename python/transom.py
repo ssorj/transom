@@ -831,13 +831,15 @@ def _read_file(path):
         return file_.read()
 
 def _write_file(path, content):
-    _make_dir(_split(path)[0])
+    _os.makedirs(_split(path)[0], exist_ok=True)
     with open(path, "w") as file_:
         return file_.write(content)
 
 def _copy_file(from_path, to_path):
-    _make_dir(_split(to_path)[0])
-    _shutil.copy(from_path, to_path)
+    _os.makedirs(_split(to_path)[0], exist_ok=True)
+    with open(from_path, "rb") as from_:
+        with open(to_path, "wb") as to_:
+            _shutil.copyfileobj(from_, to_, 4096)
 
 def _format_repr(obj, *args):
     cls = obj.__class__.__name__
