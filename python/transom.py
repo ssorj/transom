@@ -394,11 +394,11 @@ class _ConfigFile(_InputFile):
         self.site.config_files.append(self)
 
     def modified(self):
-        if not _exists(self.site.output_dir):
-            return True
-
         if self.output_mtime is None:
-            self.output_mtime = _os.path.getmtime(self.site.output_dir)
+            try:
+                self.output_mtime = _os.path.getmtime(self.site.output_dir)
+            except FileNotFoundError:
+                return True
 
         return self.input_mtime > self.output_mtime
 
@@ -440,11 +440,11 @@ class _OutputFile(_InputFile):
         self._load_input()
 
     def modified(self):
-        if not _exists(self.output_path):
-            return True
-
         if self.output_mtime is None:
-            self.output_mtime = _os.path.getmtime(self.output_path)
+            try:
+                self.output_mtime = _os.path.getmtime(self.output_path)
+            except FileNotFoundError:
+                return True
 
         return self.input_mtime > self.output_mtime
 
