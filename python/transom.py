@@ -106,6 +106,7 @@ class Transom:
 
         self.config = {
             "site_url": self.site_url,
+            "extra_headers": None,
             "ignored_files": self.ignored_file_patterns,
             "ignored_links": self.ignored_link_patterns,
         }
