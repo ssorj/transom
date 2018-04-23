@@ -235,6 +235,8 @@ class Transom:
             for path in sorted(extra_files):
                 print("  {}".format(path))
 
+        return len(missing_files), len(extra_files)
+
     def _find_output_files(self):
         output_files = set()
 
@@ -280,6 +282,8 @@ class Transom:
 
             for source in self.links[link]:
                 print("  Source: {}".format(source))
+
+        return len(errors_by_link)
 
     def _filter_links(self, links):
         def retain(link):
@@ -798,10 +802,23 @@ class TransomCommand(_commandant.Command):
         self.lib.render()
 
     def check_links_command(self):
-        self.lib.check_links(internal=True, external=self.args.all)
+        link_errors = self.lib.check_links(internal=True, external=self.args.all)
+
+        if link_errors == 0:
+            print("PASSED")
+        else:
+            self.fail("FAILED")
 
     def check_files_command(self):
-        self.lib.check_files()
+        missing_files, extra_files = self.lib.check_files()
+
+        if extra_files != 0:
+            self.warn("{} files missing in the output", extra_files)
+
+        if missing_files == 0:
+            print("PASSED")
+        else:
+            self.fail("FAILED")
 
 _join = _os.path.join
 _split = _os.path.split
