@@ -313,17 +313,23 @@ pre, .scroll {
     font-size: 1.2em;
 }
 
+#-logotype > img {
+    height: 2.2em;
+    vertical-align: -0.7em;
+    margin: 0 0.1em 0 0;
+}
+
 #-global-navigation {
     display: flex;
+    align-items: baseline;
     font-family: var(--title-font-family);
     font-weight: 600;
-    padding: 0;
+    padding: 1em 0;
     margin: 0;
 }
 
 #-global-navigation > a {
-    padding: 1em;
-    margin: auto 0;
+    margin: 0 1.4em 0 0;
     color: rgba(255, 255, 255, 0.8);
 }
 
@@ -337,13 +343,10 @@ pre, .scroll {
 }
 
 #-path-navigation {
+    display: none;
     padding: 0;
     font-size: 0.9em;
     font-weight: 600;
-}
-
-#-path-navigation {
-    display: flex;
 }
 
 #-path-navigation > a {
