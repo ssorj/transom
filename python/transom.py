@@ -646,6 +646,11 @@ class _MarkdownFile(_OutputFile):
 
             self.attributes.update(self.content.metadata)
 
+            try:
+                self.title = self.attributes["title"]
+            except KeyError:
+                pass
+
             self._apply_template()
             self._replace_variables()
             self._save_output()

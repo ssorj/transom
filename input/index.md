@@ -1,5 +1,5 @@
 ---
-title: Home XXX
+title: Home
 inner_template: none
 extra_headers: <link rel="stylesheet" href="{{site_url}}/index.css" type="text/css" async="async"/>
 ---
