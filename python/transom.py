@@ -62,7 +62,7 @@ class Transom:
         self.verbose = False
         self.quiet = False
 
-        self.config_dir = _join(self.input_dir, ".transom")
+        self.config_dir = _join(self.input_dir, "_transom")
         self.config_file = _join(self.config_dir, "config.py")
         self.config = None
 
@@ -172,7 +172,7 @@ class Transom:
         return False
 
     def _create_file(self, input_path):
-        config_dir = _join(self.input_dir, ".transom")
+        config_dir = _join(self.input_dir, "_transom")
 
         if input_path.startswith(config_dir):
             return _ConfigFile(self, input_path)
@@ -794,7 +794,7 @@ class TransomCommand(_commandant.Command):
 
             self.notice("Creating '{}'", to_path)
 
-        config_dir = _join(self.args.input_dir, ".transom")
+        config_dir = _join(self.args.input_dir, "_transom")
 
         copy("outer-template.html", _join(config_dir, "outer-template.html"))
         copy("inner-template.html", _join(config_dir, "inner-template.html"))
