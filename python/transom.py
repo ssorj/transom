@@ -190,9 +190,10 @@ class Transom:
 
         self.init_input_files(input_file_paths)
 
-        print("  Input files        {:>10,}".format(len(self.input_files)))
-        print("  Output files       {:>10,}".format(len(self.output_files)))
-        print("  Config files       {:>10,}".format(len(self.config_files)))
+        if not self.quiet:
+            print("  Input files        {:>10,}".format(len(self.input_files)))
+            print("  Output files       {:>10,}".format(len(self.output_files)))
+            print("  Config files       {:>10,}".format(len(self.config_files)))
 
         with _Phase(self, "Processing input files"):
             for file_ in self.input_files:
@@ -341,12 +342,12 @@ class _Phase:
     def __enter__(self):
         self.start_time = _time.time()
 
-        if not self.site.verbose:
+        if not self.site.quiet and not self.site.verbose:
             message = self.message.format(*self.args)
             print("{:.<40} ".format(message + " "), end="", flush=True)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if not self.site.verbose and exc_type is not None:
+        if not self.site.quiet and not self.site.verbose and exc_type is not None:
             print("FAILED")
             return
 
@@ -355,7 +356,7 @@ class _Phase:
         phase_dur = self.end_time - self.start_time
         total_dur = self.end_time - self.site.start_time
 
-        if not self.site.verbose:
+        if not self.site.quiet and not self.site.verbose:
             print("{:0.3f}s [{:0.3f}s]".format(phase_dur, total_dur))
 
 class _InputFile:
