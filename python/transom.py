@@ -185,7 +185,7 @@ class Transom:
             else:                      return _InFile(self, input_path)
         else:                          return _StaticFile(self, input_path)
 
-    def render(self):
+    def render(self, force=False):
         input_file_paths = self.find_input_files()
 
         self.init_input_files(input_file_paths)
@@ -199,7 +199,7 @@ class Transom:
             for file_ in self.input_files:
                 file_.process_input()
 
-        force = any([x.modified() for x in self.config_files])
+        force = force or any([x.modified() for x in self.config_files])
 
         with _Phase(self, "Rendering output files"):
             for file_ in self.output_files:
@@ -734,6 +734,8 @@ class TransomCommand(_commandant.Command):
                             help="Read input files from INPUT-DIR")
         render.add_argument("output_dir", metavar="OUTPUT-DIR",
                             help="Write output files to OUTPUT-DIR")
+        render.add_argument("--force", action="store_true",
+                            help="Render all input files, including unmodified ones")
 
         check_links = subparsers.add_parser("check-links")
         check_links.description = "Check for broken links"
@@ -805,7 +807,7 @@ class TransomCommand(_commandant.Command):
         copy("index.md", _join(self.args.input_dir, "index.md"))
 
     def render_command(self):
-        self.lib.render()
+        self.lib.render(force=self.args.force)
 
     def check_links_command(self):
         link_errors = self.lib.check_links(internal=True, external=self.args.all)

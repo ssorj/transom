@@ -42,6 +42,7 @@ def test_transom_render(session):
 
         call("transom render a b")
         call("transom --site-url https://example.com render a b")
+        call("transom --site-url https://example.com render --force a b")
 
 def test_transom_check_links(session):
     call("transom check-links --help")
