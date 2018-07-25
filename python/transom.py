@@ -865,3 +865,7 @@ def _pprint(*args, **kwargs):
     import pprint as _pprint
     kwargs["stream"] = _sys.stderr
     _pprint.pprint(*args, **kwargs)
+
+if __name__ == "__main__":
+    command = TransomCommand(None)
+    command.main()
