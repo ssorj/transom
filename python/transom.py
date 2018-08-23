@@ -804,8 +804,8 @@ class TransomCommand(_commandant.Command):
         copy("inner-template.html", _join(config_dir, "inner-template.html"))
         copy("config.py", _join(config_dir, "config.py"))
 
-        copy("site.css", _join(self.args.input_dir, "site.css"))
-        copy("site.js", _join(self.args.input_dir, "site.js"))
+        copy("main.css", _join(self.args.input_dir, "main.css"))
+        copy("main.js", _join(self.args.input_dir, "main.js"))
         copy("index.md", _join(self.args.input_dir, "index.md"))
 
     def render_command(self):
