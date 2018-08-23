@@ -53,11 +53,11 @@ _markdown_extras = {
 _variable_regex = _re.compile("({{.+?}})")
 
 class Transom:
-    def __init__(self, site_url, input_dir, output_dir, home=None):
-        self.site_url = site_url
+    def __init__(self, input_dir, output_dir, home=None, site_url=None):
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.home = home
+        self.site_url = site_url
 
         self.verbose = False
         self.quiet = False
@@ -94,6 +94,9 @@ class Transom:
 
             if not _is_file(self.inner_template_path):
                 self.inner_template_path = _join(self.home, "files", "inner-template.html")
+
+        if self.site_url is None:
+            self.site_url = "file:{}".format(_os.path.abspath(self.output_dir))
 
         if not _is_file(self.outer_template_path):
             raise Exception("No outer template found")
@@ -716,9 +719,6 @@ class TransomCommand(_commandant.Command):
         self.description = _description
         self.epilog = _epilog
 
-        self.add_argument("--site-url", metavar="URL",
-                          help="Prefix site links with URL")
-
         subparsers = self.add_subparsers()
 
         init = subparsers.add_parser("init")
@@ -734,6 +734,8 @@ class TransomCommand(_commandant.Command):
                             help="Read input files from INPUT-DIR")
         render.add_argument("output_dir", metavar="OUTPUT-DIR",
                             help="Write output files to OUTPUT-DIR")
+        render.add_argument("--site-url", metavar="URL",
+                            help="Prefix site links with URL")
         render.add_argument("--force", action="store_true",
                             help="Render all input files, including unmodified ones")
 
@@ -744,6 +746,8 @@ class TransomCommand(_commandant.Command):
                                  help="Check input files in INPUT-DIR")
         check_links.add_argument("output_dir", metavar="OUTPUT-DIR",
                                  help="Check output files in OUTPUT-DIR")
+        check_links.add_argument("--site-url", metavar="URL",
+                                 help="Determine internal links using URL")
         check_links.add_argument("--all", action="store_true",
                                  help="Check external links as well as internal ones")
 
@@ -763,18 +767,16 @@ class TransomCommand(_commandant.Command):
         if "func" not in self.args:
             self.fail("Missing subcommand")
 
-        if self.args.func != self.init_command:
-            self.init_lib()
-
     def init_lib(self):
         assert self.lib is None
 
-        site_url = self.args.site_url
+        site_url = None
 
-        if site_url is None:
-            site_url = "file:{}".format(_os.path.abspath(self.args.output_dir))
+        if "site_url" in self.args:
+            site_url = self.args.site_url
 
-        self.lib = Transom(site_url, self.args.input_dir, self.args.output_dir, self.home)
+        self.lib = Transom(self.args.input_dir, self.args.output_dir,
+                           home=self.home, site_url=site_url)
         self.lib.verbose = self.args.verbose
         self.lib.quiet = self.args.quiet
 
@@ -807,9 +809,12 @@ class TransomCommand(_commandant.Command):
         copy("index.md", _join(self.args.input_dir, "index.md"))
 
     def render_command(self):
+        self.init_lib()
         self.lib.render(force=self.args.force)
 
     def check_links_command(self):
+        self.init_lib()
+
         link_errors = self.lib.check_links(internal=True, external=self.args.all)
 
         if link_errors == 0:
@@ -818,6 +823,8 @@ class TransomCommand(_commandant.Command):
             self.fail("FAILED")
 
     def check_files_command(self):
+        self.init_lib()
+
         missing_files, extra_files = self.lib.check_files()
 
         if extra_files != 0:
@@ -867,5 +874,5 @@ def _pprint(*args, **kwargs):
     _pprint.pprint(*args, **kwargs)
 
 if __name__ == "__main__":
-    command = TransomCommand(None)
+    command = TransomCommand()
     command.main()
