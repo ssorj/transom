@@ -23,9 +23,9 @@ DESTDIR := ""
 PREFIX := ${HOME}/.local
 INSTALLED_TRANSOM_HOME = ${PREFIX}/share/transom
 
-export TRANSOM_HOME = ${PWD}/build/transom
-export PATH := ${PWD}/build/bin:${PATH}
-export PYTHONPATH := ${PWD}/python:${PYTHONPATH}
+export TRANSOM_HOME = ${CURDIR}/build/transom
+export PATH := ${CURDIR}/build/bin:${PATH}
+export PYTHONPATH := ${CURDIR}/python:${PYTHONPATH}
 
 VERSION := $(shell cat VERSION.txt)
 
