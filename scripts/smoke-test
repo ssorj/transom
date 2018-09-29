@@ -21,4 +21,4 @@
 from plano import *
 
 call("transom --help", quiet=True)
-call("transom --init-only render a b", quiet=True)
+call("transom render --init-only a b", quiet=True)

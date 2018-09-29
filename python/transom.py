@@ -19,6 +19,7 @@
 
 from __future__ import print_function
 
+import argparse as _argparse
 import codecs as _codecs
 import commandant as _commandant
 import fnmatch as _fnmatch
@@ -748,7 +749,7 @@ subcommands:
 
 class TransomCommand(_commandant.Command):
     def __init__(self, home=None):
-        super().__init__(home, "transom")
+        super().__init__(home=home, name="transom", standard_args=False)
 
         self.description = _description
         self.epilog = _epilog
@@ -760,6 +761,12 @@ class TransomCommand(_commandant.Command):
         init.set_defaults(func=self.init_command)
         init.add_argument("input_dir", metavar="INPUT-DIR",
                           help="Place default input files in INPUT-DIR")
+        init.add_argument("--quiet", action="store_true",
+                          help="Print no logging to the console")
+        init.add_argument("--verbose", action="store_true",
+                          help="Print detailed logging to the console")
+        init.add_argument("--init-only", action="store_true",
+                          help=_argparse.SUPPRESS)
 
         render = subparsers.add_parser("render")
         render.description = "Generate output files"
@@ -774,6 +781,12 @@ class TransomCommand(_commandant.Command):
                             help="Render all input files, including unmodified ones")
         render.add_argument("--watch", action="store_true",
                             help="Rerender when input files change")
+        render.add_argument("--quiet", action="store_true",
+                            help="Print no logging to the console")
+        render.add_argument("--verbose", action="store_true",
+                            help="Print detailed logging to the console")
+        render.add_argument("--init-only", action="store_true",
+                            help=_argparse.SUPPRESS)
 
         check_links = subparsers.add_parser("check-links")
         check_links.description = "Check for broken links"
@@ -786,6 +799,12 @@ class TransomCommand(_commandant.Command):
                                  help="Determine internal links using URL")
         check_links.add_argument("--all", action="store_true",
                                  help="Check external links as well as internal ones")
+        check_links.add_argument("--quiet", action="store_true",
+                                 help="Print no logging to the console")
+        check_links.add_argument("--verbose", action="store_true",
+                                 help="Print detailed logging to the console")
+        check_links.add_argument("--init-only", action="store_true",
+                                 help=_argparse.SUPPRESS)
 
         check_files = subparsers.add_parser("check-files")
         check_files.description = "Check for missing or extra files"
@@ -794,6 +813,12 @@ class TransomCommand(_commandant.Command):
                                  help="Check input files in INPUT-DIR")
         check_files.add_argument("output_dir", metavar="OUTPUT-DIR",
                                  help="Check output files in OUTPUT-DIR")
+        check_files.add_argument("--quiet", action="store_true",
+                                 help="Print no logging to the console")
+        check_files.add_argument("--verbose", action="store_true",
+                                 help="Print detailed logging to the console")
+        check_files.add_argument("--init-only", action="store_true",
+                                 help=_argparse.SUPPRESS)
 
         self.lib = None
 

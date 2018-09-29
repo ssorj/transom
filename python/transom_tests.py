@@ -27,7 +27,7 @@ def test_transom_options(session):
 
 def test_transom_init(session):
     call("transom init --help")
-    call("transom --init-only --verbose init a")
+    call("transom init --init-only --verbose a")
 
     with temp_working_dir():
         call("transom init a")
@@ -35,7 +35,7 @@ def test_transom_init(session):
 
 def test_transom_render(session):
     call("transom render --help")
-    call("transom --init-only --quiet render a b")
+    call("transom render --init-only --quiet a b")
 
     with temp_working_dir():
         make_input_files("a")
@@ -46,7 +46,7 @@ def test_transom_render(session):
 
 def test_transom_check_links(session):
     call("transom check-links --help")
-    call("transom --init-only --verbose check-links a b")
+    call("transom check-links --init-only --verbose a b")
 
     with temp_working_dir():
         make_input_files("a")
@@ -60,7 +60,7 @@ def test_transom_check_links(session):
 
 def test_transom_check_files(session):
     call("transom check-files --help")
-    call("transom --init-only --quiet check-files a b")
+    call("transom check-files --init-only --quiet a b")
 
     with temp_working_dir():
         make_input_files("a")
