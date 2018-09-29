@@ -71,6 +71,10 @@ test: build
 render: build
 	transom render input output
 
+.PHONY: watch
+watch: build
+	transom --verbose render --watch input output
+
 .PHONY: check-links
 check-links: build
 	transom check-links input output

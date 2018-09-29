@@ -216,9 +216,10 @@ class Transom:
 
         watcher = pyi.WatchManager()
         notifier = pyi.Notifier(watcher)
-        mask = pyi.IN_MODIFY | pyi.IN_CREATE | pyi.IN_MOVED_TO
+        mask = pyi.IN_MODIFY
 
-        # XXX Deleted stuff?
+        # pyi.IN_MODIFY | pyi.IN_MOVED_TO
+        # Deleted stuff? pyi.IN_DELETE
 
         def func(event):
             if event.name.startswith(".#"):
@@ -229,8 +230,7 @@ class Transom:
 
             self._render_one_file(event.pathname, force=True)
 
-        watcher.add_watch(self.input_dir, mask, func,
-                          rec=True, auto_add=True)
+        watcher.add_watch(self.input_dir, mask, func, rec=True, auto_add=True)
 
         notifier.loop()
 
