@@ -25,10 +25,10 @@ default_home = os.path.normpath("@transom_home@")
 home = os.environ.get("TRANSOM_HOME", default_home)
 sys.path.insert(0, os.path.join(home, "python"))
 
-import transom_test
+import transom_tests
 
 from commandant import TestCommand
 
 if __name__ == "__main__":
-    command = TestCommand([transom_test])
+    command = TestCommand([transom_tests])
     command.main()

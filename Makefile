@@ -50,7 +50,7 @@ help:
 
 .PHONY: build
 build: ${BIN_TARGETS} ${FILE_TARGETS} ${PYTHON_TARGETS} build/prefix.txt
-	scripts/run-smoke-tests
+	scripts/smoke-test
 
 .PHONY: install
 install: build
