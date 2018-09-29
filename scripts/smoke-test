@@ -20,5 +20,5 @@
 
 from plano import *
 
-call_and_print_on_error("transom --help")
-call_and_print_on_error("transom --init-only render a b")
+call("transom --help", quiet=True)
+call("transom --init-only render a b", quiet=True)

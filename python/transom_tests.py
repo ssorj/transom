@@ -20,7 +20,7 @@
 from plano import *
 
 def open_test_session(session):
-    set_message_threshold("error")
+    enable_logging(level="error")
 
 def test_transom_options(session):
     call("transom --help")
