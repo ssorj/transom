@@ -54,7 +54,7 @@ _variable_regex = _re.compile("({{.+?}})")
 
 class Transom:
     def __init__(self, input_dir, output_dir, home=None, site_url=None):
-        self.input_dir = input_dir
+        self.input_dir = _os.path.abspath(input_dir)
         self.output_dir = output_dir
         self.home = home
         self.site_url = site_url
@@ -121,24 +121,20 @@ class Transom:
 
     def find_input_files(self):
         with _Phase(self, "Finding input files"):
-            input_files = list()
+            input_paths = list()
 
             for root, dirs, files in _os.walk(self.input_dir):
                 for file_ in files:
-                    input_files.append(_join(root, file_))
+                    input_paths.append(_join(root, file_))
 
-            return input_files
+            return input_paths
 
     def init_input_files(self, input_paths):
-        input_files = list()
-
-        for input_path in input_paths:
-            if not self._is_ignored_file(input_path):
-                if input_path not in self.input_files:
+        with _Phase(self, "Initializing input files"):
+            for input_path in input_paths:
+                if not self._is_ignored_file(input_path):
                     file_ = self._create_file(input_path)
                     file_.init()
-
-                    input_files.append(file_)
 
         index_files = dict()
         other_files = _defaultdict(list)
@@ -167,8 +163,6 @@ class Transom:
             for file_ in other_files[dir_]:
                 file_.parent = parent
 
-        return input_files
-
     def _is_ignored_file(self, input_path):
         path = input_path[len(self.input_dir):]
 
@@ -192,36 +186,33 @@ class Transom:
             else:                      return _InFile(self, input_path)
         else:                          return _StaticFile(self, input_path)
 
-    def render(self, force=False, input_paths=None):
-        input_files = list()
+    def render(self, force=False, watch=False):
+        input_paths = self.find_input_files()
 
-        if input_paths is None:
-            input_paths = self.find_input_files()
+        self.init_input_files(input_paths)
 
-            with _Phase(self, "Initializing input files"):
-                input_files += self.init_input_files(input_paths)
-
-        if not self.quiet:
+        if not self.quiet and not self.verbose:
             print("  Input files        {:>10,}".format(len(self.input_files)))
             print("  Output files       {:>10,}".format(len(self.output_files)))
             print("  Config files       {:>10,}".format(len(self.config_files)))
 
         with _Phase(self, "Processing input files"):
-            for file_ in input_files:
+            for file_ in self.input_files.values():
                 file_.process_input()
 
         force = force or any([x.modified() for x in self.config_files.values()])
 
         with _Phase(self, "Rendering output files"):
             for file_ in self.output_files.values():
-                file_.render_output(force)
+                file_.render_output(force=force)
 
         _os.utime(self.output_dir)
 
-    def render_and_watch(self):
-        import pyinotify as pyi
+        if watch:
+            self._watch()
 
-        self.render()
+    def _watch(self):
+        import pyinotify as pyi
 
         watcher = pyi.WatchManager()
         notifier = pyi.Notifier(watcher)
@@ -236,12 +227,22 @@ class Transom:
             if event.name.startswith("#"):
                 return True
 
-            self.render([event.pathname])
+            self._render_one_file(event.pathname, force=True)
 
         watcher.add_watch(self.input_dir, mask, func,
                           rec=True, auto_add=True)
 
         notifier.loop()
+
+    def _render_one_file(self, input_path, force=False):
+        self.init_input_files([input_path])
+
+        input_file = self.input_files[input_path]
+
+        input_file.process_input()
+        input_file.render_output(force=force)
+
+        _os.utime(self.output_dir)
 
     def check_files(self):
         input_paths = self.find_input_files()
@@ -845,11 +846,7 @@ class TransomCommand(_commandant.Command):
 
     def render_command(self):
         self.init_lib()
-
-        if self.args.watch:
-            self.lib.render_and_watch() # XXX force?
-        else:
-            self.lib.render(force=self.args.force)
+        self.lib.render(force=self.args.force, watch=self.args.watch)
 
     def check_links_command(self):
         self.init_lib()
