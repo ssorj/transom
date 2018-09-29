@@ -780,7 +780,7 @@ class TransomCommand(_commandant.Command):
         render.add_argument("--force", action="store_true",
                             help="Render all input files, including unmodified ones")
         render.add_argument("--watch", action="store_true",
-                            help="Rerender when input files change")
+                            help="Re-render when input files change")
         render.add_argument("--quiet", action="store_true",
                             help="Print no logging to the console")
         render.add_argument("--verbose", action="store_true",
