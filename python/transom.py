@@ -66,8 +66,8 @@ class Transom:
         self.config_file = _join(self.config_dir, "config.py")
         self.config = None
 
-        self.outer_template_path = _join(self.config_dir, "outer-template.html")
-        self.inner_template_path = _join(self.config_dir, "inner-template.html")
+        self.page_template_path = _join(self.config_dir, "page.html")
+        self.body_template_path = _join(self.config_dir, "body.html")
 
         self.input_files = list()
         self.output_files = list()
@@ -89,23 +89,23 @@ class Transom:
 
     def init(self):
         if self.home is not None:
-            if not _is_file(self.outer_template_path):
-                self.outer_template_path = _join(self.home, "files", "outer-template.html")
+            if not _is_file(self.page_template_path):
+                self.page_template_path = _join(self.home, "files", "page.html")
 
-            if not _is_file(self.inner_template_path):
-                self.inner_template_path = _join(self.home, "files", "inner-template.html")
+            if not _is_file(self.body_template_path):
+                self.body_template_path = _join(self.home, "files", "body.html")
 
         if self.site_url is None:
             self.site_url = "file:{}".format(_os.path.abspath(self.output_dir))
 
-        if not _is_file(self.outer_template_path):
-            raise Exception("No outer template found")
+        if not _is_file(self.page_template_path):
+            raise Exception("No page template found")
 
-        if not _is_file(self.inner_template_path):
-            raise Exception("No inner template found")
+        if not _is_file(self.body_template_path):
+            raise Exception("No body template found")
 
-        self.outer_template = _read_file(self.outer_template_path)
-        self.inner_template = _read_file(self.inner_template_path)
+        self.page_template = _read_file(self.page_template_path)
+        self.body_template = _read_file(self.body_template_path)
 
         self.config = {
             "site_url": self.site_url,
@@ -461,30 +461,30 @@ class _OutputFile(_InputFile):
         raise NotImplementedError()
 
     def _apply_template(self):
-        outer_template = self.site.outer_template
-        inner_template = self.site.inner_template
+        page_template = self.site.page_template
+        body_template = self.site.body_template
 
-        if "outer_template" in self.attributes:
-            outer_template_path = self.attributes["outer_template"]
+        if "page_template" in self.attributes:
+            page_template_path = self.attributes["page_template"]
 
-            if _is_file(outer_template_path):
-                outer_template = _read_file(outer_template_path)
+            if _is_file(page_template_path):
+                page_template = _read_file(page_template_path)
             else:
-                raise Exception("Outer template {} not found".format(outer_template_path))
+                raise Exception("Page template {} not found".format(page_template_path))
 
-        if "inner_template" in self.attributes:
-            inner_template_path = self.attributes["inner_template"]
+        if "body_template" in self.attributes:
+            body_template_path = self.attributes["body_template"]
 
-            if inner_template_path == "none":
-                inner_template = "@content@"
-            elif _is_file(inner_template_path):
-                inner_template = _read_file(inner_template_path)
+            if body_template_path == "none":
+                body_template = "@content@"
+            elif _is_file(body_template_path):
+                body_template = _read_file(body_template_path)
             else:
-                raise Exception("Inner template {} not found".format(inner_template_path))
+                raise Exception("Body template {} not found".format(body_template_path))
 
         extra_headers = self.attributes.get("extra_headers", "")
 
-        template = outer_template.replace("@inner_template@", inner_template, 1)
+        template = page_template.replace("@body_template@", body_template, 1)
         template = template.replace("@extra_headers@", extra_headers, 1)
 
         self.content = template.replace("@content@", self.content, 1)
@@ -800,8 +800,8 @@ class TransomCommand(_commandant.Command):
 
         config_dir = _join(self.args.input_dir, "_transom")
 
-        copy("outer-template.html", _join(config_dir, "outer-template.html"))
-        copy("inner-template.html", _join(config_dir, "inner-template.html"))
+        copy("page.html", _join(config_dir, "page.html"))
+        copy("body.html", _join(config_dir, "body.html"))
         copy("config.py", _join(config_dir, "config.py"))
 
         copy("main.css", _join(self.args.input_dir, "main.css"))
