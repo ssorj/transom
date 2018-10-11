@@ -53,6 +53,8 @@ _markdown_extras = {
 
 _variable_regex = _re.compile("({{.+?}})")
 
+_reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
+
 class Transom:
     def __init__(self, input_dir, output_dir, home=None, site_url=None):
         self.input_dir = _os.path.abspath(input_dir)
@@ -70,6 +72,8 @@ class Transom:
         self.page_template_path = _join(self.config_dir, "page.html")
         self.body_template_path = _join(self.config_dir, "body.html")
 
+        self.reload = False
+
         self.input_files = dict()
         self.output_files = dict()
         self.config_files = dict()
@@ -80,6 +84,7 @@ class Transom:
         self.ignored_file_patterns = [
             "*/.git",
             "*/.svn",
+            "*/.#*",
         ]
 
         self.ignored_link_patterns = list()
@@ -121,21 +126,19 @@ class Transom:
         self.start_time = _time.time()
 
     def find_input_files(self):
-        with _Phase(self, "Finding input files"):
-            input_paths = list()
+        input_paths = list()
 
-            for root, dirs, files in _os.walk(self.input_dir):
-                for file_ in files:
-                    input_paths.append(_join(root, file_))
+        for root, dirs, files in _os.walk(self.input_dir):
+            for file_ in files:
+                input_paths.append(_join(root, file_))
 
-            return input_paths
+        return input_paths
 
     def init_input_files(self, input_paths):
-        with _Phase(self, "Initializing input files"):
-            for input_path in input_paths:
-                if not self._is_ignored_file(input_path):
-                    file_ = self._create_file(input_path)
-                    file_.init()
+        for input_path in input_paths:
+            if not self._is_ignored_file(input_path):
+                file_ = self._create_file(input_path)
+                file_.init()
 
         index_files = dict()
         other_files = _defaultdict(list)
@@ -188,9 +191,11 @@ class Transom:
         else:                          return _StaticFile(self, input_path)
 
     def render(self, force=False, watch=False):
-        input_paths = self.find_input_files()
+        with _Phase(self, "Finding input files"):
+            input_paths = self.find_input_files()
 
-        self.init_input_files(input_paths)
+        with _Phase(self, "Initializing input files"):
+            self.init_input_files(input_paths)
 
         if not self.quiet and not self.verbose:
             print("  Input files        {:>10,}".format(len(self.input_files)))
@@ -213,6 +218,8 @@ class Transom:
             self._watch()
 
     def _watch(self):
+        print("Watching for input file changes")
+
         import pyinotify as pyi
 
         watcher = pyi.WatchManager()
@@ -229,7 +236,10 @@ class Transom:
             if event.name.startswith("#"):
                 return True
 
-            self._render_one_file(event.pathname, force=True)
+            if (event.pathname.startswith(self.config_dir)):
+                self.render(force=True)
+            else:
+                self._render_one_file(event.pathname, force=True)
 
         watcher.add_watch(self.input_dir, mask, func, rec=True, auto_add=True)
 
@@ -246,9 +256,11 @@ class Transom:
         _os.utime(self.output_dir)
 
     def check_files(self):
-        input_paths = self.find_input_files()
+        with _Phase(self, "Finding input files"):
+            input_paths = self.find_input_files()
 
-        self.init_input_files(input_paths)
+        with _Phase(self, "Initializing input files"):
+            self.init_input_files(input_paths)
 
         with _Phase(self, "Checking output files"):
             expected_files = set()
@@ -286,9 +298,11 @@ class Transom:
         return output_files
 
     def check_links(self, internal=True, external=False):
-        input_paths = self.find_input_files()
+        with _Phase(self, "Finding input files"):
+            input_paths = self.find_input_files()
 
-        self.init_input_files(input_paths)
+        with _Phase(self, "Initializing input files"):
+            self.init_input_files(input_paths)
 
         with _Phase(self, "Finding links"):
             for file_ in self.output_files.values():
@@ -521,6 +535,11 @@ class _OutputFile(_InputFile):
 
         template = page_template.replace("@body_template@", body_template, 1)
         template = template.replace("@extra_headers@", extra_headers, 1)
+
+        if self.site.reload:
+            template = template.replace("@reload_script@", _reload_script, 1)
+        else:
+            template = template.replace("@reload_script@", "", 1)
 
         self.content = template.replace("@content@", self.content, 1)
 
@@ -871,6 +890,10 @@ class TransomCommand(_commandant.Command):
 
     def render_command(self):
         self.init_lib()
+
+        if self.args.watch:
+            self.lib.reload = True
+
         self.lib.render(force=self.args.force, watch=self.args.watch)
 
     def check_links_command(self):
