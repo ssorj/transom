@@ -214,34 +214,34 @@ section {
     flex: 1 0 0;
 }
 
-#-head, #-body, #-foot {
-    margin-bottom: 0;
+header, article, footer {
+    margin: 0;
 }
 
-#-head {
+header {
     padding: 1em 2em;
     border-bottom: 1px solid #ddd;
 }
 
-#-body {
+article {
     padding: 2em;
 }
 
-#-foot {
+footer {
     border-top: 1px solid #ddd;
     padding: 1em 2em;
 }
 
-#-head-content, #-body-content, #-foot-content {
+header > div, article > div, footer > div {
     max-width: 960px;
     margin: 0 auto;
 }
 
-#-head-content {
+header > div {
     font-size: 0.9em;
 }
 
-#-foot-content {
+footer > div {
     font-size: 0.8em;
 }
 
@@ -311,11 +311,11 @@ section {
         overflow: hidden;
     }
     
-    #-head, #-foot {
+    header, footer {
         display: none;
     }
 
-    #-body {
+    article {
         padding: 0;
     }
 }
