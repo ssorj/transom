@@ -912,7 +912,7 @@ class TransomCommand(_commandant.Command):
         missing_files, extra_files = self.lib.check_files()
 
         if extra_files != 0:
-            self.warn("{} files missing in the output", extra_files)
+            self.warn("{} extra files in the output", extra_files)
 
         if missing_files == 0:
             print("PASSED")
