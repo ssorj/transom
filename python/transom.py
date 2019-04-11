@@ -105,10 +105,10 @@ class Transom:
             self.site_url = "file:{}".format(_os.path.abspath(self.output_dir))
 
         if not _is_file(self.page_template_path):
-            raise Exception("No page template found")
+            raise Exception(f"No page template found at {self.page_template_path}")
 
         if not _is_file(self.body_template_path):
-            raise Exception("No body template found")
+            raise Exception(f"No body template found at {self.body_template_path}")
 
         self.page_template = _read_file(self.page_template_path)
         self.body_template = _read_file(self.body_template_path)
