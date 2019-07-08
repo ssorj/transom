@@ -212,7 +212,8 @@ class Transom:
             for file_ in self.output_files.values():
                 file_.render_output(force=force)
 
-        _os.utime(self.output_dir)
+        if _exists(self.output_dir):
+            _os.utime(self.output_dir)
 
         if watch:
             self._watch()
@@ -861,6 +862,9 @@ class TransomCommand(_commandant.Command):
         self.lib.quiet = self.args.quiet
 
         self.lib.init()
+
+        if self.init_only:
+            _os.exit(0)
 
     def run(self):
         self.args.func()
