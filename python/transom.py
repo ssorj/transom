@@ -863,8 +863,8 @@ class TransomCommand(_commandant.Command):
 
         self.lib.init()
 
-        if self.init_only:
-            _os.exit(0)
+        if self.args.init_only:
+            _sys.exit(0)
 
     def run(self):
         self.args.func()
@@ -883,6 +883,9 @@ class TransomCommand(_commandant.Command):
             self.notice("Creating '{}'", to_path)
 
         config_dir = _join(self.args.input_dir, "_transom")
+
+        if self.args.init_only:
+            _sys.exit(0)
 
         copy("page.html", _join(config_dir, "page.html"))
         copy("body.html", _join(config_dir, "body.html"))

@@ -77,16 +77,11 @@ _error = _message_levels.index("error")
 _message_output = STDERR
 _message_threshold = _notice
 
-def set_message_output(writeable):
-    warn("Deprecated! Use enable_logging(output=output) instead")
-    enable_logging(output=writeable)
-
-def set_message_threshold(level):
-    warn("Deprecated! Use enable_logging(level=level) instead")
-    enable_logging(level=level)
-
 def enable_logging(level=None, output=None):
     if level is not None:
+        if level == "warning":
+            level = "warn"
+
         assert level in _message_levels
 
         global _message_threshold
@@ -167,7 +162,7 @@ def _format_message(category, message, args):
     if category:
         message = "{0}: {1}".format(category, message)
 
-    program = program_name()
+    program = get_program_name()
     message = "{0}: {1}".format(program, message)
 
     return message
@@ -179,40 +174,74 @@ def flush():
     STDOUT.flush()
     STDERR.flush()
 
-absolute_path = _os.path.abspath
+get_absolute_path = _os.path.abspath
 normalize_path = _os.path.normpath
-real_path = _os.path.realpath
+get_real_path = _os.path.realpath
 exists = _os.path.lexists
 is_absolute = _os.path.isabs
 is_dir = _os.path.isdir
 is_file = _os.path.isfile
 is_link = _os.path.islink
-file_size = _os.path.getsize
+get_file_size = _os.path.getsize
 
 join = _os.path.join
 split = _os.path.split
 split_extension = _os.path.splitext
 
-current_dir = _os.getcwd
+get_current_dir = _os.getcwd
 sleep = _time.sleep
 
-def home_dir(user=None):
+def file_size(*args, **kwargs):
+    warn("Deprecated! Use get_file_size() instead")
+    return get_file_size(*args, **kwargs)
+
+def current_dir():
+    warn("Deprecated! Use get_current_dir() instead")
+    return get_current_dir()
+
+def absolute_path(path):
+    warn("Deprecated! Use get_absolute_path() instead")
+    return get_absolute_path(path)
+
+def real_path(path):
+    warn("Deprecated! Use get_real_path() instead")
+    return get_real_path(path)
+
+def get_home_dir(user=None):
     return _os.path.expanduser("~{0}".format(user or ""))
 
-def parent_dir(path):
+def home_dir(user=None):
+    warn("Deprecated! Use get_home_dir() instead")
+    return get_home_dir(user=user)
+
+def get_user():
+    return _getpass.getuser()
+
+def get_hostname():
+    return _socket.gethostname()
+
+def get_parent_dir(path):
     path = normalize_path(path)
     parent, child = split(path)
 
     return parent
 
-def file_name(file):
+def parent_dir(path):
+    warn("Deprecated! Use get_parent_dir() instead")
+    return get_parent_dir(path)
+
+def get_file_name(file):
     file = normalize_path(file)
     dir, name = split(file)
 
     return name
 
-def name_stem(file):
-    name = file_name(file)
+def file_name(file):
+    warn("Deprecated! Use get_file_name() instead")
+    return get_file_name(file)
+
+def get_name_stem(file):
+    name = get_file_name(file)
 
     if name.endswith(".tar.gz"):
         name = name[:-3]
@@ -221,13 +250,21 @@ def name_stem(file):
 
     return stem
 
-def name_extension(file):
-    name = file_name(file)
+def name_stem(file):
+    warn("Deprecated! Use get_name_stem() instead")
+    return get_name_stem(file)
+
+def get_name_extension(file):
+    name = get_file_name(file)
     stem, ext = split_extension(name)
 
     return ext
 
-def program_name(command=None):
+def name_extension(file):
+    warn("Deprecated! Use get_name_extension() instead")
+    return get_name_extension(file)
+
+def get_program_name(command=None):
     if command is None:
         args = ARGS
     else:
@@ -235,7 +272,11 @@ def program_name(command=None):
 
     for arg in args:
         if "=" not in arg:
-            return file_name(arg)
+            return get_file_name(arg)
+
+def program_name(command=None):
+    warn("Deprecated! Use get_program_name() instead")
+    return get_program_name(command=command)
 
 def which(program_name):
     assert "PATH" in ENV
@@ -251,7 +292,7 @@ def read(file):
         return f.read()
 
 def write(file, string):
-    _make_dir(parent_dir(file))
+    _make_dir(get_parent_dir(file))
 
     with _codecs.open(file, encoding="utf-8", mode="w") as f:
         f.write(string)
@@ -259,7 +300,7 @@ def write(file, string):
     return file
 
 def append(file, string):
-    _make_dir(parent_dir(file))
+    _make_dir(get_parent_dir(file))
 
     with _codecs.open(file, encoding="utf-8", mode="a") as f:
         f.write(string)
@@ -268,9 +309,7 @@ def append(file, string):
 
 def prepend(file, string):
     orig = read(file)
-    prepended = string + orig
-
-    return write(file, prepended)
+    return write(file, string + orig)
 
 def touch(file):
     try:
@@ -288,7 +327,7 @@ def read_lines(file):
         return f.readlines()
 
 def write_lines(file, lines):
-    _make_dir(parent_dir(file))
+    _make_dir(get_parent_dir(file))
 
     with _codecs.open(file, encoding="utf-8", mode="r") as f:
         f.writelines(lines)
@@ -296,7 +335,7 @@ def write_lines(file, lines):
     return file
 
 def append_lines(file, lines):
-    _make_dir(parent_dir(file))
+    _make_dir(get_parent_dir(file))
 
     with _codecs.open(file, encoding="utf-8", mode="a") as f:
         f.writelines(string)
@@ -306,7 +345,7 @@ def append_lines(file, lines):
 def prepend_lines(file, lines):
     orig_lines = read_lines(file)
 
-    _make_dir(parent_dir(file))
+    _make_dir(get_parent_dir(file))
 
     with _codecs.open(file, encoding="utf-8", mode="w") as f:
         f.writelines(lines)
@@ -340,30 +379,82 @@ def read_json(file):
         return _json.load(f)
 
 def write_json(file, obj):
-    _make_dir(parent_dir(file))
+    _make_dir(get_parent_dir(file))
 
     with _codecs.open(file, encoding="utf-8", mode="w") as f:
         return _json.dump(obj, f, indent=4, separators=(",", ": "), sort_keys=True)
 
-def make_temp_file(suffix=""):
+def parse_json(json):
+    return _json.loads(json)
+
+def emit_json(obj):
+    return _json.dumps(obj, f, indent=4, separators=(",", ": "), sort_keys=True)
+
+def http_get(url, output_file=None, insecure=False):
+    options = [
+        "-sf",
+        "-H", "'Expect:'",
+    ]
+
+    if insecure:
+        options.append("--insecure")
+
+    if output_file is None:
+        return call_for_stdout("curl {0} {1}", " ".join(options), url)
+
+    call("curl {0} {1} -o {2}", " ".join(options), url, output_file)
+
+def http_put(url, input_file, output_file=None, insecure=False):
+    options = [
+        "-sf",
+        "-X", "PUT",
+        "-H", "'Expect:'",
+    ]
+
+    if insecure:
+        options.append("--insecure")
+
+    if output_file is None:
+        return call_for_stdout("curl {0} {1} -d @{2}", " ".join(options), url, input_file)
+
+    call("curl {0} {1} -d @{2} -o {3}", " ".join(options), url, input_file, output_file)
+
+def http_get_json(url, insecure=False):
+    return parse_json(http_get(url, insecure=insecure))
+
+def http_put_json(url, data, insecure=False):
+    with temp_file() as f:
+        write_json(f, data)
+        http_put(url, f, insecure=insecure)
+
+def get_temp_dir():
+    return _tempfile.gettempdir()
+
+def get_user_temp_dir():
     try:
-        dir = ENV["XDG_RUNTIME_DIR"]
+        return ENV["XDG_RUNTIME_DIR"]
     except KeyError:
-        dir = None
+        return join(get_temp_dir(), get_user())
+
+def user_temp_dir():
+    warn("Deprecated! Use get_user_temp_dir() instead")
+    return get_user_temp_dir()
+
+def make_temp_file(suffix="", dir=None):
+    if dir is None:
+        dir = get_temp_dir()
 
     return _tempfile.mkstemp(prefix="plano-", suffix=suffix, dir=dir)[1]
 
-def make_temp_dir(suffix=""):
-    try:
-        dir = ENV["XDG_RUNTIME_DIR"]
-    except KeyError:
-        dir = None
+def make_temp_dir(suffix="", dir=None):
+    if dir is None:
+        dir = get_temp_dir()
 
     return _tempfile.mkdtemp(prefix="plano-", suffix=suffix, dir=dir)
 
 class temp_file(object):
-    def __init__(self, suffix=""):
-        self.file = make_temp_file(suffix=suffix)
+    def __init__(self, suffix="", dir=None):
+        self.file = make_temp_file(suffix=suffix, dir=dir)
 
     def __enter__(self):
         return self.file
@@ -371,7 +462,8 @@ class temp_file(object):
     def __exit__(self, exc_type, exc_value, traceback):
         _remove(self.file)
 
-def unique_id(length=16):
+# Length in bytes, renders twice as long in hex
+def get_unique_id(length=16):
     assert length >= 1
     assert length <= 16
 
@@ -380,15 +472,19 @@ def unique_id(length=16):
 
     return _binascii.hexlify(uuid_bytes).decode("utf-8")
 
+def unique_id(length=16):
+    warn("Deprecated! Use get_unique_id() instead")
+    return get_unique_id(length=length)
+
 def copy(from_path, to_path):
     notice("Copying '{0}' to '{1}'", from_path, to_path)
     return _copy(from_path, to_path)
 
 def _copy(from_path, to_path):
     if is_dir(to_path):
-        to_path = join(to_path, file_name(from_path))
+        to_path = join(to_path, get_file_name(from_path))
     else:
-        make_dir(parent_dir(to_path))
+        _make_parent_dir(to_path)
 
     if is_dir(from_path):
         _copytree(from_path, to_path, symlinks=True)
@@ -403,12 +499,9 @@ def move(from_path, to_path):
 
 def _move(from_path, to_path):
     if is_dir(to_path):
-        to_path = join(to_path, file_name(from_path))
+        to_path = join(to_path, get_file_name(from_path))
     else:
-        parent_path = parent_dir(to_path)
-
-        if parent_path:
-            _make_dir(parent_path)
+        _make_parent_dir(to_path)
 
     _shutil.move(from_path, to_path)
 
@@ -448,7 +541,7 @@ def make_link(source_path, link_file):
         assert read_link(link_file) == source_path
         return
 
-    link_dir = parent_dir(link_file)
+    link_dir = get_parent_dir(link_file)
 
     if link_dir:
         make_dir(link_dir)
@@ -490,15 +583,35 @@ def find_only_one(dir, *patterns):
     if len(paths) == 0:
         return
 
-    if len(paths) != 1:
+    if len(paths) > 1:
         fail("Found multiple files: {0}", ", ".join(paths))
 
     assert len(paths) == 1
 
     return paths[0]
 
+def find_exactly_one(dir, *patterns):
+    path = find_only_one(dir, *patterns)
+
+    if path is None:
+        fail("Found no matching files")
+
+    return path
+
 def string_replace(string, expr, replacement, count=0):
     return _re.sub(expr, replacement, string, count)
+
+def configure_file(input_file, output_file, **substitutions):
+    notice("Configuring '{0}' for output '{1}'", input_file, output_file)
+
+    content = read(input_file)
+
+    for name, value in substitutions.items():
+        content = content.replace("@{0}@".format(name), value)
+
+    write(output_file, content)
+
+    _shutil.copymode(input_file, output_file)
 
 def make_dir(dir):
     notice("Making directory '{0}'", dir)
@@ -513,14 +626,25 @@ def _make_dir(dir):
 
     return dir
 
+def make_parent_dir(path):
+    return make_dir(get_parent_dir(path))
+
+def _make_parent_dir(path):
+    return _make_dir(get_parent_dir(path))
+
 # Returns the current working directory so you can change it back
 def change_dir(dir):
     notice("Changing directory to '{0}'", dir)
     return _change_dir(dir)
 
 def _change_dir(dir):
-    cwd = current_dir()
+    try:
+        cwd = get_current_dir()
+    except FileNotFoundError:
+        cwd = None
+
     _os.chdir(dir)
+
     return cwd
 
 def list_dir(dir, *patterns):
@@ -550,15 +674,17 @@ class working_dir(object):
         if not exists(self.dir):
             _make_dir(self.dir)
 
-        self.prev_dir = _change_dir(self.dir)
+        notice("Entering directory '{0}'", get_absolute_path(self.dir))
 
-        notice("Using working directory '{0}'", self.dir)
+        self.prev_dir = _change_dir(self.dir)
 
         return self.dir
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self.dir is None or self.dir == ".":
             return
+
+        notice("Returning to directory '{0}'", get_absolute_path(self.prev_dir))
 
         _change_dir(self.prev_dir)
 
@@ -696,6 +822,8 @@ def start_process(command, *args, **kwargs):
     else:
         raise Exception()
 
+    command_string = command_string.replace("\n", "\\n")
+
     notice("Calling '{0}'", command_string)
 
     name = kwargs.get("name", command_args[0])
@@ -723,16 +851,26 @@ def start_process(command, *args, **kwargs):
         if _libc is not None:
             kwargs["preexec_fn"] = _libc.prctl(1, _signal.SIGKILL)
 
-    if "shell" in kwargs and kwargs["shell"] is True:
-        proc = _Process(command_string, kwargs, name, command_string, temp_output_file)
-    else:
-        proc = _Process(command_args, kwargs, name, command_string, temp_output_file)
+    try:
+        if "shell" in kwargs and kwargs["shell"] is True:
+            proc = _Process(command_string, kwargs, name, command_string, temp_output_file)
+        else:
+            proc = _Process(command_args, kwargs, name, command_string, temp_output_file)
+    except OSError as e:
+        if e.errno == 2:
+            fail(e)
+
+        raise
 
     debug("{0} started", proc)
 
     return proc
 
+# Exits without complaint if proc is null
 def terminate_process(proc):
+    if proc is None:
+        return
+
     notice("Terminating {0}", proc)
 
     if proc.poll() is None:
@@ -811,7 +949,7 @@ def make_archive(input_dir, output_dir, archive_stem):
         make_dir(output_dir)
 
         output_file = "{0}.tar.gz".format(join(output_dir, archive_stem))
-        output_file = absolute_path(output_file)
+        output_file = get_absolute_path(output_file)
 
         with working_dir(dir):
             call("tar -czf {0} {1}", output_file, archive_stem)
@@ -822,7 +960,7 @@ def extract_archive(archive_file, output_dir=None):
     assert is_file(archive_file), archive_file
     assert output_dir is None or is_dir(output_dir), output_dir
 
-    archive_file = absolute_path(archive_file)
+    archive_file = get_absolute_path(archive_file)
 
     with working_dir(output_dir):
         call("tar -xf {0}", archive_file)
@@ -842,8 +980,8 @@ def rename_archive(archive_file, new_archive_stem):
         input_name = list_dir(dir)[0]
         input_dir = join(dir, input_name)
         output_file = make_archive(input_dir, dir, new_archive_stem)
-        output_name = file_name(output_file)
-        archive_dir = parent_dir(archive_file)
+        output_name = get_file_name(output_file)
+        archive_dir = get_parent_dir(archive_file)
         new_archive_file = join(archive_dir, output_name)
 
         move(output_file, new_archive_file)
@@ -851,8 +989,12 @@ def rename_archive(archive_file, new_archive_stem):
 
     return new_archive_file
 
-def random_port(min=49152, max=65535):
+def get_random_port(min=49152, max=65535):
     return _random.randint(min, max)
+
+def random_port(min=49152, max=65535):
+    warn("Deprecated! Use get_random_port() instead")
+    return get_random_port(min=min, max=max)
 
 def wait_for_port(port, host="", timeout=30):
     if _is_string(port):
@@ -874,6 +1016,41 @@ def wait_for_port(port, host="", timeout=30):
                 fail("Timed out waiting for port {0} to open", port)
     finally:
         sock.close()
+
+def nvl(value, substitution, template=None):
+    assert substitution is not None
+
+    if value is None:
+        return substitution
+
+    if template is not None:
+        return template.format(value)
+
+    return value
+
+def shorten(string, max):
+    assert max is not None
+    assert isinstance(max, int)
+
+    if string is None:
+        return ""
+
+    if len(string) < max:
+        return string
+    else:
+        return string[0:max]
+
+def plural(noun, count=0):
+    if noun is None:
+        return ""
+
+    if count == 1:
+        return noun
+
+    if noun.endswith("s"):
+        return "{}ses".format(noun)
+
+    return "{}s".format(noun)
 
 # Modified copytree impl that allows for already existing destination
 # dirs

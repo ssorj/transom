@@ -22,6 +22,9 @@ from plano import *
 def open_test_session(session):
     enable_logging(level="error")
 
+    if session.module.command.verbose:
+        enable_logging(level="notice")
+
 def test_transom_options(session):
     call("transom --help")
 
