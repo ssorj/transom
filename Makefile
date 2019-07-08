@@ -101,6 +101,10 @@ build/transom/files/%: files/%
 	@mkdir -p ${@D}
 	cp $< $@
 
+.PHONY: update-markdown2
+update-markdown2:
+	curl -sfo python/markdown2.py "https://raw.githubusercontent.com/trentm/python-markdown2/master/lib/markdown2.py"
+
 .PHONY: update-%
 update-%:
 	curl -sfo python/$*.py "https://raw.githubusercontent.com/ssorj/$*/master/python/$*.py"
