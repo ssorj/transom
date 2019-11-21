@@ -1006,9 +1006,8 @@ _lipsum_words = [
 
 def _lipsum(count=50):
     words = list()
-    pos = 0
 
-    for i in range(count - 1):
+    for i in range(count):
         words.append(_lipsum_words[i % len(_lipsum_words)])
 
     text = " ".join(words)
