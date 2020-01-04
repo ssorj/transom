@@ -131,6 +131,13 @@ class Transom:
         input_paths = list()
 
         for root, dirs, files in _os.walk(self.input_dir):
+            # Process index files before the others in the same directory
+            for file_ in files:
+                if file_.startswith("index."):
+                    input_paths.append(_join(root, file_))
+                    files.remove(file_)
+                    break
+
             for file_ in files:
                 input_paths.append(_join(root, file_))
 
