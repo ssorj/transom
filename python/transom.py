@@ -295,8 +295,15 @@ class Transom:
         return "".join(out)
 
     def _include(self, page, input_path):
+        name, ext = _os.path.splitext(input_path)
+
         with open(input_path, "r") as f:
-            return self._replace_variables(page, f.read(), input_path=input_path)
+            content = f.read()
+
+            if ext == ".md":
+                content = self._markdown_converter.convert(content)
+
+            return self._replace_variables(page, content, input_path=input_path)
 
     def check_files(self):
         with _Phase(self, "Finding input files"):
@@ -454,7 +461,7 @@ class _Phase:
             print("{:0.3f}s [{:0.3f}s]".format(phase_dur, total_dur))
 
 class _InputFile:
-    __slots__ = "site", "input_path", "_input_mtime", "parent"
+    __slots__ = "site", "parent", "input_path", "_input_mtime"
 
     def __init__(self, site, input_path):
         self.site = site
