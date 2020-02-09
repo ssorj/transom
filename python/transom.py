@@ -300,10 +300,10 @@ class Transom:
         with open(input_path, "r") as f:
             content = f.read()
 
-            if ext == ".md":
-                content = self._markdown_converter.convert(content)
+        if ext == ".md":
+            content = self._markdown_converter.convert(content)
 
-            return self._replace_variables(page, content, input_path=input_path)
+        return self._replace_variables(page, content, input_path=input_path)
 
     def check_files(self):
         with _Phase(self, "Finding input files"):
@@ -596,19 +596,19 @@ class _OutputFile(_InputFile):
         self._config = dict(self.site._config)
         self._config["page"] = self
         self._config["title"] = self.title if self.title is not None else "[none]"
-        self._config["path_nav"] = self._render_path_nav()
+        self._config["ancestor_links"] = self._get_ancestor_links()
 
         self._content = self.site._replace_variables(self, self._content, self.input_path)
 
-    def _render_path_nav(self):
+    def _get_ancestor_links(self):
         links = list()
-        file_ = self
+        file_ = self.parent
 
         while file_ is not None:
             links.append(file_._render_link())
             file_ = file_.parent
 
-        return f"<nav id=\"-path-nav\">{''.join(reversed(links))}</nav>"
+        return reversed(links)
 
     def _render_link(self):
         return f"<a href=\"{self.url}\">{self.title}</a>"
