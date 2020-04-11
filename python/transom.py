@@ -22,6 +22,7 @@ from __future__ import print_function
 import argparse as _argparse
 import codecs as _codecs
 import commandant as _commandant
+import csv as _csv
 import fnmatch as _fnmatch
 import markdown2 as _markdown
 import os as _os
@@ -36,6 +37,7 @@ from urllib.parse import urljoin as _urljoin
 from urllib.parse import urlsplit as _urlsplit
 from urllib.request import urlopen as _urlopen
 from xml.etree.ElementTree import XML as _XML
+from xml.sax.saxutils import escape as _xml_escape
 
 _html_title_regex = _re.compile(r"<([hH][12]).*?>(.*?)</\1>")
 _html_tag_regex = _re.compile(r"<.+?>")
@@ -117,6 +119,8 @@ class Transom:
             "ignored_links": self._ignored_link_patterns,
             "include": self._include,
             "lipsum": _lipsum,
+            "html_table": _html_table,
+            "html_table_csv": _html_table_csv,
         }
 
         if _is_file(self.config_file):
@@ -1023,6 +1027,78 @@ def _lipsum(count=50):
         text = text + "."
 
     return text
+
+def _html_table_csv(csv_path, **attrs):
+    items = list()
+
+    with open(csv_path, newline="") as f:
+        reader = _csv.reader(f)
+
+        for row in reader:
+            items.append(row)
+
+    return _html_table(items, **attrs)
+
+def _html_table(items, column_headings=True, row_headings=False,
+                escape_cell_data=False, cell_render_fn=None,
+                **attrs):
+    rows = list()
+
+    if column_headings:
+        headings = list()
+
+        for cell in items[0]:
+            headings.append(_html_elem("th", cell))
+
+        rows.append(_html_elem("tr", "".join(headings)))
+
+        items = items[1:]
+
+    for row_index, item in enumerate(items):
+        cols = list()
+
+        for column_index, cell in enumerate(item):
+            if escape_cell_data:
+                cell = _xml_escape(cell)
+
+            if cell_render_fn is not None:
+                cell = cell_render_fn(row_index, column_index, cell)
+
+            if column_index == 0 and row_headings:
+                cols.append(_html_elem("th", cell))
+            else:
+                cols.append(_html_elem("td", cell))
+
+        rows.append(_html_elem("tr", "".join(cols)))
+
+    tbody = _html_elem("tbody", "\n{}\n".format("\n".join(rows)))
+
+    return _html_elem("table", tbody, **attrs)
+
+def _html_elem(tag, content, **attrs):
+    attrs = _html_attrs(attrs)
+
+    if content is None:
+        content = ""
+
+    return f"<{tag}{attrs}>{content}</{tag}>"
+
+def _html_attrs(attrs):
+    vars = list()
+
+    for name, value in attrs.items():
+        if value is False:
+            continue
+
+        if value is True:
+            value = name
+
+        if name == "class_" or name == "_class":
+            name = "class"
+
+        vars.append(f" {name}=\"{_xml_escape(value)}\"")
+
+    return "".join(vars)
 
 if __name__ == "__main__":
     command = TransomCommand()
