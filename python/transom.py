@@ -31,6 +31,7 @@ import shutil as _shutil
 import sys as _sys
 import tempfile as _tempfile
 import time as _time
+import traceback as _traceback
 
 from collections import defaultdict as _defaultdict
 from urllib.parse import urljoin as _urljoin
@@ -128,7 +129,7 @@ class Transom:
 
         self._start_time = _time.time()
 
-    def find_input_files(self):
+    def _find_input_paths(self):
         input_paths = list()
 
         for root, dirs, files in _os.walk(self.input_dir):
@@ -144,11 +145,11 @@ class Transom:
 
         return input_paths
 
-    def init_input_files(self, input_paths):
+    def _init_input_files(self, input_paths):
         for input_path in input_paths:
             if not self._is_ignored_file(input_path):
                 file_ = self._create_file(input_path)
-                file_.init()
+                file_._init()
 
         index_files = dict()
         other_files = _defaultdict(list)
@@ -206,10 +207,10 @@ class Transom:
 
     def render(self, force=False, watch=False):
         with _Phase(self, "Finding input files"):
-            input_paths = self.find_input_files()
+            input_paths = self._find_input_paths()
 
         with _Phase(self, "Initializing input files"):
-            self.init_input_files(input_paths)
+            self._init_input_files(input_paths)
 
         if not self.quiet and not self.verbose:
             print("  Input files        {:>10,}".format(len(self._input_files)))
@@ -218,13 +219,13 @@ class Transom:
 
         with _Phase(self, "Processing input files"):
             for file_ in self._input_files.values():
-                file_.process_input()
+                file_._process_input()
 
-        force = force or any([x.modified() for x in self._config_files.values()])
+        force = force or any([x._is_modified() for x in self._config_files.values()])
 
         with _Phase(self, "Rendering output files"):
             for file_ in self._output_files.values():
-                file_.render_output(force=force)
+                file_._render_output(force=force)
 
         if _exists(self.output_dir):
             _os.utime(self.output_dir)
@@ -264,39 +265,14 @@ class Transom:
         notifier.loop()
 
     def _render_one_file(self, input_path, force=False):
-        self.init_input_files([input_path])
+        self._init_input_files([input_path])
 
         input_file = self._input_files[input_path]
 
-        input_file.process_input()
-        input_file.render_output(force=force)
+        input_file._process_input()
+        input_file._render_output(force=force)
 
         _os.utime(self.output_dir)
-
-    def _replace_variables(self, page, text, input_path=None):
-        assert page._config is not None
-
-        out = list()
-        tokens = _variable_regex.split(text)
-
-        for token in tokens:
-            if token[:2] != "{{" or token[-2:] != "}}":
-                out.append(token)
-                continue
-
-            expr = token[2:-2]
-
-            try:
-                result = eval(expr, page._config)
-            except Exception as e:
-                print(f"Expression '{expr}'; file '{input_path}'; {e}")
-                out.append(token)
-                continue
-
-            if result is not None:
-                out.append(str(result))
-
-        return "".join(out)
 
     def _include(self, page, input_path):
         name, ext = _os.path.splitext(input_path)
@@ -307,60 +283,60 @@ class Transom:
         if ext == ".md":
             content = self._markdown_converter.convert(content)
 
-        return self._replace_variables(page, content, input_path=input_path)
+        return page.replace_variables(content, input_path=input_path)
 
     def check_files(self):
         with _Phase(self, "Finding input files"):
-            input_paths = self.find_input_files()
+            input_paths = self._find_input_paths()
 
         with _Phase(self, "Initializing input files"):
-            self.init_input_files(input_paths)
+            self._init_input_files(input_paths)
 
         with _Phase(self, "Checking output files"):
-            expected_files = set()
-            found_files = set()
+            expected_paths = set()
+            found_paths = set()
 
             for file_ in self._output_files.values():
-                expected_files.add(file_.output_path)
+                expected_paths.add(file_.output_path)
 
-            found_files = self._find_output_files()
+            found_paths = self._find_output_paths()
 
-            missing_files = expected_files.difference(found_files)
-            extra_files = found_files.difference(expected_files)
+            missing_paths = expected_paths.difference(found_paths)
+            extra_paths = found_paths.difference(expected_paths)
 
-        if missing_files:
+        if missing_paths:
             print("Missing output files:")
 
-            for path in sorted(missing_files):
+            for path in sorted(missing_paths):
                 print(f"  {path}")
 
-        if extra_files:
+        if extra_paths:
             print("Extra output files:")
 
-            for path in sorted(extra_files):
+            for path in sorted(extra_paths):
                 print(f"  {path}")
 
-        return len(missing_files), len(extra_files)
+        return len(missing_paths), len(extra_paths)
 
-    def _find_output_files(self):
-        output_files = set()
+    def _find_output_paths(self):
+        output_paths = set()
 
         for root, dirs, files in _os.walk(self.output_dir):
             for file_ in files:
-                output_files.add(_join(root, file_))
+                output_paths.add(_join(root, file_))
 
-        return output_files
+        return output_paths
 
     def check_links(self, internal=True, external=False):
         with _Phase(self, "Finding input files"):
-            input_paths = self.find_input_files()
+            input_paths = self._find_input_paths()
 
         with _Phase(self, "Initializing input files"):
-            self.init_input_files(input_paths)
+            self._init_input_files(input_paths)
 
         with _Phase(self, "Finding links"):
             for file_ in self._output_files.values():
-                file_.find_links()
+                file_._find_links()
 
         with _Phase(self, "Checking links"):
             errors_by_link = _defaultdict(list)
@@ -480,10 +456,10 @@ class _InputFile:
         path = self.input_path[len(self.site.input_dir) + 1:]
         return _format_repr(self, path)
 
-    def init(self):
+    def _init(self):
         self._input_mtime = _os.path.getmtime(self.input_path)
 
-    def process_input(self):
+    def _process_input(self):
         pass
 
 class _ConfigFile(_InputFile):
@@ -496,7 +472,7 @@ class _ConfigFile(_InputFile):
 
         self.site._config_files[self.input_path] = self
 
-    def modified(self):
+    def _is_modified(self):
         if self._output_mtime is None:
             try:
                 self._output_mtime = _os.path.getmtime(self.site.output_dir)
@@ -529,8 +505,8 @@ class _OutputFile(_InputFile):
 
         self.site._output_files[self.input_path] = self
 
-    def init(self):
-        super().init()
+    def _init(self):
+        super()._init()
 
         self.url = self.site.get_url(self.output_path)
 
@@ -540,7 +516,7 @@ class _OutputFile(_InputFile):
             self.site._link_targets.add(self.url[:-10])
             self.site._link_targets.add(self.url[:-11])
 
-    def process_input(self):
+    def _process_input(self):
         self.site.info("Processing {}", self)
         self._load_input()
 
@@ -548,7 +524,7 @@ class _OutputFile(_InputFile):
         self.site.info("Loading {}", self)
         self._content = _read_file(self.input_path)
 
-    def modified(self):
+    def _is_modified(self):
         if self._output_mtime is None:
             try:
                 self._output_mtime = _os.path.getmtime(self.output_path)
@@ -557,8 +533,11 @@ class _OutputFile(_InputFile):
 
         return self._input_mtime > self._output_mtime
 
-    def render_output(self, force=False):
-        raise NotImplementedError()
+    def _render_output(self, force=False):
+        self._config = dict(self.site._config)
+        self._config["page"] = self
+        self._config["title"] = self.title if self.title is not None else "[none]"
+        self._config["ancestor_links"] = self._get_ancestor_links()
 
     def _apply_template(self):
         page_template = self.site._page_template
@@ -594,15 +573,36 @@ class _OutputFile(_InputFile):
 
         self._content = template.replace("@content@", self._content, 1)
 
-    def _replace_variables(self):
+    def _replace_input_variables(self):
         self.site.info("Replacing variables in {}", self)
+        self._content = self.replace_variables(self._content, self.input_path)
 
-        self._config = dict(self.site._config)
-        self._config["page"] = self
-        self._config["title"] = self.title if self.title is not None else "[none]"
-        self._config["ancestor_links"] = self._get_ancestor_links()
+    def replace_variables(self, text, input_path=None):
+        assert self._config
 
-        self._content = self.site._replace_variables(self, self._content, self.input_path)
+        out = list()
+        tokens = _variable_regex.split(text)
+
+        for token in tokens:
+            if token[:2] != "{{" or token[-2:] != "}}":
+                out.append(token)
+                continue
+
+            expr = token[2:-2]
+
+            try:
+                result = eval(expr, self._config)
+            except Exception as e:
+                print(f"Expression '{expr}': file '{input_path}': {e}")
+                _traceback.print_exc();
+
+                out.append(token)
+                continue
+
+            if result is not None:
+                out.append(str(result))
+
+        return "".join(out)
 
     def _get_ancestor_links(self):
         links = list()
@@ -621,7 +621,7 @@ class _OutputFile(_InputFile):
         self.site.info("Saving {}", self)
         _write_file(self.output_path, self._content)
 
-    def find_links(self):
+    def _find_links(self):
         if not self.output_path.endswith(".html"):
             return
 
@@ -702,16 +702,18 @@ class _MarkdownFile(_OutputFile):
 
         self.output_path = f"{self.output_path[:-3]}.html"
 
-    def process_input(self):
-        super().process_input()
+    def _process_input(self):
+        super()._process_input()
 
         match = _markdown_title_regex.search(self._content)
 
         if match:
             self.title = match.group(2).strip()
 
-    def render_output(self, force=False):
-        if self.modified() or force:
+    def _render_output(self, force=False):
+        super()._render_output(force=force)
+
+        if self._is_modified() or force:
             self.site.info("Rendering {}", self)
 
             # Strip out comments
@@ -729,14 +731,14 @@ class _MarkdownFile(_OutputFile):
                 pass
 
             self._apply_template()
-            self._replace_variables()
+            self._replace_input_variables()
             self._save_output()
 
 class _HtmlInFile(_OutputFile):
     __slots__ = ()
 
-    def process_input(self):
-        super().process_input()
+    def _process_input(self):
+        super()._process_input()
 
         self.attributes.update(self._extract_metadata())
 
@@ -749,12 +751,14 @@ class _HtmlInFile(_OutputFile):
                 self.title = match.group(2).strip()
                 self.title = _html_tag_regex.sub("", self.title)
 
-    def render_output(self, force=False):
-        if self.modified() or force:
+    def _render_output(self, force=False):
+        super()._render_output(force=force)
+
+        if self._is_modified() or force:
             self.site.info("Converting {} to HTML", self)
 
             self._apply_template()
-            self._replace_variables()
+            self._replace_input_variables()
             self._save_output()
 
     def _extract_metadata(self):
@@ -775,21 +779,23 @@ class _HtmlInFile(_OutputFile):
 class _InFile(_OutputFile):
     __slots__ = ()
 
-    def render_output(self, force=False):
-        if self.modified() or force:
+    def _render_output(self, force=False):
+        super()._render_output(force=force)
+
+        if self._is_modified() or force:
             self.site.info("Rendering {}", self)
 
-            self._replace_variables()
+            self._replace_input_variables()
             self._save_output()
 
 class _StaticFile(_OutputFile):
     __slots__ = ()
 
-    def process_input(self):
+    def _process_input(self):
         pass
 
-    def render_output(self, force=False):
-        if self.modified() or force:
+    def _render_output(self, force=False):
+        if self._is_modified() or force:
             self.site.info("Saving {}", self)
             _copy_file(self.input_path, self.output_path)
 
