@@ -30,49 +30,50 @@ def test_transom_options(session):
 
 def test_transom_init(session):
     call("transom init --help")
-    call("transom init --init-only --verbose a")
+    call("transom init --init-only --verbose config input")
 
     with temp_working_dir():
-        call("transom init a")
-        call("transom init a") # Re-init
+        call("transom init config input")
+        call("transom init config input") # Re-init
 
 def test_transom_render(session):
     call("transom render --help")
-    call("transom render --init-only --quiet a b")
+    call("transom render --init-only --quiet config input output")
 
     with temp_working_dir():
-        make_input_files("a")
+        make_input_files("config", "input")
 
-        call("transom render a b")
-        call("transom render --site-url https://example.com a b")
-        call("transom render --site-url https://example.com --force a b")
+        call("transom render config input output")
+        call("transom render --site-url https://example.com config input output")
+        call("transom render --site-url https://example.com --force config input output")
 
 def test_transom_check_links(session):
     call("transom check-links --help")
-    call("transom check-links --init-only --verbose a b")
+    call("transom check-links --init-only --verbose config input output")
 
     with temp_working_dir():
-        make_input_files("a")
-        call("transom render a b")
+        make_input_files("config", "input")
 
-        call("transom check-links a b")
+        call("transom render config input output")
+        call("transom check-links config input output")
 
         append(join("a", "index.md"), "[Not there](not-there.html)")
 
-        call("transom check-links a b")
+        call("transom check-links config input output")
 
 def test_transom_check_files(session):
     call("transom check-files --help")
-    call("transom check-files --init-only --quiet a b")
+    call("transom check-files --init-only --quiet config input output")
 
     with temp_working_dir():
-        make_input_files("a")
-        call("transom render a b")
+        make_input_files("config", "input")
 
-        remove(join("a", "test-page-1.md")) # An extra output file
-        remove(join("b", "test-page-2.html")) # A missing output file
+        call("transom render config input output")
 
-        call("transom check-files a b")
+        remove(join("input", "test-page-1.md")) # An extra output file
+        remove(join("output", "test-page-2.html")) # A missing output file
+
+        call("transom check-files config input output")
 
 _index_page = """
 # Index
@@ -88,8 +89,8 @@ _test_page_2 = """
 # Test 2
 """
 
-def make_input_files(input_dir):
-    call("transom init {}", input_dir)
+def make_input_files(config_dir, input_dir):
+    call("transom init {} {}", config_dir, input_dir)
 
     write(join(input_dir, "index.md"), _index_page)
     write(join(input_dir, "test-1.md"), _test_page_1)

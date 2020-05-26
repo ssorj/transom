@@ -59,7 +59,8 @@ _variable_regex = _re.compile("({{.+?}})")
 _reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
 
 class Transom:
-    def __init__(self, input_dir, output_dir, home=None, url=None):
+    def __init__(self, config_dir, input_dir, output_dir, home=None, url=None):
+        self.config_dir = config_dir
         self.input_dir = _os.path.abspath(input_dir)
         self.output_dir = output_dir
         self.home = home
@@ -69,7 +70,6 @@ class Transom:
         self.quiet = False
         self.reload = False
 
-        self.config_dir = _join(self.input_dir, "_transom")
         self.config_file = _join(self.config_dir, "config.py")
         self._config = None
 
@@ -188,11 +188,6 @@ class Transom:
         return False
 
     def _create_file(self, input_path):
-        config_dir = _join(self.input_dir, "_transom")
-
-        if input_path.startswith(config_dir):
-            return _ConfigFile(self, input_path)
-
         name, ext = _os.path.splitext(input_path)
 
         if ext == ".md":
@@ -255,12 +250,14 @@ class Transom:
             if _is_dir(event.pathname):
                 return True
 
-            if (event.pathname.startswith(self.config_dir)):
-                self.render(force=True)
             else:
                 self._render_one_file(event.pathname, force=True)
 
         watcher.add_watch(self.input_dir, mask, func, rec=True, auto_add=True)
+
+        # XXX Need to add another watch for config files
+        # if (event.pathname.startswith(self.config_dir)):
+        #     self.render(force=True)
 
         notifier.loop()
 
@@ -462,24 +459,24 @@ class _InputFile:
     def _process_input(self):
         pass
 
-class _ConfigFile(_InputFile):
-    __slots__ = "_output_mtime",
+# class _ConfigFile(_InputFile):
+#     __slots__ = "_output_mtime",
 
-    def __init__(self, site, input_path):
-        super().__init__(site, input_path)
+#     def __init__(self, site, input_path):
+#         super().__init__(site, input_path)
 
-        self._output_mtime = None
+#         self._output_mtime = None
 
-        self.site._config_files[self.input_path] = self
+#         self.site._config_files[self.input_path] = self
 
-    def _is_modified(self):
-        if self._output_mtime is None:
-            try:
-                self._output_mtime = _os.path.getmtime(self.site.output_dir)
-            except FileNotFoundError:
-                return True
+#     def _is_modified(self):
+#         if self._output_mtime is None:
+#             try:
+#                 self._output_mtime = _os.path.getmtime(self.site.output_dir)
+#             except FileNotFoundError:
+#                 return True
 
-        return self._input_mtime > self._output_mtime
+#         return self._input_mtime > self._output_mtime
 
 class _OutputFile(_InputFile):
     __slots__ = "output_path", "_output_mtime", "parent", "url", "title", "attributes", "_config", "_content"
@@ -823,6 +820,8 @@ class TransomCommand(_commandant.Command):
         init = subparsers.add_parser("init")
         init.description = "Prepare an input directory"
         init.set_defaults(func=self.init_command)
+        init.add_argument("config_dir", metavar="CONFIG-DIR",
+                          help="Read config files from CONFIG-DIR")
         init.add_argument("input_dir", metavar="INPUT-DIR",
                           help="Place default input files in INPUT-DIR")
         init.add_argument("--quiet", action="store_true",
@@ -835,6 +834,8 @@ class TransomCommand(_commandant.Command):
         render = subparsers.add_parser("render")
         render.description = "Generate output files"
         render.set_defaults(func=self.render_command)
+        render.add_argument("config_dir", metavar="CONFIG-DIR",
+                            help="Read config files from CONFIG-DIR")
         render.add_argument("input_dir", metavar="INPUT-DIR",
                             help="Read input files from INPUT-DIR")
         render.add_argument("output_dir", metavar="OUTPUT-DIR",
@@ -855,6 +856,8 @@ class TransomCommand(_commandant.Command):
         check_links = subparsers.add_parser("check-links")
         check_links.description = "Check for broken links"
         check_links.set_defaults(func=self.check_links_command)
+        check_links.add_argument("config_dir", metavar="CONFIG-DIR",
+                                 help="Read config files from CONFIG-DIR")
         check_links.add_argument("input_dir", metavar="INPUT-DIR",
                                  help="Check input files in INPUT-DIR")
         check_links.add_argument("output_dir", metavar="OUTPUT-DIR",
@@ -873,6 +876,8 @@ class TransomCommand(_commandant.Command):
         check_files = subparsers.add_parser("check-files")
         check_files.description = "Check for missing or extra files"
         check_files.set_defaults(func=self.check_files_command)
+        check_files.add_argument("config_dir", metavar="CONFIG-DIR",
+                                 help="Read config files from CONFIG-DIR")
         check_files.add_argument("input_dir", metavar="INPUT-DIR",
                                  help="Check input files in INPUT-DIR")
         check_files.add_argument("output_dir", metavar="OUTPUT-DIR",
@@ -895,13 +900,8 @@ class TransomCommand(_commandant.Command):
     def init_lib(self):
         assert self.lib is None
 
-        site_url = None
-
-        if "site_url" in self.args:
-            site_url = self.args.site_url
-
-        self.lib = Transom(self.args.input_dir, self.args.output_dir,
-                           home=self.home, url=site_url)
+        self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir,
+                           home=self.home, url=getattr(self.args, "site_url", None))
         self.lib.verbose = self.args.verbose
         self.lib.quiet = self.args.quiet
 
@@ -926,14 +926,12 @@ class TransomCommand(_commandant.Command):
 
             self.notice("Creating '{}'", to_path)
 
-        config_dir = _join(self.args.input_dir, "_transom")
-
         if self.args.init_only:
             _sys.exit(0)
 
-        copy("page.html", _join(config_dir, "page.html"))
-        copy("body.html", _join(config_dir, "body.html"))
-        copy("config.py", _join(config_dir, "config.py"))
+        copy("page.html", _join(self.args.config_dir, "page.html"))
+        copy("body.html", _join(self.args.config_dir, "body.html"))
+        copy("config.py", _join(self.args.config_dir, "config.py"))
 
         copy("main.css", _join(self.args.input_dir, "main.css"))
         copy("main.js", _join(self.args.input_dir, "main.js"))

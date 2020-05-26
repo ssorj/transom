@@ -69,19 +69,19 @@ test: build
 
 .PHONY: render
 render: build
-	transom render input output
+	transom render config input output
 
 .PHONY: watch
 watch: build
-	transom render --watch --verbose input output
+	transom render --watch --verbose config input output
 
 .PHONY: check-links
 check-links: build
-	transom check-links input output
+	transom check-links config input output
 
 .PHONY: check-files
 check-files: build
-	transom check-files input output
+	transom check-files config input output
 
 build/prefix.txt:
 	echo ${PREFIX} > build/prefix.txt
