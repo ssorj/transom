@@ -80,7 +80,6 @@ class Transom:
 
         self._input_files = dict()
         self._output_files = dict()
-        self._config_files = dict()
 
         self._links = _defaultdict(set)
         self._link_targets = set()
@@ -201,26 +200,18 @@ class Transom:
             return _StaticFile(self, input_path)
 
     def render(self, force=False, watch=False):
-        with _Phase(self, "Finding input files"):
-            input_paths = self._find_input_paths()
-
-        with _Phase(self, "Initializing input files"):
-            self._init_input_files(input_paths)
+        input_paths = self._find_input_paths()
+        self._init_input_files(input_paths)
 
         if not self.quiet and not self.verbose:
-            print("  Input files        {:>10,}".format(len(self._input_files)))
-            print("  Output files       {:>10,}".format(len(self._output_files)))
-            print("  Config files       {:>10,}".format(len(self._config_files)))
+            print("Input files   {:>10,}".format(len(self._input_files)))
+            print("Output files  {:>10,}".format(len(self._output_files)))
 
-        with _Phase(self, "Processing input files"):
-            for file_ in self._input_files.values():
-                file_._process_input()
+        for file_ in self._input_files.values():
+            file_._process_input()
 
-        force = force or any([x._is_modified() for x in self._config_files.values()])
-
-        with _Phase(self, "Rendering output files"):
-            for file_ in self._output_files.values():
-                file_._render_output(force=force)
+        for file_ in self._output_files.values():
+            file_._render_output(force=force)
 
         if _exists(self.output_dir):
             _os.utime(self.output_dir)
@@ -283,23 +274,19 @@ class Transom:
         return page.replace_variables(content, input_path=input_path)
 
     def check_files(self):
-        with _Phase(self, "Finding input files"):
-            input_paths = self._find_input_paths()
+        input_paths = self._find_input_paths()
+        self._init_input_files(input_paths)
 
-        with _Phase(self, "Initializing input files"):
-            self._init_input_files(input_paths)
+        expected_paths = set()
+        found_paths = set()
 
-        with _Phase(self, "Checking output files"):
-            expected_paths = set()
-            found_paths = set()
+        for file_ in self._output_files.values():
+            expected_paths.add(file_.output_path)
 
-            for file_ in self._output_files.values():
-                expected_paths.add(file_.output_path)
+        found_paths = self._find_output_paths()
 
-            found_paths = self._find_output_paths()
-
-            missing_paths = expected_paths.difference(found_paths)
-            extra_paths = found_paths.difference(expected_paths)
+        missing_paths = expected_paths.difference(found_paths)
+        extra_paths = found_paths.difference(expected_paths)
 
         if missing_paths:
             print("Missing output files:")
@@ -325,33 +312,28 @@ class Transom:
         return output_paths
 
     def check_links(self, internal=True, external=False):
-        with _Phase(self, "Finding input files"):
-            input_paths = self._find_input_paths()
+        input_paths = self._find_input_paths()
+        self._init_input_files(input_paths)
 
-        with _Phase(self, "Initializing input files"):
-            self._init_input_files(input_paths)
+        for file_ in self._output_files.values():
+            file_._find_links()
 
-        with _Phase(self, "Finding links"):
-            for file_ in self._output_files.values():
-                file_._find_links()
+        errors_by_link = _defaultdict(list)
+        links = self._filter_links(self._links)
 
-        with _Phase(self, "Checking links"):
-            errors_by_link = _defaultdict(list)
-            links = self._filter_links(self._links)
+        for link in links:
+            if internal and link.startswith(self.url):
+                if link not in self._link_targets:
+                    errors_by_link[link].append("Link has no target")
 
-            for link in links:
-                if internal and link.startswith(self.url):
-                    if link not in self._link_targets:
-                        errors_by_link[link].append("Link has no target")
+            if external and not link.startswith(self.url):
+                code, error = self._check_external_link(link)
 
-                if external and not link.startswith(self.url):
-                    code, error = self._check_external_link(link)
+                if code >= 400:
+                    errors_by_link[link].append(f"HTTP error code {code}")
 
-                    if code >= 400:
-                        errors_by_link[link].append(f"HTTP error code {code}")
-
-                    if error:
-                        errors_by_link[link].append(error.message)
+                if error:
+                    errors_by_link[link].append(error.message)
 
         for link in errors_by_link:
             print(f"Link: {link}")
@@ -408,35 +390,6 @@ class Transom:
         message = message.format(*args)
         print(f"Warning! {message}")
 
-class _Phase:
-    def __init__(self, site, message, *args):
-        self.site = site
-        self.message = message
-        self.args = args
-
-        self.start_time = None
-        self.end_time = None
-
-    def __enter__(self):
-        self.start_time = _time.time()
-
-        if not self.site.quiet and not self.site.verbose:
-            message = self.message.format(*self.args)
-            print("{:.<40} ".format(message + " "), end="", flush=True)
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if not self.site.quiet and not self.site.verbose and exc_type is not None:
-            print("FAILED")
-            return
-
-        self.end_time = _time.time()
-
-        phase_dur = self.end_time - self.start_time
-        total_dur = self.end_time - self.site._start_time
-
-        if not self.site.quiet and not self.site.verbose:
-            print("{:0.3f}s [{:0.3f}s]".format(phase_dur, total_dur))
-
 class _InputFile:
     __slots__ = "site", "parent", "input_path", "_input_mtime"
 
@@ -458,25 +411,6 @@ class _InputFile:
 
     def _process_input(self):
         pass
-
-# class _ConfigFile(_InputFile):
-#     __slots__ = "_output_mtime",
-
-#     def __init__(self, site, input_path):
-#         super().__init__(site, input_path)
-
-#         self._output_mtime = None
-
-#         self.site._config_files[self.input_path] = self
-
-#     def _is_modified(self):
-#         if self._output_mtime is None:
-#             try:
-#                 self._output_mtime = _os.path.getmtime(self.site.output_dir)
-#             except FileNotFoundError:
-#                 return True
-
-#         return self._input_mtime > self._output_mtime
 
 class _OutputFile(_InputFile):
     __slots__ = "output_path", "_output_mtime", "parent", "url", "title", "attributes", "_config", "_content"
