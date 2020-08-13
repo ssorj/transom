@@ -21,23 +21,23 @@
 -->
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
   <head>
-    <title>{{title}} - Apache Qpid</title>
+    <title>{{page.title}} - Apache Qpid</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <link rel="stylesheet" href="{{site_url}}/main.css" type="text/css" async="async"/>
-    <script type="text/javascript" src="{{site_url}}/main.js" defer="defer"></script>
-    
+    <link rel="stylesheet" href="{{site.url}}/main.css" type="text/css" async="async"/>
+    <script type="text/javascript" src="{{site.url}}/main.js" defer="defer"></script>
+
 @extra_headers@
 
   </head>
   <body>
     <header id="-primary-header">
-      <nav id="-global-navigation">
-        <a id="-logotype" href="{{site_url}}/index.html"><img src="{{site_url}}/images/logo-white.svg"/> Apache Qpid<span class="tm">&#8482;</span></a>
-        <a href="{{site_url}}/components/index.html">Components</a>
-        <a href="{{site_url}}/releases/index.html">Releases</a>
-        <a href="{{site_url}}/discussion.html">Discussion</a>
+      <nav id="-global-nav">
+        <a id="-logotype" href="{{site.url}}/index.html"><img src="{{site.url}}/images/logo-white.svg"/> Apache Qpid<span class="tm">&#8482;</span></a>
+        <a href="{{site.url}}/components/index.html">Components</a>
+        <a href="{{site.url}}/releases/index.html">Releases</a>
+        <a href="{{site.url}}/discussion.html">Discussion</a>
       </nav>
-      {{path_navigation}}
+      {{page.path_nav()}}
     </header>
 
 @body_template@
@@ -48,7 +48,7 @@
         <a href="http://www.apache.org/licenses/">License</a>
         <a href="http://www.apache.org/foundation/sponsorship.html">Sponsorship</a>
         <a href="http://www.apache.org/foundation/thanks.html">Thanks!</a>
-        <a href="{{site_url}}/security.html">Security</a>
+        <a href="{{site.url}}/security.html">Security</a>
         <a href="http://www.apache.org/"><img id="-apache-feather" width="48" height="14" src="" alt="Apache"/></a>
       </nav>
 

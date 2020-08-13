@@ -319,7 +319,7 @@ pre, .scroll {
     margin: 0 0.1em 0 0;
 }
 
-#-global-navigation {
+#-global-nav {
     display: flex;
     align-items: baseline;
     font-family: var(--title-font-family);
@@ -328,41 +328,41 @@ pre, .scroll {
     margin: 0;
 }
 
-#-global-navigation > a {
+#-global-nav > a {
     margin: 0 1.4em 0 0;
     color: rgba(255, 255, 255, 0.8);
 }
 
-#-global-navigation > a:first-child {
+#-global-nav > a:first-child {
     padding-left: 0;
 }
 
-#-global-navigation > a:hover,
-#-global-navigation > a:first-child {
+#-global-nav > a:hover,
+#-global-nav > a:first-child {
     color: rgba(255, 255, 255, 1.0);
 }
 
-#-path-navigation {
-    display: none;
+#-path-nav {
+    /* display: none; */
     padding: 0;
     font-size: 0.9em;
     font-weight: 600;
 }
 
-#-path-navigation > a {
+#-path-nav > a {
     padding: 0;
     margin: auto 0;
 }
 
-#-path-navigation > a:after {
+#-path-nav > a:after {
     content: " \003e\00a0 ";
 }
 
-#-path-navigation > a:last-child:after {
+#-path-nav > a:last-child:after {
     content: none;
 }
 
-#-apache-navigation {
+#-apache-nav {
     display: flex;
     justify-content: space-between;
     margin: 0;

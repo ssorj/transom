@@ -22,16 +22,16 @@ class _Release(object):
     def brief_link(self):
         return "<a href=\"{}\">{}</a>".format(self.url, self.number)
 
-broker_j_release = _Release(site_url, "Qpid Broker-J", "qpid-broker-j", "7.0.0")
-cpp_release = _Release(site_url, "Qpid F++", "qpid-cpp", "1.37.0")
-dispatch_release = _Release(site_url, "Qpid Dispatch", "qpid-dispatch", "1.0.0")
-interop_test_release = _Release(site_url, "Qpid Interop Test", "qpid-interop-test", "0.1.0")
-java_release = _Release(site_url, "Qpid for Java", "qpid-java", "6.1.5")
-jms_release = _Release(site_url, "Qpid JMS", "qpid-jms", "0.27.0")
-jms_amqp_0_x_release = _Release(site_url, "Qpid JMS for AMQP 0-x", "qpid-jms-amqp-0-x", "6.3.0")
-proton_release = _Release(site_url, "Qpid Proton", "qpid-proton", "0.18.1")
-proton_j_release = _Release(site_url, "Qpid Proton-J", "qpid-proton-j", "0.23.0")
-python_release = _Release(site_url, "Qpid Python", "qpid-python", "1.37.0")
+broker_j_release = _Release(site.url, "Qpid Broker-J", "qpid-broker-j", "7.0.0")
+cpp_release = _Release(site.url, "Qpid F++", "qpid-cpp", "1.37.0")
+dispatch_release = _Release(site.url, "Qpid Dispatch", "qpid-dispatch", "1.0.0")
+interop_test_release = _Release(site.url, "Qpid Interop Test", "qpid-interop-test", "0.1.0")
+java_release = _Release(site.url, "Qpid for Java", "qpid-java", "6.1.5")
+jms_release = _Release(site.url, "Qpid JMS", "qpid-jms", "0.27.0")
+jms_amqp_0_x_release = _Release(site.url, "Qpid JMS for AMQP 0-x", "qpid-jms-amqp-0-x", "6.3.0")
+proton_release = _Release(site.url, "Qpid Proton", "qpid-proton", "0.18.1")
+proton_j_release = _Release(site.url, "Qpid Proton-J", "qpid-proton-j", "0.23.0")
+python_release = _Release(site.url, "Qpid Python", "qpid-python", "1.37.0")
 
 current_broker_j_release = broker_j_release.number
 current_broker_j_release_url = broker_j_release.url

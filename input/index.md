@@ -1,7 +1,7 @@
 ---
 title: Home
 body_template: none
-extra_headers: <link rel="stylesheet" href="{{site_url}}/index.css" type="text/css" async="async"/>
+extra_headers: <link rel="stylesheet" href="{{site.url}}/index.css" type="text/css" async="async"/>
 ---
 
 <section id="-qpid-intro" markdown="1">
@@ -45,10 +45,10 @@ extra_headers: <link rel="stylesheet" href="{{site_url}}/index.css" type="text/c
 
 ## About AMQP
 
-[AMQP]({{site_url}}/amqp/index.html) is an open internet protocol for
+[AMQP]({{site.url}}/amqp/index.html) is an open internet protocol for
 reliably sending and receiving messages.
 
-Learn more about [Qpid and AMQP]({{site_url}}/overview.html).
+Learn more about [Qpid and AMQP]({{site.url}}/overview.html).
 
 </section>
 <section id="-about-qpid" markdown="1">
@@ -57,8 +57,8 @@ Learn more about [Qpid and AMQP]({{site_url}}/overview.html).
 
  - Qpid is an [Apache](http://www.apache.org/) project
  - Our code is [open source](http://www.apache.org/licenses/LICENSE-2.0)
- - Thank you, [contributors]({{site_url}}/contributors.html)!
- - How to [get involved]({{site_url}}/get-involved.html)
+ - Thank you, [contributors]({{site.url}}/contributors.html)!
+ - How to [get involved]({{site.url}}/get-involved.html)
 
 </section>
 <section id="-about-apache" markdown="1">
@@ -76,11 +76,11 @@ Learn more about [Qpid and AMQP]({{site_url}}/overview.html).
 
 ## Resources
 
- - [Components]({{site_url}}/components/index.html)
- - [Releases]({{site_url}}/releases/index.html)
- - [Discussion]({{site_url}}/discussion.html)
- - [Security]({{site_url}}/security.html)
- - [More resources]({{site_url}}/resources.html)
+ - [Components]({{site.url}}/components/index.html)
+ - [Releases]({{site.url}}/releases/index.html)
+ - [Discussion]({{site.url}}/discussion.html)
+ - [Security]({{site.url}}/security.html)
+ - [More resources]({{site.url}}/resources.html)
 
 </section>
 

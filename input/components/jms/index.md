@@ -26,7 +26,7 @@
 ## JMS with the strength of AMQP
 
 Qpid JMS is an AMQP 1.0 [Java Message Service][jms] 2.0 client built
-using [Qpid Proton]({{site_url}}/proton/index.html).
+using [Qpid Proton]({{site.url}}/proton/index.html).
 
 Qpid also provides an alternate JMS client supporting
 [earlier AMQP versions](amqp-0-x.html).
@@ -64,7 +64,7 @@ For details about the AMQP 0-x JMS client, look [here](amqp-0-x.html).
 ## Releases
 
  - {{current_jms_release_link}}
- - [Past releases]({{site_url}}/releases/index.html#past-releases)
+ - [Past releases]({{site.url}}/releases/index.html#past-releases)
 
 ## Issues
 

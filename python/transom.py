@@ -70,11 +70,11 @@ class Transom:
         self.quiet = False
         self.reload = False
 
-        self.config_file = _join(self.config_dir, "config.py")
+        self.config_file = _os.path.join(self.config_dir, "config.py")
         self._config = None
 
-        self.body_template_path = _join(self.config_dir, "body.html")
-        self.page_template_path = _join(self.config_dir, "page.html")
+        self.body_template_path = _os.path.join(self.config_dir, "body.html")
+        self.page_template_path = _os.path.join(self.config_dir, "page.html")
         self._body_template = None
         self._page_template = None
 
@@ -93,19 +93,19 @@ class Transom:
 
     def init(self):
         if self.home is not None:
-            if not _is_file(self.page_template_path):
-                self.page_template_path = _join(self.home, "files", "page.html")
+            if not _os.path.isfile(self.page_template_path):
+                self.page_template_path = _os.path.join(self.home, "files", "page.html")
 
-            if not _is_file(self.body_template_path):
-                self.body_template_path = _join(self.home, "files", "body.html")
+            if not _os.path.isfile(self.body_template_path):
+                self.body_template_path = _os.path.join(self.home, "files", "body.html")
 
         if self.url is None:
             self.url = "file:{}".format(_os.path.abspath(self.output_dir))
 
-        if not _is_file(self.page_template_path):
+        if not _os.path.isfile(self.page_template_path):
             raise Exception(f"No page template found at {self.page_template_path}")
 
-        if not _is_file(self.body_template_path):
+        if not _os.path.isfile(self.body_template_path):
             raise Exception(f"No body template found at {self.body_template_path}")
 
         self._page_template = _read_file(self.page_template_path)
@@ -113,17 +113,14 @@ class Transom:
 
         self._config = {
             "site": self,
-            "site_url": self.url,
-            "extra_headers": None,
             "ignored_files": self._ignored_file_patterns,
             "ignored_links": self._ignored_link_patterns,
-            "include": self._include,
             "lipsum": _lipsum,
             "html_table": _html_table,
             "html_table_csv": _html_table_csv,
         }
 
-        if _is_file(self.config_file):
+        if _os.path.isfile(self.config_file):
             exec(_read_file(self.config_file), self._config)
 
         self._start_time = _time.time()
@@ -135,12 +132,12 @@ class Transom:
             # Process index files before the others in the same directory
             for file_ in files:
                 if file_.startswith("index."):
-                    input_paths.append(_join(root, file_))
+                    input_paths.append(_os.path.join(root, file_))
                     files.remove(file_)
                     break
 
             for file_ in files:
-                input_paths.append(_join(root, file_))
+                input_paths.append(_os.path.join(root, file_))
 
         return input_paths
 
@@ -155,7 +152,7 @@ class Transom:
 
         for file_ in self._output_files.values():
             path = file_.output_path[len(self.output_dir):]
-            dir_, name = _split(path)
+            dir_, name = _os.path.split(path)
 
             if name == "index.html":
                 index_files[dir_] = file_
@@ -163,13 +160,12 @@ class Transom:
                 other_files[dir_].append(file_)
 
         for dir_ in index_files:
-            parent_dir = _split(dir_)[0]
-
-            if parent_dir == "/":
+            if dir_ == "/":
                 continue
 
+            parent_dir = _os.path.split(dir_)[0]
             file_ = index_files[dir_]
-            file_.parent = index_files.get(parent_dir)
+            file_.parent = index_files[parent_dir]
 
         for dir_ in other_files:
             parent = index_files.get(dir_)
@@ -203,6 +199,8 @@ class Transom:
         input_paths = self._find_input_paths()
         self._init_input_files(input_paths)
 
+
+
         if not self.quiet and not self.verbose:
             print("Input files   {:>10,}".format(len(self._input_files)))
             print("Output files  {:>10,}".format(len(self._output_files)))
@@ -213,7 +211,7 @@ class Transom:
         for file_ in self._output_files.values():
             file_._render_output(force=force)
 
-        if _exists(self.output_dir):
+        if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
 
         if watch:
@@ -238,7 +236,7 @@ class Transom:
             if event.name.startswith("#"):
                 return True
 
-            if _is_dir(event.pathname):
+            if _os.path.isdir(event.pathname):
                 return True
 
             else:
@@ -261,17 +259,6 @@ class Transom:
         input_file._render_output(force=force)
 
         _os.utime(self.output_dir)
-
-    def _include(self, page, input_path):
-        name, ext = _os.path.splitext(input_path)
-
-        with open(input_path, "r") as f:
-            content = f.read()
-
-        if ext == ".md":
-            content = self._markdown_converter.convert(content)
-
-        return page.replace_variables(content, input_path=input_path)
 
     def check_files(self):
         input_paths = self._find_input_paths()
@@ -307,7 +294,7 @@ class Transom:
 
         for root, dirs, files in _os.walk(self.output_dir):
             for file_ in files:
-                output_paths.add(_join(root, file_))
+                output_paths.add(_os.path.join(root, file_))
 
         return output_paths
 
@@ -404,7 +391,7 @@ class _InputFile:
 
     def __repr__(self):
         path = self.input_path[len(self.site.input_dir) + 1:]
-        return _format_repr(self, path)
+        return f"{self.__class__.__name__}({path})"
 
     def _init(self):
         self._input_mtime = _os.path.getmtime(self.input_path)
@@ -423,7 +410,7 @@ class _OutputFile(_InputFile):
         if path.endswith(".in"):
             path = path[:-3]
 
-        self.output_path = _join(self.site.output_dir, path)
+        self.output_path = _os.path.join(self.site.output_dir, path)
         self._output_mtime = None
 
         self.parent = None
@@ -467,8 +454,6 @@ class _OutputFile(_InputFile):
     def _render_output(self, force=False):
         self._config = dict(self.site._config)
         self._config["page"] = self
-        self._config["title"] = self.title if self.title is not None else "[none]"
-        self._config["ancestor_links"] = self._get_ancestor_links()
 
     def _apply_template(self):
         page_template = self.site._page_template
@@ -477,7 +462,7 @@ class _OutputFile(_InputFile):
         if "page_template" in self.attributes:
             page_template_path = self.attributes["page_template"]
 
-            if _is_file(page_template_path):
+            if _os.path.isfile(page_template_path):
                 page_template = _read_file(page_template_path)
             else:
                 raise Exception(f"Page template {page_template_path} not found")
@@ -487,7 +472,7 @@ class _OutputFile(_InputFile):
 
             if body_template_path == "none":
                 body_template = "@content@"
-            elif _is_file(body_template_path):
+            elif _os.path.isfile(body_template_path):
                 body_template = _read_file(body_template_path)
             else:
                 raise Exception(f"Body template {body_template_path} not found")
@@ -535,18 +520,28 @@ class _OutputFile(_InputFile):
 
         return "".join(out)
 
-    def _get_ancestor_links(self):
-        links = list()
+    def path_nav(self, start=None, end=None):
+        files = [self]
         file_ = self.parent
 
         while file_ is not None:
-            links.append(file_._render_link())
+            files.append(file_)
             file_ = file_.parent
 
-        return reversed(links)
+        links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in reversed(files)]
 
-    def _render_link(self):
-        return f"<a href=\"{self.url}\">{self.title}</a>"
+        return f"<nav id=\"-path-nav\">{''.join(links[start:end])}</nav>"
+
+    def include(self, page, input_path):
+        name, ext = _os.path.splitext(input_path)
+
+        with open(input_path, "r") as f:
+            content = f.read()
+
+        if ext == ".md":
+            content = self._markdown_converter.convert(content)
+
+        return page.replace_variables(content, input_path=input_path)
 
     def _save_output(self):
         self.site.info("Saving {}", self)
@@ -852,24 +847,24 @@ class TransomCommand(_commandant.Command):
             self.fail("I can't find the default input files")
 
         def copy(file_name, to_path):
-            if _exists(to_path):
+            if _os.path.exists(to_path):
                 self.notice("Skipping '{}'. It already exists.", to_path)
                 return
 
-            _copy_file(_join(self.home, "files", file_name), to_path)
+            _copy_file(_os.path.join(self.home, "files", file_name), to_path)
 
             self.notice("Creating '{}'", to_path)
 
         if self.args.init_only:
             _sys.exit(0)
 
-        copy("page.html", _join(self.args.config_dir, "page.html"))
-        copy("body.html", _join(self.args.config_dir, "body.html"))
-        copy("config.py", _join(self.args.config_dir, "config.py"))
+        copy("page.html", _os.path.join(self.args.config_dir, "page.html"))
+        copy("body.html", _os.path.join(self.args.config_dir, "body.html"))
+        copy("config.py", _os.path.join(self.args.config_dir, "config.py"))
 
-        copy("main.css", _join(self.args.input_dir, "main.css"))
-        copy("main.js", _join(self.args.input_dir, "main.js"))
-        copy("index.md", _join(self.args.input_dir, "index.md"))
+        copy("main.css", _os.path.join(self.args.input_dir, "main.css"))
+        copy("main.js", _os.path.join(self.args.input_dir, "main.js"))
+        copy("index.md", _os.path.join(self.args.input_dir, "index.md"))
 
     def render_command(self):
         self.init_lib()
@@ -902,12 +897,6 @@ class TransomCommand(_commandant.Command):
         else:
             self.fail("FAILED")
 
-_join = _os.path.join
-_split = _os.path.split
-_exists = _os.path.exists
-_is_file = _os.path.isfile
-_is_dir = _os.path.isdir
-
 def _make_dir(path):
     _os.makedirs(path, exist_ok=True)
 
@@ -916,29 +905,17 @@ def _read_file(path):
         return file_.read()
 
 def _write_file(path, content):
-    _os.makedirs(_split(path)[0], exist_ok=True)
+    _make_dir(_os.path.split(path)[0])
     with open(path, "w") as file_:
         return file_.write(content)
 
 def _copy_file(from_path, to_path):
-    _os.makedirs(_split(to_path)[0], exist_ok=True)
-    with open(from_path, "rb") as from_file:
-        with open(to_path, "wb") as to_file:
-            _shutil.copyfileobj(from_file, to_file, 4096)
-
-def _format_repr(obj, *args):
-    cls = obj.__class__.__name__
-    strings = [str(x) for x in args]
-    return f"{cls}({','.join(strings)})"
+    _make_dir(_os.path.split(to_path)[0])
+    with open(from_path, "rb") as from_file, open(to_path, "wb") as to_file:
+        _shutil.copyfileobj(from_file, to_file, 4096)
 
 def _eprint(*args, **kwargs):
-    kwargs["file"] = _sys.stderr
-    print(*args, **kwargs)
-
-def _pprint(*args, **kwargs):
-    import pprint as _pprint
-    kwargs["stream"] = _sys.stderr
-    _pprint.pprint(*args, **kwargs)
+    print(*args, file=_sys.stderr, **kwargs)
 
 _lipsum_words = [
     "Lorem", "ipsum", "dolor", "sit", "amet,", "consectetur", "adipiscing", "elit.",
@@ -993,7 +970,7 @@ def _html_table(items, column_headings=True, row_headings=False,
         items = items[1:]
 
     for row_index, item in enumerate(items):
-        cols = list()
+        columns = list()
 
         for column_index, cell in enumerate(item):
             if escape_cell_data:
@@ -1003,40 +980,32 @@ def _html_table(items, column_headings=True, row_headings=False,
                 cell = cell_render_fn(row_index, column_index, cell)
 
             if column_index == 0 and row_headings:
-                cols.append(_html_elem("th", cell))
+                columns.append(_html_elem("th", cell))
             else:
-                cols.append(_html_elem("td", cell))
+                columns.append(_html_elem("td", cell))
 
-        rows.append(_html_elem("tr", "".join(cols)))
+        rows.append(_html_elem("tr", "".join(columns)))
 
     tbody = _html_elem("tbody", "\n{}\n".format("\n".join(rows)))
 
     return _html_elem("table", tbody, **attrs)
 
 def _html_elem(tag, content, **attrs):
-    attrs = _html_attrs(attrs)
+    attrs = [_html_attr(name, value) for name, value in attrs.items() if value is not False]
 
     if content is None:
         content = ""
 
-    return f"<{tag}{attrs}>{content}</{tag}>"
+    return f"<{tag} {' '.join(attrs)}>{content}</{tag}>"
 
-def _html_attrs(attrs):
-    vars = list()
+def _html_attr(name, value):
+    if value is True:
+        value = name
 
-    for name, value in attrs.items():
-        if value is False:
-            continue
+    if name == "class_" or name == "_class":
+        name = "class"
 
-        if value is True:
-            value = name
-
-        if name == "class_" or name == "_class":
-            name = "class"
-
-        vars.append(f" {name}=\"{_xml_escape(value)}\"")
-
-    return "".join(vars)
+    return f"{name}=\"{_xml_escape(value)}\""
 
 if __name__ == "__main__":
     command = TransomCommand()

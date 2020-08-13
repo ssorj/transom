@@ -26,7 +26,7 @@ track and manage changes to its source code.
 
 ## Browse the code
 
-The [Dashboard]({{site_url}}/dashboard.html) page provides links to the
+The [Dashboard]({{site.url}}/dashboard.html) page provides links to the
 repository for each individual component. The repositories are all directly
 viewable, and GitHub mirrors are additionally provided for each.
 

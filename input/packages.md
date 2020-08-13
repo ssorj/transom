@@ -24,13 +24,13 @@
 Use `apt-get` to install Qpid and its dependencies.
 
 To install the C++ and Python
-[Messaging]({{site_url}}/components/messaging-api/index.html) APIs:
+[Messaging]({{site.url}}/components/messaging-api/index.html) APIs:
 
     % apt-get install libqpidmessaging2-dev
     % apt-get install python-qpid
 
 To install the
-[C++ broker]({{site_url}}/components/cpp-broker/index.html) and
+[C++ broker]({{site.url}}/components/cpp-broker/index.html) and
 tools::
 
     % apt-get install qpidd qpid-tools
@@ -39,26 +39,26 @@ tools::
 
 Use `yum` or `dnf` to install Qpid and its dependencies.
 
-To install the C and Python [Proton]({{site_url}}/proton/index.html)
+To install the C and Python [Proton]({{site.url}}/proton/index.html)
 APIs:
 
     % yum install qpid-proton-c-devel
     % yum install python-qpid-proton
 
 To install the C++ and Python
-[Messaging]({{site_url}}/components/messaging-api/index.html) APIs:
+[Messaging]({{site.url}}/components/messaging-api/index.html) APIs:
 
     % yum install qpid-cpp-client-devel
     % yum install python-qpid
 
 To install
-[Dispatch router]({{site_url}}/components/dispatch-router/index.html)
+[Dispatch router]({{site.url}}/components/dispatch-router/index.html)
 and tools:
 
     % yum install qpid-dispatch-router qpid-dispatch-tools
 
 To install the
-[C++ broker]({{site_url}}/components/cpp-broker/index.html) and tools:
+[C++ broker]({{site.url}}/components/cpp-broker/index.html) and tools:
 
     % yum install qpid-cpp-server qpid-tools
 

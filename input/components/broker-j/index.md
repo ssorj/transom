@@ -70,7 +70,7 @@ that stores, routes, and forwards messages using AMQP.
 ## Releases
 
  - {{current_broker_j_release_link}}
- - [Past releases]({{site_url}}/releases/index.html#past-releases)
+ - [Past releases]({{site.url}}/releases/index.html#past-releases)
 
 ## Issues
 

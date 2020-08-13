@@ -440,7 +440,7 @@ function _toggleDiv(toggleInfo) {
 // _addEventListener("-menu-link", "click", _toggleMenu);
 // _addEventListener("-search-link", "click", _toggleSearch);
 
-var siteUrl = "{{site_url}}";
+var siteUrl = "{{site.url}}";
 
 if (siteUrl === "" || siteUrl.charAt(0) === "/") {
     siteUrl = window.location.protocol + "//" + window.location.host + siteUrl;

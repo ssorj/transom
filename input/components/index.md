@@ -28,7 +28,7 @@ applications.
 high-level interprocess communication.
 
 Qpid offers three messaging APIs.
-[Qpid Proton]({{site_url}}/proton/index.html) is a reactive API with
+[Qpid Proton]({{site.url}}/proton/index.html) is a reactive API with
 full-spectrum AMQP control. In addition to being a messaging API, Qpid
 Proton is used by other Qpid components to implement AMQP 1.0 protocol
 support.  [Qpid JMS](jms/index.html) is an AMQP-fluent implementation
@@ -59,7 +59,7 @@ connecting clients, brokers, and standalone services.
 
 ## Messaging APIs
 
- - [Qpid Proton]({{site_url}}/proton/index.html) - A toolkit allowing any application to speak AMQP
+ - [Qpid Proton]({{site.url}}/proton/index.html) - A toolkit allowing any application to speak AMQP
  - [Qpid JMS](jms/index.html) - An AMQP-fluent [Java Message Service](http://en.wikipedia.org/wiki/Java_Message_Service) implementation
  - [Qpid Messaging API](messaging-api/index.html) - A connection-oriented messaging API that supports many languages
 
@@ -79,12 +79,12 @@ connecting clients, brokers, and standalone services.
 
 | Component | Languages | Platforms | AMQP versions |
 | --------- | --------- | --------- | ------------- |
-| [C++ broker]({{site_url}}/components/cpp-broker/index.html) | - | Linux, Windows | 1.0, 0-10 |
-| [Dispatch router]({{site_url}}/components/dispatch-router/index.html) | - | Linux | 1.0 |
-| [Broker-J]({{site_url}}/components/broker-j/index.html) | - | JVM | 1.0, 0-10, 0-9-1, 0-9, 0-8 |
-| [Qpid JMS]({{site_url}}/components/jms/index.html) | Java | JVM | 1.0, 0-10, 0-9-1, 0-9, 0-8 |
-| [Qpid Messaging API]({{site_url}}/components/messaging-api/index.html) | C++, Perl, Python, Ruby, .NET | Linux, Windows | 1.0, 0-10 |
-| [Qpid Proton]({{site_url}}/proton/index.html) | C, C++, Java, JavaScript, Python, Ruby | JVM, Linux, Windows | 1.0 |
+| [C++ broker]({{site.url}}/components/cpp-broker/index.html) | - | Linux, Windows | 1.0, 0-10 |
+| [Dispatch router]({{site.url}}/components/dispatch-router/index.html) | - | Linux | 1.0 |
+| [Broker-J]({{site.url}}/components/broker-j/index.html) | - | JVM | 1.0, 0-10, 0-9-1, 0-9, 0-8 |
+| [Qpid JMS]({{site.url}}/components/jms/index.html) | Java | JVM | 1.0, 0-10, 0-9-1, 0-9, 0-8 |
+| [Qpid Messaging API]({{site.url}}/components/messaging-api/index.html) | C++, Perl, Python, Ruby, .NET | Linux, Windows | 1.0, 0-10 |
+| [Qpid Proton]({{site.url}}/proton/index.html) | C, C++, Java, JavaScript, Python, Ruby | JVM, Linux, Windows | 1.0 |
 | [Qpid Interop Test](interop-test/index.html) | - | Linux | 1.0 |
 
 Any Qpid components that share an AMQP version can interoperate.  For

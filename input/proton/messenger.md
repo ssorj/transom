@@ -20,5 +20,5 @@
 # Messenger
 
 The Messenger API has been deprecated. We recommend you use the newer APIs
-available part of the current [Qpid Proton]({{site_url}}/proton/index.html)
+available part of the current [Qpid Proton]({{site.url}}/proton/index.html)
 release for new projects.

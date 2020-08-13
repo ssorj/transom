@@ -23,7 +23,7 @@
 
 <div class="feature" markdown="1">
 
-A test suite that systematically tests [AMQP 1.0]({{site_url}}/amqp/index.html)
+A test suite that systematically tests [AMQP 1.0]({{site.url}}/amqp/index.html)
 clients against each other to ensure that they are working correctly
 with each other. The tests consist of matched client pairs to send and receive
 messages through an AMQP server (or combination of connected servers). These tests
@@ -46,7 +46,7 @@ also check that the AMQP server is able to handle the clients and AMQP traffic.
 
 ## Supported servers
 
-Any servers that can handle [AMQP 1.0]({{site_url}}/amqp/index.html)
+Any servers that can handle [AMQP 1.0]({{site.url}}/amqp/index.html)
 will work. By default, the tests run against localhost using the default AMQP port (5672), but these can be
 changed to any valid IP address and port.
 
@@ -56,7 +56,7 @@ The following clients are currently supported:
 
  - [Qpid Proton C++]({{current_proton_release_url}}/proton/c/api/files.html)
  - [Qpid Proton Python]({{current_proton_release_url}}/proton/python/api/index.html)
- - [Qpid JMS]({{site_url}}/components/jms/index.html)
+ - [Qpid JMS]({{site.url}}/components/jms/index.html)
  - [Rhea Javascript](https://github.com/grs/rhea)
  - [AMQP .Net Lite](https://github.com/Azure/amqpnetlite)
 
@@ -158,7 +158,7 @@ The following clients are currently supported:
 ## Releases
 
  - {{current_interop_test_release_link}} 
- - [Past releases]({{site_url}}/releases/index.html#past-releases)
+ - [Past releases]({{site.url}}/releases/index.html#past-releases)
 
 ## Issues
 

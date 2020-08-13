@@ -33,13 +33,13 @@
 
 | Module | Release | Issues | Tests | Source code |
 | ------ | ------- | ------ | ----- | ----------- |
-| [Qpid Broker-J]({{site_url}}/components/broker-j/index.html)            | {{broker_j_release.brief_link}} | {{dashboard_asf_jira_links("QPID", 12310520, ["Broker-J", "Java Build", "Java Documentation", "Java Performance Tests", "Java Tests", "Java Tools"])}} | {{asf_jenkins_badge("Qpid-Broker-J-Test-IBMJDK1.8")}} {{asf_jenkins_badge("Qpid-Broker-J-Checks")}} {{asf_jenkins_badge("Qpid-Broker-J-Python-Test")}} | {{dashboard_asf_git_links("qpid-broker-j")}} |
+| [Qpid Broker-J]({{site.url}}/components/broker-j/index.html)            | {{broker_j_release.brief_link}} | {{dashboard_asf_jira_links("QPID", 12310520, ["Broker-J", "Java Build", "Java Documentation", "Java Performance Tests", "Java Tests", "Java Tools"])}} | {{asf_jenkins_badge("Qpid-Broker-J-Test-IBMJDK1.8")}} {{asf_jenkins_badge("Qpid-Broker-J-Checks")}} {{asf_jenkins_badge("Qpid-Broker-J-Python-Test")}} | {{dashboard_asf_git_links("qpid-broker-j")}} |
 | [Qpid C++](https://github.com/apache/qpid-cpp/blob/master/README.md)       | {{cpp_release.brief_link}} | {{dashboard_asf_jira_links("QPID", 12310520, ["C++ Broker", "C++ Build", "C++ Client", "C++ Clustering", "C++ Documentation", "C++ Tests", "C++ Tools", ".NET Client", "Perl Client", "Python Client (Wrapped)", "QMF", "Ruby Client"])}} | {{asf_jenkins_badge("Qpid-cpp-trunk-test")}} | {{dashboard_asf_git_links("qpid-cpp")}} |
-| [Qpid Dispatch]({{site_url}}/components/dispatch-router/index.html)        | {{dispatch_release.brief_link}} | {{dashboard_asf_jira_links("DISPATCH", 12315321)}} | {{travis_ci_badge("apache", "qpid-dispatch")}} | {{dashboard_asf_git_links("qpid-dispatch")}} |
-| [Qpid Interop Test]({{site_url}}/components/interop-test/index.html)       | - | {{dashboard_asf_jira_links("QPIDIT", 12318621)}} | - | {{dashboard_asf_git_links("qpid-interop-test")}} |
-| [Qpid JMS]({{site_url}}/components/jms/index.html)                         | {{jms_release.brief_link}} | {{dashboard_asf_jira_links("QPIDJMS", 12314524)}} | {{asf_jenkins_badge("Qpid-JMS-Test-JDK8")}} {{travis_ci_badge("apache", "qpid-jms")}} {{asf_jenkins_badge("Qpid-JMS-Test-JDK8-Windows")}} | {{dashboard_asf_git_links("qpid-jms")}} |
-| [Qpid Proton-J]({{site_url}}/proton/index.html)                            | {{proton_j_release.brief_link}} | {{dashboard_asf_jira_links("PROTON", 12313720, ["proton-j"])}} | {{asf_jenkins_badge("Qpid-proton-j")}} | {{dashboard_asf_git_links("qpid-proton-j")}} |
-| [Qpid Proton]({{site_url}}/proton/index.html)                              | {{proton_release.brief_link}} | {{dashboard_asf_jira_links("PROTON", 12313720)}} | {{asf_jenkins_badge("Qpid-proton-c")}} {{travis_ci_badge("apache", "qpid-proton")}} | {{dashboard_asf_git_links("qpid-proton")}} |
+| [Qpid Dispatch]({{site.url}}/components/dispatch-router/index.html)        | {{dispatch_release.brief_link}} | {{dashboard_asf_jira_links("DISPATCH", 12315321)}} | {{travis_ci_badge("apache", "qpid-dispatch")}} | {{dashboard_asf_git_links("qpid-dispatch")}} |
+| [Qpid Interop Test]({{site.url}}/components/interop-test/index.html)       | - | {{dashboard_asf_jira_links("QPIDIT", 12318621)}} | - | {{dashboard_asf_git_links("qpid-interop-test")}} |
+| [Qpid JMS]({{site.url}}/components/jms/index.html)                         | {{jms_release.brief_link}} | {{dashboard_asf_jira_links("QPIDJMS", 12314524)}} | {{asf_jenkins_badge("Qpid-JMS-Test-JDK8")}} {{travis_ci_badge("apache", "qpid-jms")}} {{asf_jenkins_badge("Qpid-JMS-Test-JDK8-Windows")}} | {{dashboard_asf_git_links("qpid-jms")}} |
+| [Qpid Proton-J]({{site.url}}/proton/index.html)                            | {{proton_j_release.brief_link}} | {{dashboard_asf_jira_links("PROTON", 12313720, ["proton-j"])}} | {{asf_jenkins_badge("Qpid-proton-j")}} | {{dashboard_asf_git_links("qpid-proton-j")}} |
+| [Qpid Proton]({{site.url}}/proton/index.html)                              | {{proton_release.brief_link}} | {{dashboard_asf_jira_links("PROTON", 12313720)}} | {{asf_jenkins_badge("Qpid-proton-c")}} {{travis_ci_badge("apache", "qpid-proton")}} | {{dashboard_asf_git_links("qpid-proton")}} |
 | [Qpid Python](https://github.com/apache/qpid-python/blob/master/README.md) | {{python_release.brief_link}} | {{dashboard_asf_jira_links("QPID", 12310520, ["Python Client", "Python Examples", "Python Test Suite"])}} | {{asf_jenkins_badge("Qpid-Broker-J-Python-Test")}} | {{dashboard_asf_git_links("qpid-python")}} |
 | [Qpid Site](https://github.com/apache/qpid-site/blob/asf-site/README.md)   | - | {{dashboard_asf_jira_links("QPID", 12310520, ["Website"])}} | {{travis_ci_badge("apache", "qpid-site", "asf-site")}} | {{dashboard_asf_git_links("qpid-site")}} |
 
@@ -92,9 +92,9 @@
 
 ### More
 
- - [Components]({{site_url}}/components/index.html)
- - [Releases]({{site_url}}/releases/index.html)
- - [Doc snapshots]({{site_url}}/releases/snapshots.html)
+ - [Components]({{site.url}}/components/index.html)
+ - [Releases]({{site.url}}/releases/index.html)
+ - [Doc snapshots]({{site.url}}/releases/snapshots.html)
 
 </section>
 </section>

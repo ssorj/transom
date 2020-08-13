@@ -29,15 +29,15 @@ Qpid components are detailed at:
 <div class="flex" markdown="1">
 <section markdown="1">
 
- - [Broker-J]({{site_url}}/components/broker-j/security.html)
- - [C++ broker]({{site_url}}/components/cpp-broker/security.html)
+ - [Broker-J]({{site.url}}/components/broker-j/security.html)
+ - [C++ broker]({{site.url}}/components/cpp-broker/security.html)
 
 </section>
 <section markdown="1">
 
- - [JMS client]({{site_url}}/components/jms/security.html)
- - [AMQP 0-x JMS client]({{site_url}}/components/jms/security-0-x.html)
- - [Proton]({{site_url}}/proton/security.html)
+ - [JMS client]({{site.url}}/components/jms/security.html)
+ - [AMQP 0-x JMS client]({{site.url}}/components/jms/security-0-x.html)
+ - [Proton]({{site.url}}/proton/security.html)
 
 </section>
 </div>
@@ -60,7 +60,7 @@ contact information.
 
 The ASF Security Team cannot accept regular bug reports or other
 queries, we ask that you use our [bug reporting
-page]({{site_url}}/issues.html) for those.
+page]({{site.url}}/issues.html) for those.
 
 All mail sent to the ASF Security Team that does not relate to
 security problems in Apache software will be ignored.
@@ -73,7 +73,7 @@ Questions about:
  - availability of patches and/or new releases
 
 should be addressed to the users mailing list. Please see the [mailing
-lists page]({{site_url}}/discussion.html) for details of how to
+lists page]({{site.url}}/discussion.html) for details of how to
 subscribe.
 
 </section>

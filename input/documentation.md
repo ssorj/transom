@@ -20,9 +20,9 @@
 # Documentation
 
 The documentation on this page is for our
-[current releases]({{site_url}}/releases/index.html#current-releases),
+[current releases]({{site.url}}/releases/index.html#current-releases),
 You can find older versions with our
-[past releases]({{site_url}}/releases/index.html#past-releases).
+[past releases]({{site.url}}/releases/index.html#past-releases).
 
 ---
 
@@ -33,7 +33,7 @@ You can find older versions with our
 
 ### Qpid Proton
 
- - [Overview]({{site_url}}/proton/index.html)
+ - [Overview]({{site.url}}/proton/index.html)
  - [C API reference]({{current_proton_release_url}}/proton/c/api/files.html)
  - [C++ API reference]({{current_proton_release_url}}/proton/cpp/api/annotated.html)
  - [Python API reference]({{current_proton_release_url}}/proton/python/api/index.html)
@@ -44,7 +44,7 @@ You can find older versions with our
 
 ### Qpid JMS
 
- - [Overview]({{site_url}}/components/jms/index.html)
+ - [Overview]({{site.url}}/components/jms/index.html)
  - [Configuration]({{current_jms_release_url}}/docs/index.html)
  - [API reference](http://docs.oracle.com/javaee/7/api/javax/jms/package-summary.html)
  - [Examples](https://github.com/apache/qpid-jms/tree/{{current_jms_release}}/qpid-jms-examples)
@@ -54,7 +54,7 @@ You can find older versions with our
 
 ### Qpid Messaging API
 
- - [Overview]({{site_url}}/components/messaging-api/index.html)
+ - [Overview]({{site.url}}/components/messaging-api/index.html)
  - [Using the Qpid Messaging API]({{current_cpp_release_url}}/messaging-api/book/using-the-qpid-messaging-api.html) ([PDF]({{current_cpp_release_url}}/messaging-api/qpid-messaging-api-book.pdf))
  - [C++ API reference]({{current_cpp_release_url}}/messaging-api/cpp/api/index.html)
  - [C++ examples]({{current_cpp_release_url}}/messaging-api/cpp/examples/index.html)
@@ -71,7 +71,7 @@ You can find older versions with our
 
 ### Broker-J
 
- - [Overview]({{site_url}}/components/broker-j/index.html)
+ - [Overview]({{site.url}}/components/broker-j/index.html)
  - [Broker book]({{current_broker_j_release_url}}/book/index.html)
 
 </section>
@@ -79,7 +79,7 @@ You can find older versions with our
 
 ### C++ broker
 
- - [Overview]({{site_url}}/components/cpp-broker/index.html)
+ - [Overview]({{site.url}}/components/cpp-broker/index.html)
  - [C++ broker book]({{current_cpp_release_url}}/cpp-broker/book/index.html) ([PDF]({{current_cpp_release_url}}/cpp-broker/cpp-broker-book.pdf))
 
 </section>
@@ -87,7 +87,7 @@ You can find older versions with our
 
 ### Dispatch router
 
- - [Overview]({{site_url}}/components/dispatch-router/index.html)
+ - [Overview]({{site.url}}/components/dispatch-router/index.html)
  - [Dispatch router book]({{current_dispatch_release_url}}/book/index.html)
 
 </section>
@@ -102,7 +102,7 @@ You can find older versions with our
 
 ### Qpid Interop Test
 
- - [Overview]({{site_url}}/components/interop-test/index.html)
+ - [Overview]({{site.url}}/components/interop-test/index.html)
  - [Quickstart guide]({{current_interop_test_release_url}}/QUICKSTART.html)
  - [User guide]({{current_interop_test_release_url}}/users-guide.html)
  - [Developer overview](https://git-wip-us.apache.org/repos/asf?p=qpid-interop-test.git;a=blob_plain;f=docs/qpid-interop-test-devel-overview.txt;hb=0.1.0)
@@ -114,6 +114,6 @@ You can find older versions with our
 
 ## More information
 
- - [Documentation snapshots]({{site_url}}/releases/snapshots.html)
- - [Past and current releases]({{site_url}}/releases/index.html)
- - [Components]({{site_url}}/components/index.html)
+ - [Documentation snapshots]({{site.url}}/releases/snapshots.html)
+ - [Past and current releases]({{site.url}}/releases/index.html)
+ - [Components]({{site.url}}/components/index.html)
