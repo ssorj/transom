@@ -343,7 +343,7 @@ pre, .scroll {
 }
 
 #-path-nav {
-    /* display: none; */
+    display: none;
     padding: 0;
     font-size: 0.9em;
     font-weight: 600;

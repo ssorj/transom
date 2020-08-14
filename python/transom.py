@@ -30,6 +30,7 @@ import markdown2 as _markdown
 import os as _os
 import re as _re
 import shutil as _shutil
+import subprocess as _subprocess
 import sys as _sys
 import tempfile as _tempfile
 import threading as _threading
@@ -45,8 +46,9 @@ from xml.sax.saxutils import escape as _xml_escape
 
 _html_title_regex = _re.compile(r"<([hH][12]).*?>(.*?)</\1>")
 _html_tag_regex = _re.compile(r"<.+?>")
-
 _markdown_title_regex = _re.compile(r"(#|##)(.+)")
+_variable_regex = _re.compile("({{.+?}})")
+_reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
 
 _markdown_extras = {
     "code-friendly": True,
@@ -56,10 +58,6 @@ _markdown_extras = {
     "metadata": True,
     "tables": True,
 }
-
-_variable_regex = _re.compile("({{.+?}})")
-
-_reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
 
 class Transom:
     def __init__(self, config_dir, input_dir, output_dir, home=None):
@@ -213,17 +211,27 @@ class Transom:
             self._serve(serve)
 
     def _serve(self, port):
-        server = _ServerThread(self, port)
-        server.start()
-
         try:
             watcher = _WatcherThread(self)
             watcher.start()
         except ImportError:
-            pass
+            self.notice("Failed to import pyinotify, so I won't auto-render updated input files")
+            self.notice("Try installing the python3-pyinotify package")
 
-        while True:
-            _time.sleep(2)
+        try:
+            livereload = _subprocess.Popen(f"livereload {self.output_dir}", shell=True)
+        except _subprocess.CalledProcessError as e:
+            self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
+            self.notice("Use 'npm install -g livereload' to install the server")
+            self.notice("Subprocess error: {}", e)
+            livereload = None
+
+        try:
+            server = _ServerThread(self, port)
+            server.run()
+        finally:
+            if livereload is not None:
+                livereload.terminate()
 
     def _render_one_file(self, input_path, force=False):
         self.notice("Rendering {}", input_path)
@@ -710,13 +718,13 @@ class _WatcherThread(_threading.Thread):
         self.daemon = True
 
         watcher = _pyinotify.WatchManager()
-        mask = _pyinotify.IN_MODIFY # XXX IN_CREATE, IN_DELETE, IN_MOVED_TO
+        mask = _pyinotify.IN_CREATE | _pyinotify.IN_DELETE | _pyinotify.IN_MODIFY
 
         def render(event):
             if _os.path.isdir(event.pathname) or event.name.startswith((".#", "#")):
                 return True
 
-            self.site._render_one_file(event.pathname, force=True)
+            self.site._render_one_file(event.pathname, force=True) # XXX Handle delete
 
         watcher.add_watch(self.site.input_dir, mask, render, rec=True, auto_add=True)
 
