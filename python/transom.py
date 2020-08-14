@@ -72,7 +72,7 @@ class Transom:
         self.quiet = False
         self.reload = False
 
-        self.config_file = _os.path.join(self.config_dir, "config.py")
+        self._config_file = _os.path.join(self.config_dir, "config.py")
         self._config = None
 
         self._body_template_path = _os.path.join(self.config_dir, "body.html")
@@ -119,8 +119,8 @@ class Transom:
             "html_table_csv": _html_table_csv,
         }
 
-        if _os.path.isfile(self.config_file):
-            exec(_read_file(self.config_file), self._config)
+        if _os.path.isfile(self._config_file):
+            exec(_read_file(self._config_file), self._config)
 
         self._start_time = _time.time()
 
@@ -194,7 +194,7 @@ class Transom:
         else:
             return _StaticFile(self, input_path)
 
-    def render(self, force=False, serve=False):
+    def render(self, force=False, serve=None):
         input_paths = self._find_input_paths()
         self._init_input_files(input_paths)
 
@@ -209,11 +209,11 @@ class Transom:
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
 
-        if serve:
-            self._serve()
+        if serve is not None:
+            self._serve(serve)
 
-    def _serve(self):
-        server = _ServerThread(self)
+    def _serve(self, port):
+        server = _ServerThread(self, port)
         server.start()
 
         try:
@@ -224,9 +224,10 @@ class Transom:
 
         while True:
             _time.sleep(2)
-            self.notice("Tick")
 
     def _render_one_file(self, input_path, force=False):
+        self.notice("Rendering {}", input_path)
+
         self._init_input_files([input_path])
         input_file = self._input_files[input_path]
 
@@ -726,19 +727,20 @@ class _WatcherThread(_threading.Thread):
         self.notifier.loop()
 
 class _ServerThread(_threading.Thread):
-    def __init__(self, site):
+    def __init__(self, site, port):
         super().__init__()
 
         self.site = site
+        self.port = port
         self.daemon = True
 
-        address = "localhost", 8000
+        address = "localhost", self.port
         handler = _functools.partial(_http.SimpleHTTPRequestHandler, directory=self.site.output_dir)
 
         self.server = _http.ThreadingHTTPServer(address, handler)
 
     def run(self):
-        self.site.notice("Serving XXX")
+        self.site.notice("Serving at http://localhost:{}", self.port)
         self.server.serve_forever()
 
 _description = """
@@ -787,8 +789,8 @@ class TransomCommand(_commandant.Command):
                             help="Write output files to OUTPUT-DIR")
         render.add_argument("--force", action="store_true",
                             help="Render all input files, including unmodified ones")
-        render.add_argument("--serve", action="store_true",
-                            help="XXX Re-render when input files change")
+        render.add_argument("--serve", type=int, metavar="PORT",
+                            help="Serve the site and rerender when input files change")
         render.add_argument("--quiet", action="store_true",
                             help="Print no logging to the console")
         render.add_argument("--verbose", action="store_true",
@@ -880,7 +882,7 @@ class TransomCommand(_commandant.Command):
     def render_command(self):
         self.init_lib()
 
-        if self.args.serve:
+        if self.args.serve is not None:
             self.lib.reload = True
 
         self.lib.render(force=self.args.force, serve=self.args.serve)

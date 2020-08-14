@@ -72,8 +72,8 @@ render: build
 	transom render config input output
 
 .PHONY: serve
-serve: render
-	transom render --serve --verbose config input output
+serve: build
+	transom render --serve 8080 config input output
 
 .PHONY: check-links
 check-links: build
