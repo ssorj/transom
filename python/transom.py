@@ -24,12 +24,15 @@ import codecs as _codecs
 import commandant as _commandant
 import csv as _csv
 import fnmatch as _fnmatch
+import functools as _functools
+import http.server as _http
 import markdown2 as _markdown
 import os as _os
 import re as _re
 import shutil as _shutil
 import sys as _sys
 import tempfile as _tempfile
+import threading as _threading
 import time as _time
 import traceback as _traceback
 
@@ -59,12 +62,11 @@ _variable_regex = _re.compile("({{.+?}})")
 _reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
 
 class Transom:
-    def __init__(self, config_dir, input_dir, output_dir, home=None, url=None):
+    def __init__(self, config_dir, input_dir, output_dir, home=None):
         self.config_dir = config_dir
         self.input_dir = _os.path.abspath(input_dir)
         self.output_dir = output_dir
         self.home = home
-        self.url = url
 
         self.verbose = False
         self.quiet = False
@@ -73,8 +75,8 @@ class Transom:
         self.config_file = _os.path.join(self.config_dir, "config.py")
         self._config = None
 
-        self.body_template_path = _os.path.join(self.config_dir, "body.html")
-        self.page_template_path = _os.path.join(self.config_dir, "page.html")
+        self._body_template_path = _os.path.join(self.config_dir, "body.html")
+        self._page_template_path = _os.path.join(self.config_dir, "page.html")
         self._body_template = None
         self._page_template = None
 
@@ -93,23 +95,20 @@ class Transom:
 
     def init(self):
         if self.home is not None:
-            if not _os.path.isfile(self.page_template_path):
-                self.page_template_path = _os.path.join(self.home, "files", "page.html")
+            if not _os.path.isfile(self._page_template_path):
+                self._page_template_path = _os.path.join(self.home, "files", "page.html")
 
-            if not _os.path.isfile(self.body_template_path):
-                self.body_template_path = _os.path.join(self.home, "files", "body.html")
+            if not _os.path.isfile(self._body_template_path):
+                self._body_template_path = _os.path.join(self.home, "files", "body.html")
 
-        if self.url is None:
-            self.url = "file:{}".format(_os.path.abspath(self.output_dir))
+        if not _os.path.isfile(self._page_template_path):
+            raise Exception(f"No page template found at {self._page_template_path}")
 
-        if not _os.path.isfile(self.page_template_path):
-            raise Exception(f"No page template found at {self.page_template_path}")
+        if not _os.path.isfile(self._body_template_path):
+            raise Exception(f"No body template found at {self._body_template_path}")
 
-        if not _os.path.isfile(self.body_template_path):
-            raise Exception(f"No body template found at {self.body_template_path}")
-
-        self._page_template = _read_file(self.page_template_path)
-        self._body_template = _read_file(self.body_template_path)
+        self._page_template = _read_file(self._page_template_path)
+        self._body_template = _read_file(self._body_template_path)
 
         self._config = {
             "site": self,
@@ -195,15 +194,11 @@ class Transom:
         else:
             return _StaticFile(self, input_path)
 
-    def render(self, force=False, watch=False):
+    def render(self, force=False, serve=False):
         input_paths = self._find_input_paths()
         self._init_input_files(input_paths)
 
-
-
-        if not self.quiet and not self.verbose:
-            print("Input files   {:>10,}".format(len(self._input_files)))
-            print("Output files  {:>10,}".format(len(self._output_files)))
+        self.notice("Rendering {:,} input files", len(self._input_files))
 
         for file_ in self._input_files.values():
             file_._process_input()
@@ -214,45 +209,25 @@ class Transom:
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
 
-        if watch:
-            self._watch()
+        if serve:
+            self._serve()
 
-    def _watch(self):
-        print("Watching for input file changes")
+    def _serve(self):
+        server = _ServerThread(self)
+        server.start()
 
-        import pyinotify as pyi
+        try:
+            watcher = _WatcherThread(self)
+            watcher.start()
+        except ImportError:
+            pass
 
-        watcher = pyi.WatchManager()
-        notifier = pyi.Notifier(watcher)
-        mask = pyi.IN_MODIFY
-
-        # pyi.IN_MODIFY | pyi.IN_MOVED_TO
-        # Deleted stuff? pyi.IN_DELETE
-
-        def func(event):
-            if event.name.startswith(".#"):
-                return True
-
-            if event.name.startswith("#"):
-                return True
-
-            if _os.path.isdir(event.pathname):
-                return True
-
-            else:
-                self._render_one_file(event.pathname, force=True)
-
-        watcher.add_watch(self.input_dir, mask, func, rec=True, auto_add=True)
-
-        # XXX Need to add another watch for config files
-        # if (event.pathname.startswith(self.config_dir)):
-        #     self.render(force=True)
-
-        notifier.loop()
+        while True:
+            _time.sleep(2)
+            self.notice("Tick")
 
     def _render_one_file(self, input_path, force=False):
         self._init_input_files([input_path])
-
         input_file = self._input_files[input_path]
 
         input_file._process_input()
@@ -309,9 +284,8 @@ class Transom:
         links = self._filter_links(self._links)
 
         for link in links:
-            if internal and link.startswith(self.url):
-                if link not in self._link_targets:
-                    errors_by_link[link].append("Link has no target")
+            if internal and link not in self._link_targets:
+                errors_by_link[link].append("Link has no target")
 
             if external and not link.startswith(self.url):
                 code, error = self._check_external_link(link)
@@ -360,10 +334,10 @@ class Transom:
         return code, error
 
     def get_url(self, output_path):
-        path = output_path[len(self.output_dir) + 1:]
+        path = output_path[len(self.output_dir):]
         path = path.replace(_os.path.sep, "/")
 
-        return f"{self.url}/{path}"
+        return path
 
     def info(self, message, *args):
         if self.verbose:
@@ -725,6 +699,48 @@ class _StaticFile(_OutputFile):
             self.site.info("Saving {}", self)
             _copy_file(self.input_path, self.output_path)
 
+class _WatcherThread(_threading.Thread):
+    def __init__(self, site):
+        import pyinotify as _pyinotify
+
+        super().__init__()
+
+        self.site = site
+        self.daemon = True
+
+        watcher = _pyinotify.WatchManager()
+        mask = _pyinotify.IN_MODIFY # XXX IN_CREATE, IN_DELETE, IN_MOVED_TO
+
+        def render(event):
+            if _os.path.isdir(event.pathname) or event.name.startswith((".#", "#")):
+                return True
+
+            self.site._render_one_file(event.pathname, force=True)
+
+        watcher.add_watch(self.site.input_dir, mask, render, rec=True, auto_add=True)
+
+        self.notifier = _pyinotify.Notifier(watcher)
+
+    def run(self):
+        self.site.notice("Watching for input file changes")
+        self.notifier.loop()
+
+class _ServerThread(_threading.Thread):
+    def __init__(self, site):
+        super().__init__()
+
+        self.site = site
+        self.daemon = True
+
+        address = "localhost", 8000
+        handler = _functools.partial(_http.SimpleHTTPRequestHandler, directory=self.site.output_dir)
+
+        self.server = _http.ThreadingHTTPServer(address, handler)
+
+    def run(self):
+        self.site.notice("Serving XXX")
+        self.server.serve_forever()
+
 _description = """
 Generate static websites from Markdown and Python
 """
@@ -769,12 +785,10 @@ class TransomCommand(_commandant.Command):
                             help="Read input files from INPUT-DIR")
         render.add_argument("output_dir", metavar="OUTPUT-DIR",
                             help="Write output files to OUTPUT-DIR")
-        render.add_argument("--site-url", metavar="URL",
-                            help="Prefix site links with URL")
         render.add_argument("--force", action="store_true",
                             help="Render all input files, including unmodified ones")
-        render.add_argument("--watch", action="store_true",
-                            help="Re-render when input files change")
+        render.add_argument("--serve", action="store_true",
+                            help="XXX Re-render when input files change")
         render.add_argument("--quiet", action="store_true",
                             help="Print no logging to the console")
         render.add_argument("--verbose", action="store_true",
@@ -791,8 +805,6 @@ class TransomCommand(_commandant.Command):
                                  help="Check input files in INPUT-DIR")
         check_links.add_argument("output_dir", metavar="OUTPUT-DIR",
                                  help="Check output files in OUTPUT-DIR")
-        check_links.add_argument("--site-url", metavar="URL",
-                                 help="Determine internal links using URL")
         check_links.add_argument("--all", action="store_true",
                                  help="Check external links as well as internal ones")
         check_links.add_argument("--quiet", action="store_true",
@@ -829,8 +841,7 @@ class TransomCommand(_commandant.Command):
     def init_lib(self):
         assert self.lib is None
 
-        self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir,
-                           home=self.home, url=getattr(self.args, "site_url", None))
+        self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir, home=self.home)
         self.lib.verbose = self.args.verbose
         self.lib.quiet = self.args.quiet
 
@@ -869,10 +880,10 @@ class TransomCommand(_commandant.Command):
     def render_command(self):
         self.init_lib()
 
-        if self.args.watch:
+        if self.args.serve:
             self.lib.reload = True
 
-        self.lib.render(force=self.args.force, watch=self.args.watch)
+        self.lib.render(force=self.args.force, serve=self.args.serve)
 
     def check_links_command(self):
         self.init_lib()

@@ -24,7 +24,7 @@
 
 ## Blogs
 
-[Contact us]({{site.url}}/discussion.html) if you write about Qpid and
+[Contact us](/discussion.html) if you write about Qpid and
 would like your blog linked here.
 
  - [AMQP Essentials refcard](https://dzone.com/refcardz/amqp-essentials) by Paolo Patierno
@@ -98,11 +98,11 @@ must [sign up with Coverity](https://scan.coverity.com/users/sign_up).
 
 ## More
 
- - [About this site]({{site.url}}/site.html)
- - [Issues]({{site.url}}/issues.html)
- - [Packages]({{site.url}}/packages.html)
- - [Qpid via Maven]({{site.url}}/maven.html)
- - [Source code]({{site.url}}/source-code.html)
+ - [About this site](/site.html)
+ - [Issues](/issues.html)
+ - [Packages](/packages.html)
+ - [Qpid via Maven](/maven.html)
+ - [Source code](/source-code.html)
 
 </section>
 </div>

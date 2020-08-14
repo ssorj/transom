@@ -30,7 +30,7 @@ can be used in the widest range of messaging applications, including
 brokers, client libraries, routers, bridges, proxies, and more. Proton
 makes it trivial to integrate with the AMQP 1.0 ecosystem from any
 platform, environment, or language. More about
-[Qpid Proton]({{site.url}}/proton/overview.html).
+[Qpid Proton](/proton/overview.html).
 
 </div>
 
@@ -67,8 +67,8 @@ platform, environment, or language. More about
 
  - {{current_proton_release_link}}
  - {{current_proton_j_release_link}}
- - [Past releases]({{site.url}}/releases/index.html#past-releases)
- - [Work in progress]({{site.url}}/releases/qpid-proton-master/index.html) 
+ - [Past releases](/releases/index.html#past-releases)
+ - [Work in progress](/releases/qpid-proton-master/index.html) 
 
 ## Issues
 

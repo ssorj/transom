@@ -21,8 +21,8 @@
 
 | CVE-ID | Severity | Affected versions | Fixed versions | Summary |
 | ------ | -------- | ----------------- | -------------- | ------- |
-| [CVE-2016-4467]({{site.url}}/cves/CVE-2016-4467.html) | Medium | 0.8 through 0.13.0 inclusive | 0.13.1 and later | Failure to verify that the server host name matches the certificate host name on Windows |
-| [CVE-2016-2166]({{site.url}}/cves/CVE-2016-2166.html) | Moderate | 0.9 through 0.12.0 inclusive | 0.12.1 and later | Python bindings silently ignore request for amqps if SSL/TLS not supported |
+| [CVE-2016-4467](/cves/CVE-2016-4467.html) | Medium | 0.8 through 0.13.0 inclusive | 0.13.1 and later | Failure to verify that the server host name matches the certificate host name on Windows |
+| [CVE-2016-2166](/cves/CVE-2016-2166.html) | Moderate | 0.9 through 0.12.0 inclusive | 0.12.1 and later | Python bindings silently ignore request for amqps if SSL/TLS not supported |
 
-See the main [Security]({{site.url}}/security.html) page for general
+See the main [Security](/security.html) page for general
 information and details for other components.

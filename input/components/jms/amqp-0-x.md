@@ -54,7 +54,7 @@ A JMS 1.1 implementation supporting AMQP versions 0-10, 0-9-1, 0-9, and
 ## Releases
 
  - {{current_jms_amqp_0_x_release_link}}
- - [Past releases]({{site.url}}/releases/index.html#past-releases)
+ - [Past releases](/releases/index.html#past-releases)
 
 ## Issues
 

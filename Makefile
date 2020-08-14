@@ -69,15 +69,11 @@ test: build
 
 .PHONY: render
 render: build
-	transom render --site-url "" config input output
-
-.PHONY: watch
-watch: build
-	transom render --watch --verbose config input output
+	transom render config input output
 
 .PHONY: serve
 serve: render
-	python -m http.server --bind localhost --directory output
+	transom render --serve --verbose config input output
 
 .PHONY: check-links
 check-links: build

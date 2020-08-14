@@ -24,7 +24,7 @@
 <div class="feature" markdown="1">
 
 A high-performance, lightweight AMQP 1.0 message router, written in C
-and built on [Qpid Proton]({{site.url}}/proton/index.html). It provides
+and built on [Qpid Proton](/proton/index.html). It provides
 flexible and scalable interconnect between any AMQP endpoints, whether
 they be clients, brokers or other AMQP-enabled services.  More about
 [Dispatch Router](overview.html).
@@ -64,8 +64,8 @@ they be clients, brokers or other AMQP-enabled services.  More about
 ## Releases
 
  - {{current_dispatch_release_link}}
- - [Past releases]({{site.url}}/releases/index.html#past-releases)
- - [Work in progress]({{site.url}}/releases/qpid-dispatch-master/index.html)
+ - [Past releases](/releases/index.html#past-releases)
+ - [Work in progress](/releases/qpid-dispatch-master/index.html)
 
 ## Issues
 

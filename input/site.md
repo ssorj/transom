@@ -39,12 +39,12 @@
 ;;## Logos
 ;;
 ;;<div class="indent markdown="1">
-;;![]({{site.url}}/images/logo-300-300.png) &#160;
-;;![]({{site.url}}/images/logo-75-75.png) &#160;
-;;![]({{site.url}}/images/logo-65-65.png) &#160;
-;;![]({{site.url}}/images/logo-50-50.png)
+;;![](/images/logo-300-300.png) &#160;
+;;![](/images/logo-75-75.png) &#160;
+;;![](/images/logo-65-65.png) &#160;
+;;![](/images/logo-50-50.png)
 ;;
-;;[SVG source]({{site.url}}/images/logo.svg).  The "Q" is from the
+;;[SVG source](/images/logo.svg).  The "Q" is from the
 ;;[Libre Baskerville](http://www.impallari.com/projects/overview/libre-baskerville)
 ;;typeface by Impallari Type.
 ;;</div>

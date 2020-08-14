@@ -32,7 +32,7 @@ platforms.
 
 This is the documentation for the current released version.  You can
 find previous versions with our
-[past releases]({{site.url}}/releases/index.html#past-releases).
+[past releases](/releases/index.html#past-releases).
 
 <div class="two-column" markdown="1">
 
@@ -56,7 +56,7 @@ find previous versions with our
 ## Issues
 
 For more information about finding and reporting bugs, see
-[Qpid issues]({{site.url}}/issues.html).
+[Qpid issues](/issues.html).
 
 <form id="jira-search-form">
   <input type="hidden" name="jql" value="project = QPID and component in ('C++ Client', 'Dot Net Client', 'Perl Client', 'Python Client', 'Ruby Client') and text ~ '{}' order by updatedDate desc"/>

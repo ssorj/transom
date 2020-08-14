@@ -21,10 +21,10 @@
 
 | CVE-ID | Severity | Affected versions | Fixed versions | Summary |
 | ------ | -------- | ----------------- | -------------- | ------- |
-| [CVE-2015-0224]({{site.url}}/cves/CVE-2015-0224.html) | Moderate | 0.30 and earlier | 0.32 and later | Qpidd can be crashed by an unauthenticated user |
-| [CVE-2015-0223]({{site.url}}/cves/CVE-2015-0223.html) | Moderate | 0.30 and earlier | 0.32 and later | Anonymous access to qpidd cannot be prevented |
-| [CVE-2015-0203]({{site.url}}/cves/CVE-2015-0203.html) | Moderate | 0.30 and earlier | 0.32 and later | Qpidd can be crashed by an authenticated user |
-| [CVE-2014-3629]({{site.url}}/cves/CVE-2014-3629.html) | Low | 0.30 and earlier | 0.32 and later | Qpidd can be induced to make HTTP requests |
+| [CVE-2015-0224](/cves/CVE-2015-0224.html) | Moderate | 0.30 and earlier | 0.32 and later | Qpidd can be crashed by an unauthenticated user |
+| [CVE-2015-0223](/cves/CVE-2015-0223.html) | Moderate | 0.30 and earlier | 0.32 and later | Anonymous access to qpidd cannot be prevented |
+| [CVE-2015-0203](/cves/CVE-2015-0203.html) | Moderate | 0.30 and earlier | 0.32 and later | Qpidd can be crashed by an authenticated user |
+| [CVE-2014-3629](/cves/CVE-2014-3629.html) | Low | 0.30 and earlier | 0.32 and later | Qpidd can be induced to make HTTP requests |
 
-See the main [Security]({{site.url}}/security.html) page for general
+See the main [Security](/security.html) page for general
 information and details for other components.

@@ -37,8 +37,8 @@ unsubscribe address.
 | [proton@qpid.apache.org](http://mail-archives.apache.org/mod_mbox/qpid-proton/) | Proton. Going forward, use above lists. |  | | [Nabble](http://qpid.2158936.n2.nabble.com/Apache-Qpid-Proton-f7580687.html) |
 
 Qpid also offers lists for
-[commits]({{site.url}}/source-code.html#commits-list) and
-[notifications]({{site.url}}/source-code.html#notifications-list).
+[commits](/source-code.html#commits-list) and
+[notifications](/source-code.html#notifications-list).
 
 **NOTE**: The Qpid project offers various components in many different
 languages. When mailing the lists, please be specific about which

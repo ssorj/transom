@@ -44,8 +44,8 @@ def test_transom_render(session):
         make_input_files("config", "input")
 
         call("transom render config input output")
-        call("transom render --site-url https://example.com config input output")
-        call("transom render --site-url https://example.com --force config input output")
+        call("transom render config input output")
+        call("transom render --force config input output")
 
 def test_transom_check_links(session):
     call("transom check-links --help")

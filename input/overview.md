@@ -64,7 +64,7 @@ you if you're not using Java.
 
 ## Qpid and AMQP
 
-[AMQP]({{site.url}}/amqp/index.html) is the first open standard wire
+[AMQP](/amqp/index.html) is the first open standard wire
 protocol for messaging.  AMQP is foremost about the choices it gives
 you.  You can choose any AMQP solution you prefer, and if the one you
 chose doesn't work out, you can switch.  Your application will still
@@ -84,16 +84,16 @@ and core libraries for making AMQP part of your own messaging product.
  - *Application development* - Messaging is essential to reliable
    distributed applications, and we offer the tools you need to build
    one.  Check out our
-   [messaging APIs]({{site.url}}/components/index.html#messaging-apis).
+   [messaging APIs](/components/index.html#messaging-apis).
 
  - *Messaging infrastructure* - You can design and deploy an AMQP
    network that integrates with other services in your organization.
    See our
-   [messaging servers]({{site.url}}/components/index.html#messaging-servers).
+   [messaging servers](/components/index.html#messaging-servers).
 
  - *Your messaging product* - We know that there are many established
    messaging systems, and we want to make it easy for them to speak
-   AMQP.  Consider using [Qpid Proton]({{site.url}}/proton/index.html)
+   AMQP.  Consider using [Qpid Proton](/proton/index.html)
    instead of developing your own protocol support.
 
 ;; - *Language-native communication frameworks* - Java, .NET, Python,
