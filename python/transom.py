@@ -73,8 +73,8 @@ class Transom:
         self._config_file = _os.path.join(self.config_dir, "config.py")
         self._config = None
 
-        self._body_template_path = _os.path.join(self.config_dir, "body.html")
-        self._page_template_path = _os.path.join(self.config_dir, "page.html")
+        self._body_template_path = _os.path.join(self.config_dir, "default-body.html")
+        self._page_template_path = _os.path.join(self.config_dir, "default-page.html")
         self._body_template = None
         self._page_template = None
 
@@ -94,10 +94,10 @@ class Transom:
     def init(self):
         if self.home is not None:
             if not _os.path.isfile(self._page_template_path):
-                self._page_template_path = _os.path.join(self.home, "files", "page.html")
+                self._page_template_path = _os.path.join(self.home, "files", "default-page.html")
 
             if not _os.path.isfile(self._body_template_path):
-                self._body_template_path = _os.path.join(self.home, "files", "body.html")
+                self._body_template_path = _os.path.join(self.home, "files", "default-body.html")
 
         if not _os.path.isfile(self._page_template_path):
             raise Exception(f"No page template found at {self._page_template_path}")
@@ -503,7 +503,8 @@ class _OutputFile(_InputFile):
 
         return "".join(out)
 
-    def path_nav(self, start=None, end=None):
+    @property
+    def path_nav_links(self):
         files = [self]
         file_ = self.parent
 
@@ -511,20 +512,21 @@ class _OutputFile(_InputFile):
             files.append(file_)
             file_ = file_.parent
 
-        links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in reversed(files)]
+        return [f"<a href=\"{x.url}\">{x.title}</a>" for x in reversed(files)]
 
-        return f"<nav id=\"-path-nav\">{''.join(links[start:end])}</nav>"
+    def path_nav(self, start=None, end=None):
+        return f"<nav id=\"-path-nav\">{''.join(self.path_nav_links[start:end])}</nav>"
 
-    def include(self, page, input_path):
+    def include(self, input_path):
         name, ext = _os.path.splitext(input_path)
 
         with open(input_path, "r") as f:
             content = f.read()
 
         if ext == ".md":
-            content = self._markdown_converter.convert(content)
+            content = self.site._markdown_converter.convert(content)
 
-        return page.replace_variables(content, input_path=input_path)
+        return self.replace_variables(content, input_path=input_path)
 
     def _save_output(self):
         self.site.info("Saving {}", self)
@@ -879,8 +881,8 @@ class TransomCommand(_commandant.Command):
         if self.args.init_only:
             _sys.exit(0)
 
-        copy("page.html", _os.path.join(self.args.config_dir, "page.html"))
-        copy("body.html", _os.path.join(self.args.config_dir, "body.html"))
+        copy("default-page.html", _os.path.join(self.args.config_dir, "default-page.html"))
+        copy("default-body.html", _os.path.join(self.args.config_dir, "default-body.html"))
         copy("config.py", _os.path.join(self.args.config_dir, "config.py"))
 
         copy("main.css", _os.path.join(self.args.input_dir, "main.css"))
