@@ -44,8 +44,6 @@ from urllib.request import urlopen as _urlopen
 from xml.etree.ElementTree import XML as _XML
 from xml.sax.saxutils import escape as _xml_escape
 
-_html_title_regex = _re.compile(r"<([hH][12]).*?>(.*?)</\1>")
-_html_tag_regex = _re.compile(r"<.+?>")
 _markdown_title_regex = _re.compile(r"(#|##)(.+)")
 _variable_regex = _re.compile("({{.+?}})")
 _reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
@@ -55,7 +53,6 @@ _markdown_extras = {
     "footnotes": True,
     "header-ids": True,
     "markdown-in-html": True,
-    "metadata": True,
     "tables": True,
 }
 
@@ -89,8 +86,6 @@ class Transom:
 
         self._markdown_converter = _markdown.Markdown(extras=_markdown_extras)
 
-        self._start_time = None
-
     def init(self):
         if self.home is not None:
             if not _os.path.isfile(self._page_template_path):
@@ -119,8 +114,6 @@ class Transom:
 
         if _os.path.isfile(self._config_file):
             exec(_read_file(self._config_file), self._config)
-
-        self._start_time = _time.time()
 
     def _find_input_paths(self):
         input_paths = list()
@@ -232,13 +225,12 @@ class Transom:
                 livereload.terminate()
 
     def _render_one_file(self, input_path, force=False):
-        self.notice("Rendering {}", input_path)
+        file_ = self._create_file(input_path)
 
-        self._create_input_files([input_path])
-        input_file = self._input_files[input_path]
+        self.notice("Rendering {}", file_)
 
-        input_file._process_input()
-        input_file._render_output(force=force)
+        file_._process_input()
+        file_._render_output(force=force)
 
         _os.utime(self.output_dir)
 
@@ -355,8 +347,8 @@ class Transom:
     def warn(self, message, *args):
         print("Warning!", message.format(*args))
 
-class _InputFile:
-    __slots__ = "site", "parent", "_input_path", "_input_mtime", "_input_path_stem", "_output_path", "_output_mtime", "url"
+class _File:
+    __slots__ = "site", "parent", "_input_path", "_input_path_stem", "_input_mtime", "_output_path", "_output_mtime"
 
     def __init__(self, site, input_path):
         self.site = site
@@ -368,8 +360,6 @@ class _InputFile:
 
         self._output_path = _os.path.join(self.site.output_dir, self._input_path_stem)
         self._output_mtime = None
-
-        self.url = self.site.get_url(self._output_path)
 
         self.site._input_files[self._input_path] = self
         self.site._output_files[self._input_path] = self
@@ -386,14 +376,14 @@ class _InputFile:
 
         return self._input_mtime > self._output_mtime
 
-class _HtmlPage(_InputFile):
-    __slots__ = "title", "attributes", "_content"
+class _HtmlPage(_File):
+    __slots__ = "url", "title", "_attributes", "_content"
 
     def __init__(self, site, input_path):
         super().__init__(site, input_path)
 
-        self.attributes = dict() # XXX
-        self.title = "GARBAGE" # XXX
+        self.url = self.site.get_url(self._output_path)
+        self.title = ""
 
         self.site._link_targets.add(self.url)
 
@@ -401,13 +391,31 @@ class _HtmlPage(_InputFile):
             self.site._link_targets.add(self.url[:-10])
             self.site._link_targets.add(self.url[:-11])
 
+    def _process_input(self):
+        self._content = _read_file(self._input_path)
+        self._extract_metadata()
+        self.title = self._attributes.get("title", "")
+
+    def _extract_metadata(self):
+        self._attributes = dict()
+
+        if self._content.startswith("---\n"):
+            end = self._content.index("---\n", 4)
+            lines = self._content[4:end].strip().split("\n")
+
+            for line in lines:
+                key, value = line.split(":", 1)
+                self._attributes[key.strip()] = value.strip()
+
+            self._content = self._content[end + 4:]
+
     def _render_output(self, force=False):
         self._convert_content()
 
         page_template = self.site._page_template
 
-        if "page_template" in self.attributes: # XXX don't repeat this for each render
-            page_template_path = self.attributes["page_template"]
+        if "page_template" in self._attributes: # XXX don't repeat this for each render
+            page_template_path = self._attributes["page_template"]
 
             if _os.path.isfile(page_template_path):
                 page_template = _read_file(page_template_path)
@@ -425,14 +433,14 @@ class _HtmlPage(_InputFile):
 
     @property
     def extra_headers(self):
-        return self.attributes.get("extra_headers", "")
+        return self._attributes.get("extra_headers", "")
 
     @property
     def body(self):
         body_template = self.site._body_template
 
-        if "body_template" in self.attributes:
-            body_template_path = self.attributes["body_template"]
+        if "body_template" in self._attributes:
+            body_template_path = self._attributes["body_template"]
 
             if body_template_path == "none":
                 body_template = "{{page.content}}"
@@ -564,9 +572,8 @@ class _MarkdownPage(_HtmlPage):
         self._output_path = f"{self._output_path[:-3]}.html"
 
     def _process_input(self):
-        self._content = _read_file(self._input_path)
+        super()._process_input()
 
-        # XXX maybe we can get rid of this
         match = _markdown_title_regex.search(self._content)
 
         if match:
@@ -580,22 +587,14 @@ class _MarkdownPage(_HtmlPage):
         self._content = _os.linesep.join(content_lines)
         self._content = self.site._markdown_converter.convert(self._content)
 
-        self.attributes.update(self._content.metadata)
-
-        try:
-            self.title = self.attributes["title"]
-        except KeyError:
-            pass
-
 class _HtmlInPage(_HtmlPage):
     __slots__ = ()
 
     def _process_input(self):
-        self._content = _read_file(self._input_path)
-        self.attributes.update(self._extract_metadata())
+        super()._process_input()
 
         try:
-            self.title = self.attributes["title"]
+            self.title = self._attributes["title"]
         except KeyError:
             match = _html_title_regex.search(self._content)
 
@@ -603,22 +602,7 @@ class _HtmlInPage(_HtmlPage):
                 self.title = match.group(2).strip()
                 self.title = _html_tag_regex.sub("", self.title)
 
-    def _extract_metadata(self):
-        attributes = dict()
-
-        if self._content.startswith("---\n"):
-            end = self._content.index("---\n", 4)
-            lines = self._content[4:end].strip().split("\n")
-
-            for line in lines:
-                key, value = line.split(":", 1)
-                attributes[key.strip()] = value.strip()
-
-            self._content = self._content[end + 4:]
-
-        return attributes
-
-class _StaticFile(_InputFile):
+class _StaticFile(_File):
     __slots__ = ()
 
     def _process_input(self):
