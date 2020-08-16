@@ -69,7 +69,7 @@ test: build
 
 .PHONY: render
 render: build
-	transom render config input output
+	transom render --verbose config input output
 
 .PHONY: serve
 serve: build

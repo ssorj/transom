@@ -193,16 +193,18 @@ class Transom:
             return _StaticFile(self, input_path)
 
     def render(self, force=False, serve=None):
-        input_paths = self._find_input_paths()
-        self._init_input_files(input_paths)
+        self._init_input_files(self._find_input_paths())
 
         self.notice("Rendering {:,} input files", len(self._input_files))
 
         for file_ in self._input_files.values():
+            self.info("Processing {}", file_)
             file_._process_input()
 
         for file_ in self._output_files.values():
-            file_._render_output(force=force)
+            if file_._is_modified() or force:
+                self.info("Rendering {}", file_)
+                file_._render_output()
 
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
@@ -245,8 +247,7 @@ class Transom:
         _os.utime(self.output_dir)
 
     def check_files(self):
-        input_paths = self._find_input_paths()
-        self._init_input_files(input_paths)
+        self._init_input_files(self._find_input_paths())
 
         expected_paths = set()
         found_paths = set()
@@ -283,8 +284,7 @@ class Transom:
         return output_paths
 
     def check_links(self, internal=True, external=False):
-        input_paths = self._find_input_paths()
-        self._init_input_files(input_paths)
+        self._init_input_files(self._find_input_paths())
 
         for file_ in self._output_files.values():
             file_._find_links()
@@ -386,7 +386,6 @@ class _InputFile:
         self.title = None
         self.attributes = dict()
 
-        self._config = None # A cached superset of site.config and current page vars
         self._content = None
 
         self.site._output_files[self.input_path] = self
@@ -397,15 +396,11 @@ class _InputFile:
 
     def _init(self):
         self._input_mtime = _os.path.getmtime(self.input_path)
+
         self.url = self.site.get_url(self.output_path)
 
     def _process_input(self):
-        self.site.info("Processing {}", self)
-        self._content = _read_file(self.input_path)
-
-    def _render_output(self, force=False):
-        self._config = dict(self.site._config)
-        self._config["page"] = self
+        pass
 
     def _is_modified(self):
         if self._output_mtime is None:
@@ -419,25 +414,15 @@ class _InputFile:
     def _replace_variables(self, text, input_path=None):
         out = list()
         tokens = _variable_regex.split(text)
+        globals_ = self.site._config
+        locals_ = {"page": self}
 
         for token in tokens:
-            if not token.startswith("{{"):
+            if token.startswith("{{"):
+                expr = token[2:-2]
+                out.append(eval(expr, globals_, locals_) or "")
+            else:
                 out.append(token)
-                continue
-
-            expr = token[2:-2]
-
-            try:
-                result = eval(expr, self._config)
-            except Exception as e:
-                print(f"Expression '{expr}': file '{input_path}': {e}")
-                _traceback.print_exc();
-
-                out.append(token)
-                continue
-
-            if result is not None:
-                out.append(str(result))
 
         return "".join(out)
 
@@ -510,7 +495,7 @@ class _HtmlPage(_InputFile):
 
         self.site.info("Finding links in {}", self)
 
-        self._load_output()
+        self._content = _read_file(self.output_path)
 
         try:
             root = _XML(self._content)
@@ -541,9 +526,6 @@ class _HtmlPage(_InputFile):
             self.site._links[link].add(self.url)
 
         self.site._link_targets.update(link_targets)
-
-    def _load_output(self):
-        self._content = _read_file(self.output_path)
 
     def _gather_links(self, root_elem):
         links = set()
@@ -586,51 +568,46 @@ class _MarkdownPage(_HtmlPage):
         self.output_path = f"{self.output_path[:-3]}.html"
 
     def _process_input(self):
-        super()._process_input()
+        self._content = _read_file(self.input_path)
 
+        # XXX maybe we can get rid of this
         match = _markdown_title_regex.search(self._content)
 
         if match:
             self.title = match.group(2).strip()
 
     def _render_output(self, force=False):
-        super()._render_output(force=force)
+        # Strip out comments
+        content_lines = self._content.splitlines()
+        content_lines = [x for x in content_lines if not x.startswith(";;")]
 
-        if self._is_modified() or force:
-            self.site.info("Rendering {}", self)
+        self._content = _os.linesep.join(content_lines)
+        self._content = self.site._markdown_converter.convert(self._content)
 
-            # Strip out comments
-            content_lines = self._content.splitlines()
-            content_lines = [x for x in content_lines if not x.startswith(";;")]
+        self.attributes.update(self._content.metadata)
 
-            self._content = _os.linesep.join(content_lines)
-            self._content = self.site._markdown_converter.convert(self._content)
+        try:
+            self.title = self.attributes["title"]
+        except KeyError:
+            pass
 
-            self.attributes.update(self._content.metadata)
+        page_template = self.site._page_template
 
-            try:
-                self.title = self.attributes["title"]
-            except KeyError:
-                pass
+        if "page_template" in self.attributes:
+            page_template_path = self.attributes["page_template"]
 
-            page_template = self.site._page_template
+            if _os.path.isfile(page_template_path):
+                page_template = _read_file(page_template_path)
+            else:
+                raise Exception(f"Page template {page_template_path} not found")
 
-            if "page_template" in self.attributes:
-                page_template_path = self.attributes["page_template"]
-
-                if _os.path.isfile(page_template_path):
-                    page_template = _read_file(page_template_path)
-                else:
-                    raise Exception(f"Page template {page_template_path} not found")
-
-            _write_file(self.output_path, self._replace_variables(page_template))
+        _write_file(self.output_path, self._replace_variables(page_template))
 
 class _HtmlInPage(_HtmlPage):
     __slots__ = ()
 
     def _process_input(self):
-        super()._process_input()
-
+        self._content = _read_file(self.input_path)
         self.attributes.update(self._extract_metadata())
 
         try:
@@ -658,44 +635,32 @@ class _HtmlInPage(_HtmlPage):
         return attributes
 
     def _render_output(self, force=False):
-        super()._render_output(force=force)
+        page_template = self.site._page_template
 
-        if self._is_modified() or force:
-            self.site.info("Converting {} to HTML", self)
+        if "page_template" in self.attributes:
+            page_template_path = self.attributes["page_template"]
 
-            page_template = self.site._page_template
+            if _os.path.isfile(page_template_path):
+                page_template = _read_file(page_template_path)
+            else:
+                raise Exception(f"Page template {page_template_path} not found")
 
-            if "page_template" in self.attributes:
-                page_template_path = self.attributes["page_template"]
-
-                if _os.path.isfile(page_template_path):
-                    page_template = _read_file(page_template_path)
-                else:
-                    raise Exception(f"Page template {page_template_path} not found")
-
-            _write_file(self.output_path, self._replace_variables(page_template))
+        _write_file(self.output_path, self._replace_variables(page_template))
 
 class _InFile(_InputFile):
     __slots__ = ()
 
+    def _process_input(self):
+        self._content = _read_file(self.input_path)
+
     def _render_output(self, force=False):
-        super()._render_output(force=force)
-
-        if self._is_modified() or force:
-            self.site.info("Rendering {}", self)
-
-            _write_file(self.output_path, self._replace_variables(self._content, self.input_path))
+        _write_file(self.output_path, self._replace_variables(self._content, self.input_path))
 
 class _StaticFile(_InputFile):
     __slots__ = ()
 
-    def _process_input(self):
-        pass
-
     def _render_output(self, force=False):
-        if self._is_modified() or force:
-            self.site.info("Saving {}", self)
-            _copy_file(self.input_path, self.output_path)
+        _copy_file(self.input_path, self.output_path)
 
 class _WatcherThread(_threading.Thread):
     def __init__(self, site):
