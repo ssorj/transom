@@ -241,7 +241,7 @@ class Transom:
         found_paths = set()
 
         for file_ in self._output_files.values():
-            expected_paths.add(file_.output_path)
+            expected_paths.add(file_._output_path)
 
         found_paths = self._find_output_paths()
 
@@ -494,12 +494,12 @@ class _HtmlPage(_File):
         return self._replace_variables(content, input_path=input_path)
 
     def _find_links(self):
-        if not self.output_path.endswith(".html"):
+        if not self._output_path.endswith(".html"):
             return
 
         self.site.info("Finding links in {}", self)
 
-        self._content = _read_file(self.output_path)
+        self._content = _read_file(self._output_path)
 
         try:
             root = _XML(self._content)
@@ -589,6 +589,11 @@ class _MarkdownPage(_HtmlPage):
 
 class _HtmlInPage(_HtmlPage):
     __slots__ = ()
+
+    def __init__(self, site, input_path):
+        super().__init__(site, input_path)
+
+        self._output_path = self._output_path[:-3]
 
     def _process_input(self):
         super()._process_input()
