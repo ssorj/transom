@@ -75,8 +75,7 @@ class Transom:
         self._body_template = None
         self._page_template = None
 
-        self._input_files = dict()
-        self._output_files = dict()
+        self._files = dict()
 
         self._links = _defaultdict(set)
         self._link_targets = set()
@@ -131,7 +130,7 @@ class Transom:
 
         return input_paths
 
-    def _create_input_files(self, input_paths):
+    def _create_files(self, input_paths):
         for input_path in input_paths:
             if not self._is_ignored_file(input_path):
                 self._create_file(input_path)
@@ -139,7 +138,7 @@ class Transom:
         index_files = dict()
         other_files = _defaultdict(list)
 
-        for file_ in self._output_files.values():
+        for file_ in self._files.values():
             path = file_._output_path[len(self.output_dir):]
             dir_, name = _os.path.split(path)
 
@@ -182,15 +181,15 @@ class Transom:
             return _StaticFile(self, input_path)
 
     def render(self, force=False, serve=None):
-        self._create_input_files(self._find_input_paths())
+        self._create_files(self._find_input_paths())
 
-        self.notice("Rendering {:,} input files", len(self._input_files))
+        self.notice("Rendering {:,} input files", len(self._files))
 
-        for file_ in self._input_files.values():
+        for file_ in self._files.values():
             self.info("Processing {}", file_)
             file_._process_input()
 
-        for file_ in self._output_files.values():
+        for file_ in self._files.values():
             if file_._is_modified() or force:
                 self.info("Rendering {}", file_)
                 file_._render_output()
@@ -235,12 +234,12 @@ class Transom:
         _os.utime(self.output_dir)
 
     def check_files(self):
-        self._create_input_files(self._find_input_paths())
+        self._create_files(self._find_input_paths())
 
         expected_paths = set()
         found_paths = set()
 
-        for file_ in self._output_files.values():
+        for file_ in self._files.values():
             expected_paths.add(file_._output_path)
 
         found_paths = self._find_output_paths()
@@ -272,9 +271,9 @@ class Transom:
         return output_paths
 
     def check_links(self, internal=True, external=False):
-        self._create_input_files(self._find_input_paths())
+        self._create_files(self._find_input_paths())
 
-        for file_ in self._output_files.values():
+        for file_ in self._files.values():
             file_._find_links()
 
         errors_by_link = _defaultdict(list)
@@ -361,8 +360,7 @@ class _File:
         self._output_path = _os.path.join(self.site.output_dir, self._input_path_stem)
         self._output_mtime = None
 
-        self.site._input_files[self._input_path] = self
-        self.site._output_files[self._input_path] = self
+        self.site._files[self._input_path] = self
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._input_path_stem})"
@@ -594,18 +592,6 @@ class _HtmlInPage(_HtmlPage):
         super().__init__(site, input_path)
 
         self._output_path = self._output_path[:-3]
-
-    def _process_input(self):
-        super()._process_input()
-
-        try:
-            self.title = self._attributes["title"]
-        except KeyError:
-            match = _html_title_regex.search(self._content)
-
-            if match:
-                self.title = match.group(2).strip()
-                self.title = _html_tag_regex.sub("", self.title)
 
 class _StaticFile(_File):
     __slots__ = ()
