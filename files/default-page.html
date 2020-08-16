@@ -8,14 +8,13 @@
     <link rel="icon" href="" type="image/png"/>
     <script type="text/javascript" src="/main.js" defer="defer"></script>
 
-@extra_headers@
+{{page.reload_script}}
+{{page.extra_headers}}
 
   </head>
   <body>
 
-@body_template@
-
-@reload_script@
+{{page.body}}
 
   </body>
 </html>

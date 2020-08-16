@@ -26,7 +26,8 @@
     <link rel="stylesheet" href="/main.css" type="text/css" async="async"/>
     <script type="text/javascript" src="/main.js" defer="defer"></script>
 
-@extra_headers@
+{{page.reload_script}}
+{{page.extra_headers}}
 
   </head>
   <body>
@@ -40,7 +41,7 @@
       {{page.path_nav()}}
     </header>
 
-@body_template@
+{{page.body}}
 
     <footer id="-primary-footer">
       <nav id="-apache-navigation">
@@ -63,8 +64,5 @@
         registered trademarks of their respective owners
       </p>
     </footer>
-
-@reload_script@
-
   </body>
 </html>

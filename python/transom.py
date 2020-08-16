@@ -383,7 +383,7 @@ class _InputFile:
         pass
 
 class _OutputFile(_InputFile):
-    __slots__ = "output_path", "_output_mtime", "parent", "url", "title", "attributes", "_config", "_content"
+    __slots__ = "output_path", "_output_mtime", "parent", "url", "title", "attributes", "_config", "_content",
 
     def __init__(self, site, input_path):
         super().__init__(site, input_path)
@@ -438,45 +438,7 @@ class _OutputFile(_InputFile):
         self._config = dict(self.site._config)
         self._config["page"] = self
 
-    def _apply_template(self):
-        page_template = self.site._page_template
-        body_template = self.site._body_template
-
-        if "page_template" in self.attributes:
-            page_template_path = self.attributes["page_template"]
-
-            if _os.path.isfile(page_template_path):
-                page_template = _read_file(page_template_path)
-            else:
-                raise Exception(f"Page template {page_template_path} not found")
-
-        if "body_template" in self.attributes:
-            body_template_path = self.attributes["body_template"]
-
-            if body_template_path == "none":
-                body_template = "@content@"
-            elif _os.path.isfile(body_template_path):
-                body_template = _read_file(body_template_path)
-            else:
-                raise Exception(f"Body template {body_template_path} not found")
-
-        extra_headers = self.attributes.get("extra_headers", "")
-
-        template = page_template.replace("@body_template@", body_template, 1)
-        template = template.replace("@extra_headers@", extra_headers, 1)
-
-        if self.site.reload:
-            template = template.replace("@reload_script@", _reload_script, 1)
-        else:
-            template = template.replace("@reload_script@", "", 1)
-
-        self._content = template.replace("@content@", self._content, 1)
-
-    def _replace_input_variables(self):
-        self.site.info("Replacing variables in {}", self)
-        self._content = self.replace_variables(self._content, self.input_path)
-
-    def replace_variables(self, text, input_path=None):
+    def _replace_variables(self, text, input_path=None):
         assert self._config
 
         out = list()
@@ -526,11 +488,7 @@ class _OutputFile(_InputFile):
         if ext == ".md":
             content = self.site._markdown_converter.convert(content)
 
-        return self.replace_variables(content, input_path=input_path)
-
-    def _save_output(self):
-        self.site.info("Saving {}", self)
-        _write_file(self.output_path, self._content)
+        return self._replace_variables(content, input_path=input_path)
 
     def _find_links(self):
         if not self.output_path.endswith(".html"):
@@ -621,6 +579,34 @@ class _MarkdownFile(_OutputFile):
         if match:
             self.title = match.group(2).strip()
 
+    @property
+    def reload_script(self):
+        return _reload_script
+
+    @property
+    def extra_headers(self):
+        return self.attributes.get("extra_headers", "")
+
+    @property
+    def body(self):
+        body_template = self.site._body_template
+
+        if "body_template" in self.attributes:
+            body_template_path = self.attributes["body_template"]
+
+            if body_template_path == "none":
+                body_template = "{{page.content}}"
+            elif _os.path.isfile(body_template_path):
+                body_template = _read_file(body_template_path)
+            else:
+                raise Exception(f"Body template {body_template_path} not found")
+
+        return self._replace_variables(body_template)
+
+    @property
+    def content(self):
+        return self._replace_variables(self._content, self.input_path)
+
     def _render_output(self, force=False):
         super()._render_output(force=force)
 
@@ -641,9 +627,17 @@ class _MarkdownFile(_OutputFile):
             except KeyError:
                 pass
 
-            self._apply_template()
-            self._replace_input_variables()
-            self._save_output()
+            page_template = self.site._page_template
+
+            if "page_template" in self.attributes:
+                page_template_path = self.attributes["page_template"]
+
+                if _os.path.isfile(page_template_path):
+                    page_template = _read_file(page_template_path)
+                else:
+                    raise Exception(f"Page template {page_template_path} not found")
+
+            _write_file(self.output_path, self._replace_variables(page_template))
 
 class _HtmlInFile(_OutputFile):
     __slots__ = ()
@@ -662,15 +656,43 @@ class _HtmlInFile(_OutputFile):
                 self.title = match.group(2).strip()
                 self.title = _html_tag_regex.sub("", self.title)
 
+    @property
+    def body(self):
+        body_template = self.site._body_template
+
+        if "body_template" in self.attributes:
+            body_template_path = self.attributes["body_template"]
+
+            if body_template_path == "none":
+                body_template = "{{page.content}}"
+            elif _os.path.isfile(body_template_path):
+                body_template = _read_file(body_template_path)
+            else:
+                raise Exception(f"Body template {body_template_path} not found")
+
+        return self._replace_variables(body_template)
+
+    @property
+    def content(self):
+        return self._replace_variables(self._content, self.input_path)
+
     def _render_output(self, force=False):
         super()._render_output(force=force)
 
         if self._is_modified() or force:
             self.site.info("Converting {} to HTML", self)
 
-            self._apply_template()
-            self._replace_input_variables()
-            self._save_output()
+            page_template = self.site._page_template
+
+            if "page_template" in self.attributes:
+                page_template_path = self.attributes["page_template"]
+
+                if _os.path.isfile(page_template_path):
+                    page_template = _read_file(page_template_path)
+                else:
+                    raise Exception(f"Page template {page_template_path} not found")
+
+            _write_file(self.output_path, self._replace_variables(page_template))
 
     def _extract_metadata(self):
         attributes = dict()
@@ -696,8 +718,7 @@ class _InFile(_OutputFile):
         if self._is_modified() or force:
             self.site.info("Rendering {}", self)
 
-            self._replace_input_variables()
-            self._save_output()
+            _write_file(self.output_path, self._replace_variables(self._content, self.input_path))
 
 class _StaticFile(_OutputFile):
     __slots__ = ()
