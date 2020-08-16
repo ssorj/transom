@@ -183,10 +183,10 @@ class Transom:
         name, ext = _os.path.splitext(input_path)
 
         if ext == ".md":
-            return _MarkdownFile(self, input_path)
+            return _MarkdownPage(self, input_path)
         elif ext == ".in":
             if name.endswith(".html"):
-                return _HtmlInFile(self, input_path)
+                return _HtmlInPage(self, input_path)
             else:
                 return _InFile(self, input_path)
         else:
@@ -361,7 +361,8 @@ class Transom:
         print(f"Warning! {message}")
 
 class _InputFile:
-    __slots__ = "site", "parent", "input_path", "_input_mtime"
+    __slots__ = "site", "parent", "input_path", "_input_mtime", "output_path", "_output_mtime", \
+        "url", "title", "attributes", "_config", "_content"
 
     def __init__(self, site, input_path):
         self.site = site
@@ -371,22 +372,6 @@ class _InputFile:
         self._input_mtime = None
 
         self.site._input_files[self.input_path] = self
-
-    def __repr__(self):
-        path = self.input_path[len(self.site.input_dir) + 1:]
-        return f"{self.__class__.__name__}({path})"
-
-    def _init(self):
-        self._input_mtime = _os.path.getmtime(self.input_path)
-
-    def _process_input(self):
-        pass
-
-class _OutputFile(_InputFile):
-    __slots__ = "output_path", "_output_mtime", "parent", "url", "title", "attributes", "_config", "_content",
-
-    def __init__(self, site, input_path):
-        super().__init__(site, input_path)
 
         path = self.input_path[len(self.site.input_dir) + 1:]
 
@@ -406,24 +391,21 @@ class _OutputFile(_InputFile):
 
         self.site._output_files[self.input_path] = self
 
+    def __repr__(self):
+        path = self.input_path[len(self.site.input_dir) + 1:]
+        return f"{self.__class__.__name__}({path})"
+
     def _init(self):
-        super()._init()
-
+        self._input_mtime = _os.path.getmtime(self.input_path)
         self.url = self.site.get_url(self.output_path)
-
-        self.site._link_targets.add(self.url)
-
-        if self.url.endswith("/index.html"):
-            self.site._link_targets.add(self.url[:-10])
-            self.site._link_targets.add(self.url[:-11])
 
     def _process_input(self):
         self.site.info("Processing {}", self)
-        self._load_input()
-
-    def _load_input(self):
-        self.site.info("Loading {}", self)
         self._content = _read_file(self.input_path)
+
+    def _render_output(self, force=False):
+        self._config = dict(self.site._config)
+        self._config["page"] = self
 
     def _is_modified(self):
         if self._output_mtime is None:
@@ -434,18 +416,12 @@ class _OutputFile(_InputFile):
 
         return self._input_mtime > self._output_mtime
 
-    def _render_output(self, force=False):
-        self._config = dict(self.site._config)
-        self._config["page"] = self
-
     def _replace_variables(self, text, input_path=None):
-        assert self._config
-
         out = list()
         tokens = _variable_regex.split(text)
 
         for token in tokens:
-            if token[:2] != "{{" or token[-2:] != "}}":
+            if not token.startswith("{{"):
                 out.append(token)
                 continue
 
@@ -465,6 +441,55 @@ class _OutputFile(_InputFile):
 
         return "".join(out)
 
+    def include(self, input_path):
+        name, ext = _os.path.splitext(input_path)
+
+        with open(input_path, "r") as f:
+            content = f.read()
+
+        if ext == ".md":
+            content = self.site._markdown_converter.convert(content)
+
+        return self._replace_variables(content, input_path=input_path)
+
+class _HtmlPage(_InputFile):
+    def _init(self):
+        super()._init()
+
+        self.site._link_targets.add(self.url)
+
+        if self.url.endswith("/index.html"):
+            self.site._link_targets.add(self.url[:-10])
+            self.site._link_targets.add(self.url[:-11])
+
+    @property
+    def reload_script(self):
+        return _reload_script
+
+    @property
+    def extra_headers(self):
+        return self.attributes.get("extra_headers", "")
+
+    @property
+    def body(self):
+        body_template = self.site._body_template
+
+        if "body_template" in self.attributes:
+            body_template_path = self.attributes["body_template"]
+
+            if body_template_path == "none":
+                body_template = "{{page.content}}"
+            elif _os.path.isfile(body_template_path):
+                body_template = _read_file(body_template_path)
+            else:
+                raise Exception(f"Body template {body_template_path} not found")
+
+        return self._replace_variables(body_template)
+
+    @property
+    def content(self):
+        return self._replace_variables(self._content, self.input_path)
+
     @property
     def path_nav_links(self):
         files = [self]
@@ -478,17 +503,6 @@ class _OutputFile(_InputFile):
 
     def path_nav(self, start=None, end=None):
         return f"<nav id=\"-path-nav\">{''.join(self.path_nav_links[start:end])}</nav>"
-
-    def include(self, input_path):
-        name, ext = _os.path.splitext(input_path)
-
-        with open(input_path, "r") as f:
-            content = f.read()
-
-        if ext == ".md":
-            content = self.site._markdown_converter.convert(content)
-
-        return self._replace_variables(content, input_path=input_path)
 
     def _find_links(self):
         if not self.output_path.endswith(".html"):
@@ -563,7 +577,7 @@ class _OutputFile(_InputFile):
 
         return link_targets
 
-class _MarkdownFile(_OutputFile):
+class _MarkdownPage(_HtmlPage):
     __slots__ = ()
 
     def __init__(self, site, input_path):
@@ -578,34 +592,6 @@ class _MarkdownFile(_OutputFile):
 
         if match:
             self.title = match.group(2).strip()
-
-    @property
-    def reload_script(self):
-        return _reload_script
-
-    @property
-    def extra_headers(self):
-        return self.attributes.get("extra_headers", "")
-
-    @property
-    def body(self):
-        body_template = self.site._body_template
-
-        if "body_template" in self.attributes:
-            body_template_path = self.attributes["body_template"]
-
-            if body_template_path == "none":
-                body_template = "{{page.content}}"
-            elif _os.path.isfile(body_template_path):
-                body_template = _read_file(body_template_path)
-            else:
-                raise Exception(f"Body template {body_template_path} not found")
-
-        return self._replace_variables(body_template)
-
-    @property
-    def content(self):
-        return self._replace_variables(self._content, self.input_path)
 
     def _render_output(self, force=False):
         super()._render_output(force=force)
@@ -639,7 +625,7 @@ class _MarkdownFile(_OutputFile):
 
             _write_file(self.output_path, self._replace_variables(page_template))
 
-class _HtmlInFile(_OutputFile):
+class _HtmlInPage(_HtmlPage):
     __slots__ = ()
 
     def _process_input(self):
@@ -656,25 +642,20 @@ class _HtmlInFile(_OutputFile):
                 self.title = match.group(2).strip()
                 self.title = _html_tag_regex.sub("", self.title)
 
-    @property
-    def body(self):
-        body_template = self.site._body_template
+    def _extract_metadata(self):
+        attributes = dict()
 
-        if "body_template" in self.attributes:
-            body_template_path = self.attributes["body_template"]
+        if self._content.startswith("---\n"):
+            end = self._content.index("---\n", 4)
+            lines = self._content[4:end].strip().split("\n")
 
-            if body_template_path == "none":
-                body_template = "{{page.content}}"
-            elif _os.path.isfile(body_template_path):
-                body_template = _read_file(body_template_path)
-            else:
-                raise Exception(f"Body template {body_template_path} not found")
+            for line in lines:
+                key, value = line.split(":", 1)
+                attributes[key.strip()] = value.strip()
 
-        return self._replace_variables(body_template)
+            self._content = self._content[end + 4:]
 
-    @property
-    def content(self):
-        return self._replace_variables(self._content, self.input_path)
+        return attributes
 
     def _render_output(self, force=False):
         super()._render_output(force=force)
@@ -694,22 +675,7 @@ class _HtmlInFile(_OutputFile):
 
             _write_file(self.output_path, self._replace_variables(page_template))
 
-    def _extract_metadata(self):
-        attributes = dict()
-
-        if self._content.startswith("---\n"):
-            end = self._content.index("---\n", 4)
-            lines = self._content[4:end].strip().split("\n")
-
-            for line in lines:
-                key, value = line.split(":", 1)
-                attributes[key.strip()] = value.strip()
-
-            self._content = self._content[end + 4:]
-
-        return attributes
-
-class _InFile(_OutputFile):
+class _InFile(_InputFile):
     __slots__ = ()
 
     def _render_output(self, force=False):
@@ -720,7 +686,7 @@ class _InFile(_OutputFile):
 
             _write_file(self.output_path, self._replace_variables(self._content, self.input_path))
 
-class _StaticFile(_OutputFile):
+class _StaticFile(_InputFile):
     __slots__ = ()
 
     def _process_input(self):
