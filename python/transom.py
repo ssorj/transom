@@ -699,10 +699,10 @@ class TransomCommand(_commandant.Command):
     def check_links_command(self):
         self.init_lib()
 
-        link_errors = self.lib.check_links()
+        errors = self.lib.check_links()
 
-        if link_errors == 0:
-            print("PASSED")
+        if errors == 0:
+            self.notice("PASSED")
         else:
             self.fail("FAILED")
 
@@ -715,7 +715,7 @@ class TransomCommand(_commandant.Command):
             self.warn("{} extra files in the output", extra_files)
 
         if missing_files == 0:
-            print("PASSED")
+            self.notice("PASSED")
         else:
             self.fail("FAILED")
 
