@@ -384,12 +384,6 @@ class _File:
 class _HtmlPage(_File):
     __slots__ = "title", "_attributes", "_content"
 
-    # XXX
-    # def __init__(self, site, input_path):
-    #     super().__init__(site, input_path)
-
-    #     self.title = ""
-
     def _process_input(self):
         self._content = _read_file(self._input_path)
         self._extract_metadata()
