@@ -58,7 +58,7 @@ _markdown_extras = {
 class Transom:
     def __init__(self, config_dir, input_dir, output_dir, home=None):
         self.config_dir = config_dir
-        self.input_dir = _os.path.abspath(input_dir)
+        self.input_dir = input_dir
         self.output_dir = output_dir
         self.home = home
 
@@ -110,7 +110,7 @@ class Transom:
         if _os.path.isfile(self._config_file):
             exec(_read_file(self._config_file), self._config)
 
-    def _find_input_paths(self):
+    def _init_files(self):
         input_paths = list()
 
         for root, dirs, files in _os.walk(self.input_dir):
@@ -122,15 +122,11 @@ class Transom:
                     break
 
             for file_ in files:
-                # XXX strip the fq prefix?
                 input_paths.append(_os.path.join(root, file_))
 
-        return input_paths
-
-    def _create_files(self, input_paths):
         for input_path in input_paths:
             if not self._is_ignored_file(input_path):
-                self._create_file(input_path)
+                self._init_file(input_path)
 
         index_files = dict()
         other_files = _defaultdict(list)
@@ -167,9 +163,7 @@ class Transom:
 
         return False
 
-    def _create_file(self, input_path):
-        name, ext = _os.path.splitext(input_path)
-
+    def _init_file(self, input_path):
         if input_path.endswith(".md"):
             return _MarkdownPage(self, input_path)
         elif input_path.endswith(".html.in"):
@@ -178,9 +172,9 @@ class Transom:
             return _StaticFile(self, input_path)
 
     def render(self, force=False, serve=None):
-        self._create_files(self._find_input_paths())
+        self.notice("Rendering input files")
 
-        self.notice("Rendering {:,} input files", len(self._files))
+        self._init_files()
 
         for file_ in self._files.values():
             self.info("Processing {}", file_)
@@ -221,17 +215,16 @@ class Transom:
                 livereload.terminate()
 
     def _render_one_file(self, input_path, force=False):
-        file_ = self._create_file(input_path)
+        self.notice("Rendering {}", input_path)
 
-        self.notice("Rendering {}", file_)
-
+        file_ = self._init_file(input_path)
         file_._process_input()
         file_._render_output(force=force)
 
         _os.utime(self.output_dir)
 
     def check_files(self):
-        self._create_files(self._find_input_paths())
+        self._init_files()
 
         expected_paths = {x._output_path for x in self._files.values()}
         found_paths = self._find_output_paths()
@@ -266,7 +259,7 @@ class Transom:
         link_sources = _defaultdict(set) # link => files
         link_targets = set()
 
-        self._create_files(self._find_input_paths())
+        self._init_files()
 
         for file_ in self._files.values():
             link_targets.add(file_.url)
@@ -304,12 +297,6 @@ class Transom:
 
         return errors
 
-    def get_url(self, output_path):
-        path = output_path[len(self.output_dir):]
-        path = path.replace(_os.path.sep, "/")
-
-        return path
-
     def info(self, message, *args):
         if self.verbose:
             print(message.format(*args))
@@ -322,27 +309,26 @@ class Transom:
         print("Warning!", message.format(*args))
 
 class _File:
-    __slots__ = "site", "parent", "_input_path", "_input_path_stem", "_input_mtime", "_output_path", "_output_mtime"
+    __slots__ = "site", "parent", "_input_path", "_input_mtime", "_output_path", "_output_mtime"
 
     def __init__(self, site, input_path):
         self.site = site
         self.parent = None
 
         self._input_path = input_path
-        self._input_path_stem = self._input_path[len(self.site.input_dir) + 1:]
         self._input_mtime = _os.path.getmtime(self._input_path)
 
-        self._output_path = _os.path.join(self.site.output_dir, self._input_path_stem)
+        self._output_path = _os.path.join(self.site.output_dir, self._input_path[len(self.site.input_dir) + 1:])
         self._output_mtime = None
 
         self.site._files[self._input_path] = self
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._input_path_stem})"
+        return f"{self.__class__.__name__}({self._input_path})"
 
     @property
     def url(self):
-        return self.site.get_url(self._output_path)
+        return self._output_path[len(self.site.output_dir):]
 
     def _is_modified(self):
         if self._output_mtime is None:
@@ -539,7 +525,7 @@ class _WatcherThread(_threading.Thread):
         mask = _pyinotify.IN_CREATE | _pyinotify.IN_DELETE | _pyinotify.IN_MODIFY
 
         def render(event):
-            if _os.path.isdir(event.pathname) or event.name.startswith((".#", "#")):
+            if _os.path.isdir(event.pathname) or self.site._is_ignored_file(event.pathname):
                 return True
 
             self.site._render_one_file(event.pathname, force=True) # XXX Handle delete
@@ -791,9 +777,7 @@ def _html_table_csv(csv_path, **attrs):
 
     return _html_table(items, **attrs)
 
-def _html_table(items, column_headings=True, row_headings=False,
-                escape_cell_data=False, cell_render_fn=None,
-                **attrs):
+def _html_table(items, column_headings=True, row_headings=False, escape_cell_data=False, cell_render_fn=None, **attrs):
     rows = list()
 
     if column_headings:
@@ -828,7 +812,7 @@ def _html_table(items, column_headings=True, row_headings=False,
     return _html_elem("table", tbody, **attrs)
 
 def _html_elem(tag, content, **attrs):
-    attrs = [_html_attr(name, value) for name, value in attrs.items() if value is not False]
+    attrs = (_html_attr(name, value) for name, value in attrs.items() if value is not False)
 
     if content is None:
         content = ""
@@ -839,7 +823,7 @@ def _html_attr(name, value):
     if value is True:
         value = name
 
-    if name == "class_" or name == "_class":
+    if name in ("class_", "_class"):
         name = "class"
 
     return f"{name}=\"{_xml_escape(value)}\""
