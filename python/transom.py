@@ -370,13 +370,33 @@ class _File:
 
             link_targets.add(target)
 
-class _HtmlPage(_File):
-    __slots__ = "title", "_attributes", "_content"
+class _TemplatePage(_File):
+    __slots__ = "_content", "_attributes", "title", "_page_template", "_body_template"
 
     def _process_input(self):
         self._content = _read_file(self._input_path)
         self._extract_metadata()
+
         self.title = self._attributes.get("title", "")
+
+        self._page_template = self.site._page_template
+        self._body_template = self.site._body_template
+
+        if "page_template" in self._attributes:
+            page_template_file = self._attributes["page_template"]
+
+            if page_template_file is None:
+                self._page_template = "{{page.body}}"
+            else:
+                self._page_template = _read_file(page_template_file)
+
+        if "body_template" in self._attributes:
+            body_template_file = self._attributes["body_template"]
+
+            if body_template_file is None:
+                self._body_template = "{{page.content}}"
+            else:
+                self._body_template = _read_file(body_template_file)
 
     def _extract_metadata(self):
         self._attributes = dict()
@@ -387,24 +407,18 @@ class _HtmlPage(_File):
 
             for line in lines:
                 key, value = line.split(":", 1)
-                self._attributes[key.strip()] = value.strip()
+                key, value = key.strip(), value.strip()
+
+                if value.lower() in ("none", "null"):
+                    value = None
+
+                self._attributes[key] = value
 
             self._content = self._content[end + 4:]
 
     def _render_output(self, force=False):
         self._convert_content()
-
-        page_template = self.site._page_template
-
-        if "page_template" in self._attributes: # XXX don't repeat this for each render
-            page_template_file = self._attributes["page_template"]
-
-            if _os.path.isfile(page_template_file):
-                page_template = _read_file(page_template_file)
-            else:
-                raise Exception(f"Page template {page_template_file} not found")
-
-        _write_file(self._output_path, self._replace_variables(page_template))
+        _write_file(self._output_path, self._replace_variables(self._page_template))
 
     def _convert_content(self):
         pass
@@ -419,19 +433,7 @@ class _HtmlPage(_File):
 
     @property
     def body(self):
-        body_template = self.site._body_template
-
-        if "body_template" in self._attributes:
-            body_template_file = self._attributes["body_template"]
-
-            if body_template_file == "none":
-                body_template = "{{page.content}}"
-            elif _os.path.isfile(body_template_file):
-                body_template = _read_file(body_template_file)
-            else:
-                raise Exception(f"Body template {body_template_file} not found")
-
-        return self._replace_variables(body_template)
+        return self._replace_variables(self._body_template)
 
     @property
     def content(self):
@@ -474,7 +476,7 @@ class _HtmlPage(_File):
 
         return self._replace_variables(content, input_path=input_path)
 
-class _MarkdownPage(_HtmlPage):
+class _MarkdownPage(_TemplatePage):
     __slots__ = ()
 
     def __init__(self, site, input_path):
@@ -485,10 +487,9 @@ class _MarkdownPage(_HtmlPage):
     def _process_input(self):
         super()._process_input()
 
-        match = _markdown_title_regex.search(self._content)
-
-        if match:
-            self.title = match.group(2).strip()
+        if not self.title:
+            match = _markdown_title_regex.search(self._content)
+            self.title = match.group(2).strip() if match else ""
 
     def _convert_content(self):
         # Strip out comments
@@ -498,7 +499,7 @@ class _MarkdownPage(_HtmlPage):
         self._content = _os.linesep.join(content_lines)
         self._content = self.site._markdown_converter.convert(self._content)
 
-class _HtmlInPage(_HtmlPage):
+class _HtmlInPage(_TemplatePage):
     __slots__ = ()
 
     def __init__(self, site, input_path):
