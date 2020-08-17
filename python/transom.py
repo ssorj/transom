@@ -64,7 +64,7 @@ class Transom:
 
         self.verbose = False
         self.quiet = False
-        self.reload = False
+        self._reload = False
 
         self._config_file = _os.path.join(self.config_dir, "config.py")
         self._config = None
@@ -173,6 +173,9 @@ class Transom:
 
     def render(self, force=False, serve=None):
         self.notice("Rendering input files")
+
+        if serve is not None:
+            self._reload = True
 
         self._init_files()
 
@@ -408,7 +411,7 @@ class _HtmlPage(_File):
 
     @property
     def reload_script(self):
-        return _reload_script
+        return _reload_script if self.site._reload else ""
 
     @property
     def extra_headers(self):
@@ -691,10 +694,6 @@ class TransomCommand(_commandant.Command):
 
     def render_command(self):
         self.init_lib()
-
-        if self.args.serve is not None:
-            self.lib.reload = True
-
         self.lib.render(force=self.args.force, serve=self.args.serve)
 
     def check_links_command(self):
