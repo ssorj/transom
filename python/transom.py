@@ -56,11 +56,10 @@ _markdown_extras = {
 }
 
 class Transom:
-    def __init__(self, config_dir, input_dir, output_dir, home=None):
+    def __init__(self, config_dir, input_dir, output_dir):
         self.config_dir = config_dir
         self.input_dir = input_dir
         self.output_dir = output_dir
-        self.home = home
 
         self.verbose = False
         self.quiet = False
@@ -69,8 +68,6 @@ class Transom:
         self._config_file = _os.path.join(self.config_dir, "config.py")
         self._config = None
 
-        self._body_template_file = _os.path.join(self.config_dir, "default-body.html")
-        self._page_template_file = _os.path.join(self.config_dir, "default-page.html")
         self._body_template = None
         self._page_template = None
 
@@ -82,21 +79,8 @@ class Transom:
         self._markdown_converter = _markdown.Markdown(extras=_markdown_extras)
 
     def init(self):
-        if self.home is not None:
-            if not _os.path.isfile(self._page_template_file):
-                self._page_template_file = _os.path.join(self.home, "files", "default-page.html")
-
-            if not _os.path.isfile(self._body_template_file):
-                self._body_template_file = _os.path.join(self.home, "files", "default-body.html")
-
-        if not _os.path.isfile(self._page_template_file):
-            raise Exception(f"No page template found at {self._page_template_file}")
-
-        if not _os.path.isfile(self._body_template_file):
-            raise Exception(f"No body template found at {self._body_template_file}")
-
-        self._page_template = _read_file(self._page_template_file)
-        self._body_template = _read_file(self._body_template_file)
+        self._page_template = _load_template(_os.path.join(self.config_dir, "default-page.html"), "{{page.body}}")
+        self._body_template = _load_template(_os.path.join(self.config_dir, "default-body.html"), "<body>{{page.content}}</body>")
 
         self._config = {
             "site": self,
@@ -379,24 +363,15 @@ class _TemplatePage(_File):
 
         self.title = self._attributes.get("title", "")
 
-        self._page_template = self.site._page_template
-        self._body_template = self.site._body_template
+        try:
+            self._page_template = _load_template(self._attributes["page_template"], "{{page.body}}")
+        except KeyError:
+            self._page_template = self.site._page_template
 
-        if "page_template" in self._attributes:
-            page_template_file = self._attributes["page_template"]
-
-            if page_template_file is None:
-                self._page_template = "{{page.body}}"
-            else:
-                self._page_template = _read_file(page_template_file)
-
-        if "body_template" in self._attributes:
-            body_template_file = self._attributes["body_template"]
-
-            if body_template_file is None:
-                self._body_template = "{{page.content}}"
-            else:
-                self._body_template = _read_file(body_template_file)
+        try:
+            self._body_template = _load_template(self._attributes["body_template"], "<body>{{page.content}}</body>")
+        except KeyError:
+            self._body_template = self.site._body_template
 
     def _extract_metadata(self):
         self._attributes = dict()
@@ -657,7 +632,7 @@ class TransomCommand(_commandant.Command):
     def init_lib(self):
         assert self.lib is None
 
-        self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir, home=self.home)
+        self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir)
         self.lib.verbose = self.args.verbose
         self.lib.quiet = self.args.quiet
 
@@ -734,11 +709,16 @@ def _write_file(path, content):
 
 def _copy_file(from_path, to_path):
     _make_dir(_os.path.split(to_path)[0])
-    with open(from_path, "rb") as from_file, open(to_path, "wb") as to_file:
-        _shutil.copyfileobj(from_file, to_file, 4096)
+    _shutil.copyfile(from_path, to_path)
 
 def _eprint(*args, **kwargs):
     print(*args, file=_sys.stderr, **kwargs)
+
+def _load_template(path, default_template=None):
+    if path is None:
+        return default_template
+
+    return _read_file(path)
 
 _lipsum_words = [
     "Lorem", "ipsum", "dolor", "sit", "amet,", "consectetur", "adipiscing", "elit.",
