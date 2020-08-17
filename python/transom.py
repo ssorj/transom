@@ -40,7 +40,6 @@ import traceback as _traceback
 from collections import defaultdict as _defaultdict
 from urllib.parse import urljoin as _urljoin
 from urllib.parse import urlsplit as _urlsplit
-from urllib.request import urlopen as _urlopen
 from xml.etree.ElementTree import XML as _XML
 from xml.sax.saxutils import escape as _xml_escape
 
@@ -70,37 +69,34 @@ class Transom:
         self._config_file = _os.path.join(self.config_dir, "config.py")
         self._config = None
 
-        self._body_template_path = _os.path.join(self.config_dir, "default-body.html")
-        self._page_template_path = _os.path.join(self.config_dir, "default-page.html")
+        self._body_template_file = _os.path.join(self.config_dir, "default-body.html")
+        self._page_template_file = _os.path.join(self.config_dir, "default-page.html")
         self._body_template = None
         self._page_template = None
 
         self._files = dict()
 
-        self._links = _defaultdict(set)
-        self._link_targets = set()
-
         self._ignored_file_patterns = ["*/.git", "*/.svn", "*/.#*"]
-        self._ignored_link_patterns = list()
+        self._ignored_link_patterns = ["", "?", "http://*", "https://*", "javascript:*", "mailto:*"]
 
         self._markdown_converter = _markdown.Markdown(extras=_markdown_extras)
 
     def init(self):
         if self.home is not None:
-            if not _os.path.isfile(self._page_template_path):
-                self._page_template_path = _os.path.join(self.home, "files", "default-page.html")
+            if not _os.path.isfile(self._page_template_file):
+                self._page_template_file = _os.path.join(self.home, "files", "default-page.html")
 
-            if not _os.path.isfile(self._body_template_path):
-                self._body_template_path = _os.path.join(self.home, "files", "default-body.html")
+            if not _os.path.isfile(self._body_template_file):
+                self._body_template_file = _os.path.join(self.home, "files", "default-body.html")
 
-        if not _os.path.isfile(self._page_template_path):
-            raise Exception(f"No page template found at {self._page_template_path}")
+        if not _os.path.isfile(self._page_template_file):
+            raise Exception(f"No page template found at {self._page_template_file}")
 
-        if not _os.path.isfile(self._body_template_path):
-            raise Exception(f"No body template found at {self._body_template_path}")
+        if not _os.path.isfile(self._body_template_file):
+            raise Exception(f"No body template found at {self._body_template_file}")
 
-        self._page_template = _read_file(self._page_template_path)
-        self._body_template = _read_file(self._body_template_path)
+        self._page_template = _read_file(self._page_template_file)
+        self._body_template = _read_file(self._body_template_file)
 
         self._config = {
             "site": self,
@@ -126,6 +122,7 @@ class Transom:
                     break
 
             for file_ in files:
+                # XXX strip the fq prefix?
                 input_paths.append(_os.path.join(root, file_))
 
         return input_paths
@@ -236,12 +233,7 @@ class Transom:
     def check_files(self):
         self._create_files(self._find_input_paths())
 
-        expected_paths = set()
-        found_paths = set()
-
-        for file_ in self._files.values():
-            expected_paths.add(file_._output_path)
-
+        expected_paths = {x._output_path for x in self._files.values()}
         found_paths = self._find_output_paths()
 
         missing_paths = expected_paths.difference(found_paths)
@@ -270,64 +262,47 @@ class Transom:
 
         return output_paths
 
-    def check_links(self, internal=True, external=False):
+    def check_links(self):
+        link_sources = _defaultdict(set) # link => files
+        link_targets = set()
+
         self._create_files(self._find_input_paths())
 
         for file_ in self._files.values():
-            file_._find_links()
+            link_targets.add(file_.url)
 
-        errors_by_link = _defaultdict(list)
-        links = self._filter_links(self._links)
+            if file_.url.endswith("/index.html"):
+                link_targets.add(file_.url[:-10])
+                link_targets.add(file_.url[:-11])
 
-        for link in links:
-            if internal and link not in self._link_targets:
-                errors_by_link[link].append("Link has no target")
+            if file_._output_path.endswith(".html"):
+                self.info("Finding links in {}", self)
 
-            if external and not link.startswith(self.url):
-                code, error = self._check_external_link(link)
+                try:
+                    file_._collect_link_data(link_sources, link_targets)
+                except Exception as e:
+                    self.warn("Error collecting link data from {}: {}", file_, str(e))
 
-                if code >= 400:
-                    errors_by_link[link].append(f"HTTP error code {code}")
-
-                if error:
-                    errors_by_link[link].append(error.message)
-
-        for link in errors_by_link:
-            print(f"Link: {link}")
-
-            for error in errors_by_link[link]:
-                print(f"  Error: {error}")
-
-            for source in self._links[link]:
-                print(f"  Source: {source}")
-
-        return len(errors_by_link)
-
-    def _filter_links(self, links):
         def retain(link):
             for pattern in self._ignored_link_patterns:
-                path = link[len(self.url):]
-
-                if _fnmatch.fnmatch(path, pattern):
+                if _fnmatch.fnmatch(link, pattern):
                     return False
 
             return True
 
-        return filter(retain, links)
+        links = filter(retain, link_sources.keys())
+        errors = 0
 
-    def _check_external_link(self, link):
-        sock, code, error = None, None, None
+        for link in links:
+            if link not in link_targets:
+                errors += 1
 
-        try:
-            sock = _urlopen(link, timeout=5)
-            code = sock.getcode()
-        except IOError as e:
-            error = e
-        finally:
-            if sock:
-                sock.close()
+                print(f"Error: Link to '{link}' has no destination")
 
-        return code, error
+                for source in link_sources[link]:
+                    print(f"  Source: {source._input_path}")
+
+        return errors
 
     def get_url(self, output_path):
         path = output_path[len(self.output_dir):]
@@ -365,6 +340,10 @@ class _File:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._input_path_stem})"
 
+    @property
+    def url(self):
+        return self.site.get_url(self._output_path)
+
     def _is_modified(self):
         if self._output_mtime is None:
             try:
@@ -374,20 +353,42 @@ class _File:
 
         return self._input_mtime > self._output_mtime
 
+    def _collect_link_data(self, link_sources, link_targets):
+        root = _XML(_read_file(self._output_path))
+
+        for elem in root.iter("*"):
+            for name in ("href", "src", "action"):
+                try:
+                    link = elem.attrib[name]
+                except KeyError:
+                    continue
+
+                if link.startswith("#"):
+                    link = f"{self.url}{link}"
+
+                link_sources[link].add(self)
+
+        for elem in root.iter("*"):
+            try:
+                id_ = elem.attrib["id"]
+            except KeyError:
+                continue
+
+            target = f"{self.url}#{id_}"
+
+            if target in link_targets:
+                self.site.info("Duplicate link target in '{}'", target)
+
+            link_targets.add(target)
+
 class _HtmlPage(_File):
-    __slots__ = "url", "title", "_attributes", "_content"
+    __slots__ = "title", "_attributes", "_content"
 
-    def __init__(self, site, input_path):
-        super().__init__(site, input_path)
+    # XXX
+    # def __init__(self, site, input_path):
+    #     super().__init__(site, input_path)
 
-        self.url = self.site.get_url(self._output_path)
-        self.title = ""
-
-        self.site._link_targets.add(self.url)
-
-        if self.url.endswith("/index.html"):
-            self.site._link_targets.add(self.url[:-10])
-            self.site._link_targets.add(self.url[:-11])
+    #     self.title = ""
 
     def _process_input(self):
         self._content = _read_file(self._input_path)
@@ -413,12 +414,12 @@ class _HtmlPage(_File):
         page_template = self.site._page_template
 
         if "page_template" in self._attributes: # XXX don't repeat this for each render
-            page_template_path = self._attributes["page_template"]
+            page_template_file = self._attributes["page_template"]
 
-            if _os.path.isfile(page_template_path):
-                page_template = _read_file(page_template_path)
+            if _os.path.isfile(page_template_file):
+                page_template = _read_file(page_template_file)
             else:
-                raise Exception(f"Page template {page_template_path} not found")
+                raise Exception(f"Page template {page_template_file} not found")
 
         _write_file(self._output_path, self._replace_variables(page_template))
 
@@ -438,14 +439,14 @@ class _HtmlPage(_File):
         body_template = self.site._body_template
 
         if "body_template" in self._attributes:
-            body_template_path = self._attributes["body_template"]
+            body_template_file = self._attributes["body_template"]
 
-            if body_template_path == "none":
+            if body_template_file == "none":
                 body_template = "{{page.content}}"
-            elif _os.path.isfile(body_template_path):
-                body_template = _read_file(body_template_path)
+            elif _os.path.isfile(body_template_file):
+                body_template = _read_file(body_template_file)
             else:
-                raise Exception(f"Body template {body_template_path} not found")
+                raise Exception(f"Body template {body_template_file} not found")
 
         return self._replace_variables(body_template)
 
@@ -483,83 +484,12 @@ class _HtmlPage(_File):
         return "".join(out)
 
     def include(self, input_path):
-        with open(input_path, "r") as f:
-            content = f.read()
+        content = _read_file(input_path)
 
         if input_path.endswith(".md"):
             content = self.site._markdown_converter.convert(content)
 
         return self._replace_variables(content, input_path=input_path)
-
-    def _find_links(self):
-        if not self._output_path.endswith(".html"):
-            return
-
-        self.site.info("Finding links in {}", self)
-
-        self._content = _read_file(self._output_path)
-
-        try:
-            root = _XML(self._content)
-        except Exception as e:
-            self.site.info(str(e))
-            return
-
-        assert root is not None, self._content
-
-        links = self._gather_links(root)
-        link_targets = self._gather_link_targets(root)
-
-        for link in links:
-            if link == "?":
-                continue
-
-            scheme, netloc, path, query, fragment = _urlsplit(link)
-
-            if scheme and scheme not in ("file", "http", "https", "ftp"):
-                continue
-
-            if netloc in ("issues.apache.org", "bugzilla.redhat.com"):
-                continue
-
-            if (fragment and not path) or not path.startswith("/"):
-                link = _urljoin(self.url, link)
-
-            self.site._links[link].add(self.url)
-
-        self.site._link_targets.update(link_targets)
-
-    def _gather_links(self, root_elem):
-        links = set()
-
-        for elem in root_elem.iter("*"):
-            for name in ("href", "src", "action"):
-                try:
-                    link = elem.attrib[name]
-                except KeyError:
-                    continue
-
-                links.add(link)
-
-        return links
-
-    def _gather_link_targets(self, root_elem):
-        link_targets = set()
-
-        for elem in root_elem.iter("*"):
-            try:
-                id = elem.attrib["id"]
-            except KeyError:
-                continue
-
-            target = f"{self.url}#{id}"
-
-            if target in link_targets:
-                self.site.info("Duplicate link target in '{}'", target)
-
-            link_targets.add(target)
-
-        return link_targets
 
 class _MarkdownPage(_HtmlPage):
     __slots__ = ()
@@ -709,8 +639,6 @@ class TransomCommand(_commandant.Command):
                                  help="Check input files in INPUT-DIR")
         check_links.add_argument("output_dir", metavar="OUTPUT-DIR",
                                  help="Check output files in OUTPUT-DIR")
-        check_links.add_argument("--all", action="store_true",
-                                 help="Check external links as well as internal ones")
         check_links.add_argument("--quiet", action="store_true",
                                  help="Print no logging to the console")
         check_links.add_argument("--verbose", action="store_true",
@@ -792,7 +720,7 @@ class TransomCommand(_commandant.Command):
     def check_links_command(self):
         self.init_lib()
 
-        link_errors = self.lib.check_links(internal=True, external=self.args.all)
+        link_errors = self.lib.check_links()
 
         if link_errors == 0:
             print("PASSED")
