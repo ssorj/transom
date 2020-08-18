@@ -17,8 +17,6 @@
 # under the License.
 #
 
-from __future__ import print_function
-
 import argparse as _argparse
 import commandant as _commandant
 import csv as _csv
@@ -202,7 +200,7 @@ class Transom:
 
         file_ = self._init_file(input_path)
         file_._process_input()
-        file_._render_output(force=force)
+        file_._render_output()
 
         _os.utime(self.output_dir)
 
@@ -369,7 +367,7 @@ class _TemplatePage(_File):
         except KeyError:
             self._body_template = self.site._body_template
 
-    def _render_output(self, force=False):
+    def _render_output(self):
         _write_file(self._output_path, self._render_template(self._page_template))
 
     @property
@@ -464,7 +462,7 @@ class _StaticFile(_File):
     def _process_input(self):
         pass
 
-    def _render_output(self, force=False):
+    def _render_output(self):
         _copy_file(self._input_path, self._output_path)
 
 class _WatcherThread(_threading.Thread):
