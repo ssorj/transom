@@ -29,6 +29,7 @@ import re as _re
 import shutil as _shutil
 import subprocess as _subprocess
 import threading as _threading
+import types as _types
 
 from collections import defaultdict as _defaultdict
 from xml.etree.ElementTree import XML as _XML
@@ -305,7 +306,7 @@ class _File:
         self.site._files[self._input_path] = self
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._input_path})"
+        return f"{self.__class__.__name__}({self._input_path}, {self._output_path})"
 
     @property
     def url(self):
@@ -368,7 +369,11 @@ class _TemplatePage(_File):
             self._body_template = self.site._body_template
 
     def _render_output(self):
-        _write_file(self._output_path, self._render_template(self._page_template))
+        _make_dir(_os.path.split(self._output_path)[0])
+
+        with open(self._output_path, "w") as f:
+            for elem in self._render_template(self._page_template):
+                f.write(elem)
 
     @property
     def reload_script(self):
@@ -405,17 +410,16 @@ class _TemplatePage(_File):
         return f"<nav id=\"-path-nav\">{''.join(self.path_nav_links[start:end])}</nav>"
 
     def _render_template(self, template):
-        out = list()
-        globals_ = self.site._config
-        locals_ = {"page": self}
-
         for elem in template:
-            if type(elem) is str:
-                out.append(elem)
-            else:
-                out.append(eval(elem, globals_, locals_) or "")
+            if type(elem) is _types.CodeType:
+                result = eval(elem, self.site._config, {"page": self})
 
-        return "".join(out)
+                if type(result) is _types.GeneratorType:
+                    yield from result
+                else:
+                    yield result
+            else:
+                yield elem
 
     def include(self, input_path):
         content = _read_file(input_path)
@@ -443,7 +447,7 @@ class _MarkdownPage(_TemplatePage):
     def _convert_content(self):
         # Strip out comments
         content_lines = self._content.splitlines()
-        content_lines = {x for x in content_lines if not x.startswith(";;")}
+        content_lines = (x for x in content_lines if not x.startswith(";;"))
 
         self._content = _os.linesep.join(content_lines)
         self._content = self.site._markdown_converter.convert(self._content)
@@ -676,11 +680,6 @@ def _read_file(path):
     with open(path, "r") as file_:
         return file_.read()
 
-def _write_file(path, content):
-    _make_dir(_os.path.split(path)[0])
-    with open(path, "w") as file_:
-        return file_.write(content)
-
 def _copy_file(from_path, to_path):
     _make_dir(_os.path.split(to_path)[0])
     _shutil.copyfile(from_path, to_path)
@@ -707,9 +706,9 @@ def _extract_metadata(content):
 
 def _load_template(path, default_text):
     if path is None:
-        return _parse_template(default_text)
+        return list(_parse_template(default_text))
 
-    return _parse_template(_read_file(path))
+    return list(_parse_template(_read_file(path)))
 
 def _parse_template(text):
     for token in _variable_regex.split(text):
