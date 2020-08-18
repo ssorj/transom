@@ -20,7 +20,6 @@
 from __future__ import print_function
 
 import argparse as _argparse
-import codecs as _codecs
 import commandant as _commandant
 import csv as _csv
 import fnmatch as _fnmatch
@@ -31,15 +30,9 @@ import os as _os
 import re as _re
 import shutil as _shutil
 import subprocess as _subprocess
-import sys as _sys
-import tempfile as _tempfile
 import threading as _threading
-import time as _time
-import traceback as _traceback
 
 from collections import defaultdict as _defaultdict
-from urllib.parse import urljoin as _urljoin
-from urllib.parse import urlsplit as _urlsplit
 from xml.etree.ElementTree import XML as _XML
 from xml.sax.saxutils import escape as _xml_escape
 
@@ -622,7 +615,7 @@ class TransomCommand(_commandant.Command):
         self.lib.init()
 
         if self.args.init_only:
-            _sys.exit(0)
+            self.parser.exit()
 
     def run(self):
         self.args.func()
@@ -641,7 +634,7 @@ class TransomCommand(_commandant.Command):
             self.notice("Creating '{}'", to_path)
 
         if self.args.init_only:
-            _sys.exit(0)
+            self.parser.exit()
 
         copy("default-page.html", _os.path.join(self.args.config_dir, "default-page.html"))
         copy("default-body.html", _os.path.join(self.args.config_dir, "default-body.html"))
@@ -693,9 +686,6 @@ def _write_file(path, content):
 def _copy_file(from_path, to_path):
     _make_dir(_os.path.split(to_path)[0])
     _shutil.copyfile(from_path, to_path)
-
-def _eprint(*args, **kwargs):
-    print(*args, file=_sys.stderr, **kwargs)
 
 def _extract_metadata(content):
     attributes = dict()
