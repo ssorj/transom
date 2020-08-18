@@ -43,9 +43,11 @@ from urllib.parse import urlsplit as _urlsplit
 from xml.etree.ElementTree import XML as _XML
 from xml.sax.saxutils import escape as _xml_escape
 
+_default_body_template = "<body>{{page.content}}</body>"
+_default_page_template = "{{page.body}}"
 _markdown_title_regex = _re.compile(r"(#|##)(.+)")
-_variable_regex = _re.compile("({{.+?}})")
 _reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
+_variable_regex = _re.compile("({{.+?}})")
 
 _markdown_extras = {
     "code-friendly": True,
@@ -79,8 +81,8 @@ class Transom:
         self._markdown_converter = _markdown.Markdown(extras=_markdown_extras)
 
     def init(self):
-        self._page_template = _load_template(_os.path.join(self.config_dir, "default-page.html"), "{{page.body}}")
-        self._body_template = _load_template(_os.path.join(self.config_dir, "default-body.html"), "<body>{{page.content}}</body>")
+        self._page_template = _load_template(_os.path.join(self.config_dir, "default-page.html"), _default_page_template)
+        self._body_template = _load_template(_os.path.join(self.config_dir, "default-body.html"), _default_body_template)
 
         self._config = {
             "site": self,
@@ -192,6 +194,7 @@ class Transom:
             self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
             self.notice("Use 'npm install -g livereload' to install the server")
             self.notice("Subprocess error: {}", e)
+
             livereload = None
 
         try:
@@ -359,44 +362,22 @@ class _TemplatePage(_File):
 
     def _process_input(self):
         self._content = _read_file(self._input_path)
-        self._extract_metadata()
+        self._content, self._attributes = _extract_metadata(self._content)
 
         self.title = self._attributes.get("title", "")
 
         try:
-            self._page_template = _load_template(self._attributes["page_template"], "{{page.body}}")
+            self._page_template = _load_template(self._attributes["page_template"], _default_page_template)
         except KeyError:
             self._page_template = self.site._page_template
 
         try:
-            self._body_template = _load_template(self._attributes["body_template"], "<body>{{page.content}}</body>")
+            self._body_template = _load_template(self._attributes["body_template"], _default_body_template)
         except KeyError:
             self._body_template = self.site._body_template
 
-    def _extract_metadata(self):
-        self._attributes = dict()
-
-        if self._content.startswith("---\n"):
-            end = self._content.index("---\n", 4)
-            lines = self._content[4:end].strip().split("\n")
-
-            for line in lines:
-                key, value = line.split(":", 1)
-                key, value = key.strip(), value.strip()
-
-                if value.lower() in ("none", "null"):
-                    value = None
-
-                self._attributes[key] = value
-
-            self._content = self._content[end + 4:]
-
     def _render_output(self, force=False):
-        self._convert_content()
-        _write_file(self._output_path, self._replace_variables(self._page_template))
-
-    def _convert_content(self):
-        pass
+        _write_file(self._output_path, self._render_template(self._page_template))
 
     @property
     def reload_script(self):
@@ -408,11 +389,15 @@ class _TemplatePage(_File):
 
     @property
     def body(self):
-        return self._replace_variables(self._body_template)
+        return self._render_template(self._body_template)
 
     @property
     def content(self):
-        return self._replace_variables(self._content, self._input_path)
+        self._convert_content()
+        return self._render_template(_parse_template(self._content))
+
+    def _convert_content(self):
+        pass
 
     @property
     def path_nav_links(self):
@@ -428,18 +413,16 @@ class _TemplatePage(_File):
     def path_nav(self, start=None, end=None):
         return f"<nav id=\"-path-nav\">{''.join(self.path_nav_links[start:end])}</nav>"
 
-    def _replace_variables(self, text, input_path=None):
+    def _render_template(self, template):
         out = list()
-        tokens = _variable_regex.split(text)
         globals_ = self.site._config
         locals_ = {"page": self}
 
-        for token in tokens:
-            if token.startswith("{{"):
-                expr = token[2:-2]
-                out.append(eval(expr, globals_, locals_) or "")
+        for elem in template:
+            if type(elem) is str:
+                out.append(elem)
             else:
-                out.append(token)
+                out.append(eval(elem, globals_, locals_) or "")
 
         return "".join(out)
 
@@ -449,7 +432,7 @@ class _TemplatePage(_File):
         if input_path.endswith(".md"):
             content = self.site._markdown_converter.convert(content)
 
-        return self._replace_variables(content, input_path=input_path)
+        return self._render_template(_parse_template(content))
 
 class _MarkdownPage(_TemplatePage):
     __slots__ = ()
@@ -469,7 +452,7 @@ class _MarkdownPage(_TemplatePage):
     def _convert_content(self):
         # Strip out comments
         content_lines = self._content.splitlines()
-        content_lines = [x for x in content_lines if not x.startswith(";;")]
+        content_lines = {x for x in content_lines if not x.startswith(";;")}
 
         self._content = _os.linesep.join(content_lines)
         self._content = self.site._markdown_converter.convert(self._content)
@@ -714,11 +697,38 @@ def _copy_file(from_path, to_path):
 def _eprint(*args, **kwargs):
     print(*args, file=_sys.stderr, **kwargs)
 
-def _load_template(path, default_template=None):
-    if path is None:
-        return default_template
+def _extract_metadata(content):
+    attributes = dict()
 
-    return _read_file(path)
+    if content.startswith("---\n"):
+        end = content.index("---\n", 4)
+        lines = content[4:end].strip().split("\n")
+
+        for line in lines:
+            key, value = line.split(":", 1)
+            key, value = key.strip(), value.strip()
+
+            if value.lower() in ("none", "null"):
+                value = None
+
+            attributes[key] = value
+
+        content = content[end + 4:]
+
+    return content, attributes
+
+def _load_template(path, default_text):
+    if path is None:
+        return _parse_template(default_text)
+
+    return _parse_template(_read_file(path))
+
+def _parse_template(text):
+    for token in _variable_regex.split(text):
+        if token.startswith("{{") and token.endswith("}}"):
+            yield compile(token[2:-2], "<string>", "eval")
+        else:
+            yield token
 
 _lipsum_words = [
     "Lorem", "ipsum", "dolor", "sit", "amet,", "consectetur", "adipiscing", "elit.",
