@@ -66,7 +66,8 @@ class Transom:
         self._body_template = None
         self._page_template = None
 
-        self._files = dict()
+        self._files = list()
+        self._files_by_url = dict()
 
         self._ignored_file_patterns = ["*/.git", "*/.svn", "*/.#*", "*/#*"]
         self._ignored_link_patterns = []
@@ -97,27 +98,6 @@ class Transom:
                 if not self._is_ignored_file(input_path):
                     self._init_file(input_path)
 
-        index_files = dict()
-        other_files = _defaultdict(list)
-
-        for file_ in self._files.values():
-            dir_, name = _os.path.split(file_.url)
-
-            if name == "index.html":
-                index_files[dir_] = file_
-            else:
-                other_files[dir_].append(file_)
-
-        for dir_, file_ in index_files.items():
-            if dir_ != "/":
-                file_.parent = index_files[_os.path.dirname(dir_)]
-
-        for dir_, files in other_files.items():
-            parent = index_files.get(dir_)
-
-            for file_ in files:
-                file_.parent = parent
-
     def _is_ignored_file(self, input_path):
         path = input_path[len(self.input_dir):]
 
@@ -128,12 +108,14 @@ class Transom:
         return False
 
     def _init_file(self, input_path):
+        output_path = _os.path.join(self.output_dir, input_path[len(self.input_dir) + 1:])
+
         if input_path.endswith(".md"):
-            return _MarkdownPage(self, input_path)
+            return _MarkdownPage(self, input_path, f"{output_path[:-3]}.html")
         elif input_path.endswith(".html.in"):
-            return _HtmlInPage(self, input_path)
+            return _TemplatePage(self, input_path, output_path[:-3])
         else:
-            return _StaticFile(self, input_path)
+            return _StaticFile(self, input_path, output_path)
 
     def render(self, force=False, serve=None):
         self.notice("Rendering input files")
@@ -143,11 +125,11 @@ class Transom:
 
         self._init_files()
 
-        for file_ in self._files.values():
+        for file_ in self._files:
             self.info("Processing {}", file_)
             file_._process_input()
 
-        for file_ in self._files.values():
+        for file_ in self._files:
             if file_._is_modified() or force:
                 self.info("Rendering {}", file_)
                 file_._render_output()
@@ -194,7 +176,7 @@ class Transom:
     def check_files(self):
         self._init_files()
 
-        expected_paths = {x._output_path for x in self._files.values()}
+        expected_paths = {x._output_path for x in self._files}
         found_paths = self._find_output_paths()
 
         missing_paths = expected_paths.difference(found_paths)
@@ -229,7 +211,7 @@ class Transom:
 
         self._init_files()
 
-        for file_ in self._files.values():
+        for file_ in self._files:
             try:
                 file_._collect_link_data(link_sources, link_targets)
             except Exception as e:
@@ -268,26 +250,25 @@ class Transom:
         print("Warning!", message.format(*args))
 
 class _File:
-    __slots__ = "site", "parent", "_input_path", "_input_mtime", "_output_path", "_output_mtime"
+    __slots__ = "site", "_input_path", "_input_mtime", "_output_path", "_output_mtime", "url", "parent"
 
-    def __init__(self, site, input_path):
+    def __init__(self, site, input_path, output_path):
         self.site = site
-        self.parent = None
 
         self._input_path = input_path
         self._input_mtime = _os.path.getmtime(self._input_path)
 
-        self._output_path = _os.path.join(self.site.output_dir, self._input_path[len(self.site.input_dir) + 1:])
+        self._output_path = output_path
         self._output_mtime = None
 
-        self.site._files[self._input_path] = self
+        self.url = self._output_path[len(self.site.output_dir):]
+        self.parent = self.site._files_by_url.get(f"{_os.path.dirname(self.url)}/index.html")
+
+        self.site._files.append(self)
+        self.site._files_by_url[self.url] = self
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._input_path}, {self._output_path})"
-
-    @property
-    def url(self):
-        return self._output_path[len(self.site.output_dir):]
 
     def _is_modified(self):
         if self._output_mtime is None:
@@ -418,11 +399,6 @@ class _TemplatePage(_File):
 class _MarkdownPage(_TemplatePage):
     __slots__ = ()
 
-    def __init__(self, site, input_path):
-        super().__init__(site, input_path)
-
-        self._output_path = f"{self._output_path[:-3]}.html"
-
     def _process_input(self):
         super()._process_input()
 
@@ -437,14 +413,6 @@ class _MarkdownPage(_TemplatePage):
 
         self._content = _os.linesep.join(content_lines)
         self._content = self.site._markdown_converter.convert(self._content)
-
-class _HtmlInPage(_TemplatePage):
-    __slots__ = ()
-
-    def __init__(self, site, input_path):
-        super().__init__(site, input_path)
-
-        self._output_path = self._output_path[:-3]
 
 class _StaticFile(_File):
     __slots__ = ()
