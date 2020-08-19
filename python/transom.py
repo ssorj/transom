@@ -92,8 +92,14 @@ class Transom:
 
     def _init_files(self):
         for root, dirs, files in _os.walk(self.input_dir):
-            for file_ in files:
-                input_path = _os.path.join(root, file_)
+            for name in files:
+                if name in ("index.md", "index.html.in", "index.html"):
+                    self._init_file(_os.path.join(root, name))
+                    files.remove(name)
+                    break
+
+            for name in files:
+                input_path = _os.path.join(root, name)
 
                 if not self._is_ignored_file(input_path):
                     self._init_file(input_path)
@@ -262,7 +268,15 @@ class _File:
         self._output_mtime = None
 
         self.url = self._output_path[len(self.site.output_dir):]
-        self.parent = self.site._files_by_url.get(f"{_os.path.dirname(self.url)}/index.html")
+        self.parent = None
+
+        if self.url != "/index.html":
+            parent_dir, name = _os.path.split(self.url)
+
+            if name == "index.html":
+                parent_dir = _os.path.dirname(parent_dir)
+
+            self.parent = self.site._files_by_url.get(_os.path.join(parent_dir, "index.html"))
 
         self.site._files.append(self)
         self.site._files_by_url[self.url] = self
