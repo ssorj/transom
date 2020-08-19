@@ -32,6 +32,7 @@ import threading as _threading
 import types as _types
 
 from collections import defaultdict as _defaultdict
+from urllib import parse as _urlparse
 from xml.etree.ElementTree import XML as _XML
 from xml.sax.saxutils import escape as _xml_escape
 
@@ -68,7 +69,7 @@ class Transom:
         self._files = dict()
 
         self._ignored_file_patterns = ["*/.git", "*/.svn", "*/.#*"]
-        self._ignored_link_patterns = ["", "?", "http://*", "https://*", "javascript:*", "mailto:*"]
+        self._ignored_link_patterns = []
 
         self._markdown_converter = _markdown.Markdown(extras=_markdown_extras)
 
@@ -122,7 +123,7 @@ class Transom:
             if dir_ == "/":
                 continue
 
-            parent_dir = _os.path.split(dir_)[0]
+            parent_dir = _os.path.dirname(dir_)
             file_ = index_files[dir_]
             file_.parent = index_files[parent_dir]
 
@@ -196,7 +197,7 @@ class Transom:
             if livereload is not None:
                 livereload.terminate()
 
-    def _render_one_file(self, input_path, force=False):
+    def _render_one_file(self, input_path):
         self.notice("Rendering {}", input_path)
 
         file_ = self._init_file(input_path)
@@ -244,19 +245,10 @@ class Transom:
         self._init_files()
 
         for file_ in self._files.values():
-            link_targets.add(file_.url)
-
-            if file_.url.endswith("/index.html"):
-                link_targets.add(file_.url[:-10])
-                link_targets.add(file_.url[:-11])
-
-            if file_._output_path.endswith(".html"):
-                self.info("Finding links in {}", self)
-
-                try:
-                    file_._collect_link_data(link_sources, link_targets)
-                except Exception as e:
-                    self.warn("Error collecting link data from {}: {}", file_, str(e))
+            try:
+                file_._collect_link_data(link_sources, link_targets)
+            except Exception as e:
+                self.warn("Error collecting link data from {}: {}", file_, str(e))
 
         def retain(link):
             for pattern in self._ignored_link_patterns:
@@ -322,19 +314,28 @@ class _File:
         return self._input_mtime > self._output_mtime
 
     def _collect_link_data(self, link_sources, link_targets):
+        link_targets.add(self.url)
+
+        if not self.url.endswith(".html"):
+            return
+
         root = _XML(_read_file(self._output_path))
 
         for elem in root.iter("*"):
             for name in ("href", "src", "action"):
                 try:
-                    link = elem.attrib[name]
+                    url = elem.attrib[name]
                 except KeyError:
                     continue
 
-                if link.startswith("#"):
-                    link = f"{self.url}{link}"
+                split_url = _urlparse.urlsplit(url)
 
-                link_sources[link].add(self)
+                if split_url.scheme or split_url.netloc:
+                    continue
+
+                normalized_url = _urlparse.urljoin(self.url, _urlparse.urlunsplit(split_url))
+
+                link_sources[normalized_url].add(self)
 
         for elem in root.iter("*"):
             try:
@@ -342,12 +343,12 @@ class _File:
             except KeyError:
                 continue
 
-            target = f"{self.url}#{id_}"
+            normalized_url = _urlparse.urljoin(self.url, f"#{id_}")
 
-            if target in link_targets:
-                self.site.info("Duplicate link target in '{}'", target)
+            if normalized_url in link_targets:
+                self.site.info("Duplicate link target in '{}'", normalized_url)
 
-            link_targets.add(target)
+            link_targets.add(normalized_url)
 
 class _TemplatePage(_File):
     __slots__ = "_content", "_attributes", "title", "_page_template", "_body_template"
@@ -369,7 +370,7 @@ class _TemplatePage(_File):
             self._body_template = self.site._body_template
 
     def _render_output(self):
-        _make_dir(_os.path.split(self._output_path)[0])
+        _make_dir(_os.path.dirname(self._output_path))
 
         with open(self._output_path, "w") as f:
             for elem in self._render_template(self._page_template):
@@ -482,10 +483,12 @@ class _WatcherThread(_threading.Thread):
         mask = _pyinotify.IN_CREATE | _pyinotify.IN_DELETE | _pyinotify.IN_MODIFY
 
         def render(event):
-            if _os.path.isdir(event.pathname) or self.site._is_ignored_file(event.pathname):
+            input_path = _os.path.relpath(event.pathname, _os.getcwd())
+
+            if _os.path.isdir(input_path) or self.site._is_ignored_file(input_path):
                 return True
 
-            self.site._render_one_file(event.pathname, force=True) # XXX Handle delete
+            self.site._render_one_file(input_path) # XXX Handle delete
 
         watcher.add_watch(self.site.input_dir, mask, render, rec=True, auto_add=True)
 
@@ -681,7 +684,7 @@ def _read_file(path):
         return file_.read()
 
 def _copy_file(from_path, to_path):
-    _make_dir(_os.path.split(to_path)[0])
+    _make_dir(_os.path.dirname(to_path))
     _shutil.copyfile(from_path, to_path)
 
 def _extract_metadata(content):
