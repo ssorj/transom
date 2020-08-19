@@ -90,47 +90,32 @@ class Transom:
             exec(_read_file(self._config_file), self._config)
 
     def _init_files(self):
-        input_paths = list()
-
         for root, dirs, files in _os.walk(self.input_dir):
-            # Process index files before the others in the same directory
             for file_ in files:
-                if file_.startswith("index."):
-                    input_paths.append(_os.path.join(root, file_))
-                    files.remove(file_)
-                    break
+                input_path = _os.path.join(root, file_)
 
-            for file_ in files:
-                input_paths.append(_os.path.join(root, file_))
-
-        for input_path in input_paths:
-            if not self._is_ignored_file(input_path):
-                self._init_file(input_path)
+                if not self._is_ignored_file(input_path):
+                    self._init_file(input_path)
 
         index_files = dict()
         other_files = _defaultdict(list)
 
         for file_ in self._files.values():
-            path = file_._output_path[len(self.output_dir):]
-            dir_, name = _os.path.split(path)
+            dir_, name = _os.path.split(file_.url)
 
             if name == "index.html":
                 index_files[dir_] = file_
             else:
                 other_files[dir_].append(file_)
 
-        for dir_ in index_files:
-            if dir_ == "/":
-                continue
+        for dir_, file_ in index_files.items():
+            if dir_ != "/":
+                file_.parent = index_files[_os.path.dirname(dir_)]
 
-            parent_dir = _os.path.dirname(dir_)
-            file_ = index_files[dir_]
-            file_.parent = index_files[parent_dir]
-
-        for dir_ in other_files:
+        for dir_, files in other_files.items():
             parent = index_files.get(dir_)
 
-            for file_ in other_files[dir_]:
+            for file_ in files:
                 file_.parent = parent
 
     def _is_ignored_file(self, input_path):
