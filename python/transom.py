@@ -68,7 +68,7 @@ class Transom:
 
         self._files = dict()
 
-        self._ignored_file_patterns = ["*/.git", "*/.svn", "*/.#*"]
+        self._ignored_file_patterns = ["*/.git", "*/.svn", "*/.#*", "*/#*"]
         self._ignored_link_patterns = []
 
         self._markdown_converter = _markdown.Markdown(extras=_markdown_extras)
