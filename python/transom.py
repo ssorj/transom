@@ -69,7 +69,7 @@ class Transom:
         self._files = list()
         self._files_by_url = dict()
 
-        self._ignored_file_patterns = ["*/.git", "*/.svn", "*/.#*", "*/#*"]
+        self._ignored_file_patterns = [".git", ".svn", ".#*", "#*"]
         self._ignored_link_patterns = []
 
         self._markdown_converter = _markdown.Markdown(extras=_markdown_extras)
@@ -92,23 +92,18 @@ class Transom:
 
     def _init_files(self):
         for root, dirs, files in _os.walk(self.input_dir):
-            for name in files:
-                if name in ("index.md", "index.html.in", "index.html"):
-                    self._init_file(_os.path.join(root, name))
-                    files.remove(name)
-                    break
+            files = {x for x in files if not self._is_ignored_file(x)}
+            index_files = {x for x in files if x in ("index.md", "index.html.in", "index.html")}
 
-            for name in files:
-                input_path = _os.path.join(root, name)
+            for name in index_files:
+                self._init_file(_os.path.join(root, name))
 
-                if not self._is_ignored_file(input_path):
-                    self._init_file(input_path)
+            for name in files - index_files:
+                self._init_file(_os.path.join(root, name))
 
-    def _is_ignored_file(self, input_path):
-        path = input_path[len(self.input_dir):]
-
+    def _is_ignored_file(self, name):
         for pattern in self._ignored_file_patterns:
-            if _fnmatch.fnmatch(path, pattern):
+            if _fnmatch.fnmatchcase(name, pattern):
                 return True
 
         return False
