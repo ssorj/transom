@@ -116,7 +116,7 @@ class Transom:
         elif input_path.endswith(".html.in"):
             return _TemplatePage(self, input_path, output_path[:-3])
         else:
-            return _StaticFile(self, input_path, output_path)
+            return _File(self, input_path, output_path)
 
     def render(self, force=False, serve=None):
         self.notice("Rendering input files")
@@ -201,8 +201,7 @@ class Transom:
         output_paths = set()
 
         for root, dirs, files in _os.walk(self.output_dir):
-            for file_ in files:
-                output_paths.add(_os.path.join(root, file_))
+            output_paths.update({_os.path.join(root, x) for x in files})
 
         return output_paths
 
@@ -220,7 +219,7 @@ class Transom:
 
         def retain(link):
             for pattern in self._ignored_link_patterns:
-                if _fnmatch.fnmatch(link, pattern):
+                if _fnmatch.fnmatchcase(link, pattern):
                     return False
 
             return True
@@ -279,6 +278,9 @@ class _File:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._input_path}, {self._output_path})"
 
+    def _process_input(self):
+        pass
+
     def _is_modified(self):
         if self._output_mtime is None:
             try:
@@ -287,6 +289,9 @@ class _File:
                 return True
 
         return self._input_mtime > self._output_mtime
+
+    def _render_output(self):
+        _copy_file(self._input_path, self._output_path)
 
     def _collect_link_data(self, link_sources, link_targets):
         link_targets.add(self.url)
@@ -313,17 +318,13 @@ class _File:
                 link_sources[normalized_url].add(self)
 
         for elem in root.iter("*"):
-            try:
-                id_ = elem.attrib["id"]
-            except KeyError:
-                continue
+            if "id" in elem.attrib:
+                normalized_url = _urlparse.urljoin(self.url, f"#{elem.attrib['id']}")
 
-            normalized_url = _urlparse.urljoin(self.url, f"#{id_}")
+                if normalized_url in link_targets:
+                    self.site.info("Duplicate link target in '{}'", normalized_url)
 
-            if normalized_url in link_targets:
-                self.site.info("Duplicate link target in '{}'", normalized_url)
-
-            link_targets.add(normalized_url)
+                link_targets.add(normalized_url)
 
 class _TemplatePage(_File):
     __slots__ = "_content", "_attributes", "title", "_page_template", "_body_template"
@@ -422,15 +423,6 @@ class _MarkdownPage(_TemplatePage):
 
         self._content = _os.linesep.join(content_lines)
         self._content = self.site._markdown_converter.convert(self._content)
-
-class _StaticFile(_File):
-    __slots__ = ()
-
-    def _process_input(self):
-        pass
-
-    def _render_output(self):
-        _copy_file(self._input_path, self._output_path)
 
 class _WatcherThread(_threading.Thread):
     def __init__(self, site):
@@ -693,11 +685,7 @@ _lipsum_words = [
 ]
 
 def _lipsum(count=50):
-    words = list()
-
-    for i in range(count):
-        words.append(_lipsum_words[i % len(_lipsum_words)])
-
+    words = (_lipsum_words[i % len(_lipsum_words)] for i in range(count))
     text = " ".join(words)
 
     if text.endswith(","):
@@ -708,28 +696,16 @@ def _lipsum(count=50):
 
     return text
 
-def _html_table_csv(csv_path, **attrs):
-    items = list()
-
-    with open(csv_path, newline="") as f:
-        reader = _csv.reader(f)
-
-        for row in reader:
-            items.append(row)
-
-    return _html_table(items, **attrs)
+def _html_table_csv(path, **attrs):
+    with open(path, newline="") as f:
+        return _html_table([x for x in _csv.reader(f)], **attrs)
 
 def _html_table(items, column_headings=True, row_headings=False, escape_cell_data=False, cell_render_fn=None, **attrs):
     rows = list()
 
     if column_headings:
-        headings = list()
-
-        for cell in items[0]:
-            headings.append(_html_elem("th", cell))
-
+        headings = (_html_elem("th", cell) for cell in items[0])
         rows.append(_html_elem("tr", "".join(headings)))
-
         items = items[1:]
 
     for row_index, item in enumerate(items):
@@ -749,17 +725,13 @@ def _html_table(items, column_headings=True, row_headings=False, escape_cell_dat
 
         rows.append(_html_elem("tr", "".join(columns)))
 
-    tbody = _html_elem("tbody", "\n{}\n".format("\n".join(rows)))
+    tbody = _html_elem("tbody", "".join(rows))
 
     return _html_elem("table", tbody, **attrs)
 
 def _html_elem(tag, content, **attrs):
     attrs = (_html_attr(name, value) for name, value in attrs.items() if value is not False)
-
-    if content is None:
-        content = ""
-
-    return f"<{tag} {' '.join(attrs)}>{content}</{tag}>"
+    return f"<{tag} {' '.join(attrs)}>{content or ''}</{tag}>"
 
 def _html_attr(name, value):
     if value is True:
