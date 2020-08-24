@@ -439,7 +439,7 @@ class _WatcherThread(_threading.Thread):
         def render(event):
             input_path = _os.path.relpath(event.pathname, _os.getcwd())
 
-            if _os.path.isdir(input_path) or self.site._is_ignored_file(input_path):
+            if _os.path.isdir(input_path) or self.site._is_ignored_file(_os.path.basename(input_path)):
                 return True
 
             self.site._render_one_file(input_path) # XXX Handle delete
