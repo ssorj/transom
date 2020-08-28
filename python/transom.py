@@ -417,7 +417,7 @@ class _WatcherThread(_threading.Thread):
         self.daemon = True
 
         watcher = _pyinotify.WatchManager()
-        mask = _pyinotify.IN_CREATE | _pyinotify.IN_DELETE | _pyinotify.IN_MODIFY # XXX IN_ATTRIB?
+        mask = _pyinotify.IN_CREATE | _pyinotify.IN_MODIFY
 
         def render(event):
             input_path = _os.path.relpath(event.pathname, _os.getcwd())
@@ -425,7 +425,7 @@ class _WatcherThread(_threading.Thread):
             if _os.path.isdir(input_path) or self.site._is_ignored_file(_os.path.basename(input_path)):
                 return True
 
-            self._init_file(input_path)._render()
+            self.site._init_file(input_path)._render()
 
             if _os.path.exists(self.site.output_dir):
                 _os.utime(self.site.output_dir)
