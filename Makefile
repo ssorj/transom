@@ -60,7 +60,7 @@ install: build
 .PHONY: clean
 clean:
 	rm -rf build
-	rm -rf output
+	rm -rf qpid-site/output
 	rm -rf python/__pycache__
 
 .PHONY: test
