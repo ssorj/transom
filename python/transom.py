@@ -434,7 +434,7 @@ class _WatcherThread(_threading.Thread):
         self.daemon = True
 
         watcher = _pyinotify.WatchManager()
-        mask = _pyinotify.IN_CREATE | _pyinotify.IN_DELETE | _pyinotify.IN_MODIFY
+        mask = _pyinotify.IN_CREATE | _pyinotify.IN_DELETE | _pyinotify.IN_MODIFY # XXX IN_ATTRIB?
 
         def render(event):
             input_path = _os.path.relpath(event.pathname, _os.getcwd())
