@@ -38,6 +38,7 @@ from xml.sax.saxutils import escape as _xml_escape
 
 _default_body_template = "<body>{{page.content}}</body>"
 _default_page_template = "{{page.body}}"
+_index_file_names = "index.md", "index.html.in", "index.html"
 _markdown_title_regex = _re.compile(r"(#|##)(.+)")
 _reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
 _variable_regex = _re.compile("({{.+?}})")
@@ -66,8 +67,7 @@ class Transom:
         self._body_template = None
         self._page_template = None
 
-        self._files = list()
-        self._files_by_url = dict()
+        self._index_files = dict() # parent input dir => _File
 
         self._ignored_file_patterns = [".git", ".svn", ".#*", "#*"]
         self._ignored_link_patterns = []
@@ -93,13 +93,16 @@ class Transom:
     def _init_files(self):
         for root, dirs, files in _os.walk(self.input_dir):
             files = {x for x in files if not self._is_ignored_file(x)}
-            index_files = {x for x in files if x in ("index.md", "index.html.in", "index.html")}
+            index_files = {x for x in files if x in _index_file_names}
+
+            if len(index_files) > 1:
+                raise Exception(f"Duplicate index files in {root}")
 
             for name in index_files:
-                self._init_file(_os.path.join(root, name))
+                yield self._init_file(_os.path.join(root, name))
 
             for name in files - index_files:
-                self._init_file(_os.path.join(root, name))
+                yield self._init_file(_os.path.join(root, name))
 
     def _is_ignored_file(self, name):
         for pattern in self._ignored_file_patterns:
@@ -124,13 +127,10 @@ class Transom:
         if serve is not None:
             self._reload = True
 
-        self._init_files()
-
-        for file_ in self._files:
+        for file_ in self._init_files():
             self.info("Processing {}", file_)
             file_._process_input()
 
-        for file_ in self._files:
             if file_._is_modified() or force:
                 self.info("Rendering {}", file_)
                 file_._render_output()
@@ -175,11 +175,8 @@ class Transom:
         _os.utime(self.output_dir)
 
     def check_files(self):
-        self._init_files()
-
-        expected_paths = {x._output_path for x in self._files}
+        expected_paths = {x._output_path for x in self._init_files()}
         found_paths = self._find_output_paths()
-
         missing_paths = expected_paths.difference(found_paths)
         extra_paths = found_paths.difference(expected_paths)
 
@@ -209,9 +206,7 @@ class Transom:
         link_sources = _defaultdict(set) # link => files
         link_targets = set()
 
-        self._init_files()
-
-        for file_ in self._files:
+        for file_ in self._init_files():
             try:
                 file_._collect_link_data(link_sources, link_targets)
             except Exception as e:
@@ -250,7 +245,7 @@ class Transom:
         print("Warning!", message.format(*args))
 
 class _File:
-    __slots__ = "site", "_input_path", "_input_mtime", "_output_path", "_output_mtime", "url", "parent"
+    __slots__ = "site", "_input_path", "_input_mtime", "_output_path", "_output_mtime", "url", "title", "parent"
 
     def __init__(self, site, input_path, output_path):
         self.site = site
@@ -262,18 +257,15 @@ class _File:
         self._output_mtime = None
 
         self.url = self._output_path[len(self.site.output_dir):]
-        self.parent = None
+        self.title = self.url
 
-        if self.url != "/index.html":
-            parent_dir, name = _os.path.split(self.url)
+        dir_, name = _os.path.split(self._input_path)
 
-            if name == "index.html":
-                parent_dir = _os.path.dirname(parent_dir)
+        if name in _index_file_names:
+            self.site._index_files[dir_] = self
+            dir_ = _os.path.dirname(dir_)
 
-            self.parent = self.site._files_by_url.get(_os.path.join(parent_dir, "index.html"))
-
-        self.site._files.append(self)
-        self.site._files_by_url[self.url] = self
+        self.parent = self.site._index_files.get(dir_)
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._input_path}, {self._output_path})"
@@ -327,7 +319,7 @@ class _File:
                 link_targets.add(normalized_url)
 
 class _TemplatePage(_File):
-    __slots__ = "_content", "_attributes", "title", "_page_template", "_body_template"
+    __slots__ = "_content", "_attributes", "_page_template", "_body_template"
 
     def _process_input(self):
         self._content = _read_file(self._input_path)
@@ -662,7 +654,7 @@ def _extract_metadata(content):
     return content, attributes
 
 def _load_template(path, default_text):
-    if path is None:
+    if path is None or not _os.path.isfile(path):
         return list(_parse_template(default_text))
 
     return list(_parse_template(_read_file(path)))
