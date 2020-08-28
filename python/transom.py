@@ -128,12 +128,7 @@ class Transom:
             self._reload = True
 
         for file_ in self._init_files():
-            self.info("Processing {}", file_)
-            file_._process_input()
-
-            if file_._is_modified() or force:
-                self.info("Rendering {}", file_)
-                file_._render_output()
+            file_._render(force=force)
 
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
@@ -164,15 +159,6 @@ class Transom:
         finally:
             if livereload is not None:
                 livereload.terminate()
-
-    def _render_one_file(self, input_path):
-        self.notice("Rendering {}", input_path)
-
-        file_ = self._init_file(input_path)
-        file_._process_input()
-        file_._render_output()
-
-        _os.utime(self.output_dir)
 
     def check_files(self):
         expected_paths = {x._output_path for x in self._init_files()}
@@ -269,6 +255,13 @@ class _File:
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._input_path}, {self._output_path})"
+
+    def _render(self, force=False):
+        self._process_input()
+
+        if self._is_modified() or force:
+            self.site.info("Rendering {}", self)
+            self._render_output()
 
     def _process_input(self):
         pass
@@ -434,7 +427,10 @@ class _WatcherThread(_threading.Thread):
             if _os.path.isdir(input_path) or self.site._is_ignored_file(_os.path.basename(input_path)):
                 return True
 
-            self.site._render_one_file(input_path) # XXX Handle delete
+            file_ = self._init_file(input_path)
+            file_._render()
+
+            _os.utime(self.site.output_dir)
 
         watcher.add_watch(self.site.input_dir, mask, render, rec=True, auto_add=True)
 
