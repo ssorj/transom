@@ -69,26 +69,26 @@ test: build
 
 .PHONY: render
 render: build
-	transom render --force config input output
+	cd qpid-site && transom render --force config input output
 
 # https://stackoverflow.com/questions/22475849/node-js-what-is-enospc-error-and-how-to-solve
 # $ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
 .PHONY: serve
 serve: build
-	transom render --force --serve 8080 config input output
+	cd qpid-site && transom render --force --serve 8080 config input output
 
 # pip3 install --user py-spy
 .PHONY: profile
 profile: build
-	py-spy record -o profile.svg -- transom render --force config input output
+	cd qpid-site && py-spy record -o /tmp/profile.svg -- transom render --force config input output
 
 .PHONY: check-links
 check-links: build
-	transom check-links config input output
+	cd qpid-site && transom check-links config input output
 
 .PHONY: check-files
 check-files: build
-	transom check-files config input output
+	cd qpid-site && transom check-files config input output
 
 build/prefix.txt:
 	echo ${PREFIX} > build/prefix.txt
