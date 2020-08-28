@@ -69,11 +69,13 @@ test: build
 
 .PHONY: render
 render: build
-	transom render --force --verbose config input output
+	transom render --force config input output
 
+# https://stackoverflow.com/questions/22475849/node-js-what-is-enospc-error-and-how-to-solve
+# $ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
 .PHONY: serve
 serve: build
-	transom render --force --verbose --serve 8080 config input output
+	transom render --force --serve 8080 config input output
 
 # pip3 install --user py-spy
 .PHONY: profile

@@ -21,6 +21,7 @@ class _Release(object):
         return "<a href=\"{}\">{}</a>".format(self.url, self.number)
 
 broker_j_release = _Release("Qpid Broker-J", "qpid-broker-j", "7.0.0")
+other_broker_j_release = "7.0.9"
 cpp_release = _Release("Qpid F++", "qpid-cpp", "1.37.0")
 dispatch_release = _Release("Qpid Dispatch", "qpid-dispatch", "1.0.0")
 interop_test_release = _Release("Qpid Interop Test", "qpid-interop-test", "0.1.0")
@@ -111,9 +112,21 @@ def dashboard_asf_git_links(repo_key):
 
     return " &#x2022; ".join(links)
 
+def appveyor_ci_badge(party_key, job_key, badge_key, branch="master"):
+    job_url = "https://ci.appveyor.com/project/{}/{}/branch/{}".format(party_key, job_key, branch)
+    image_url = "https://ci.appveyor.com/api/projects/status/{}?svg=true".format(badge_key)
+
+    return "<a href=\"{}\"><img src=\"{}\" height=\"20\"/></a>".format(job_url, image_url)
+
 def asf_jenkins_badge(job_key):
     job_url = "https://builds.apache.org/blue/organizations/jenkins/{}/activity".format(job_key)
     image_url = "https://builds.apache.org/buildStatus/icon?job={}".format(job_key)
+
+    return "<a href=\"{}\"><img src=\"{}\" height=\"20\"/></a>".format(job_url, image_url)
+
+def asf_jenkins_pipeline_badge(job_key, branch="master"):
+    job_url = "https://builds.apache.org/blue/organizations/jenkins/{}/activity".format(job_key)
+    image_url = "https://builds.apache.org/buildStatus/icon?job={}/{}".format(job_key, branch)
 
     return "<a href=\"{}\"><img src=\"{}\" height=\"20\"/></a>".format(job_url, image_url)
 
