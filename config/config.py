@@ -1,3 +1,5 @@
+site_url = ""
+
 class _Release(object):
     def __init__(self, component_name, component_key, number):
         self.component_name = component_name
