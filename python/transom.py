@@ -21,8 +21,6 @@ import argparse as _argparse
 import commandant as _commandant
 import csv as _csv
 import fnmatch as _fnmatch
-import functools as _functools
-import http.server as _http
 import markdown2 as _markdown
 import os as _os
 import re as _re
@@ -427,10 +425,10 @@ class _WatcherThread(_threading.Thread):
             if _os.path.isdir(input_path) or self.site._is_ignored_file(_os.path.basename(input_path)):
                 return True
 
-            file_ = self._init_file(input_path)
-            file_._render()
+            self._init_file(input_path)._render()
 
-            _os.utime(self.site.output_dir)
+            if _os.path.exists(self.site.output_dir):
+                _os.utime(self.site.output_dir)
 
         watcher.add_watch(self.site.input_dir, mask, render, rec=True, auto_add=True)
 
@@ -442,6 +440,9 @@ class _WatcherThread(_threading.Thread):
 
 class _ServerThread(_threading.Thread):
     def __init__(self, site, port):
+        import http.server as _http
+        import functools as _functools
+
         super().__init__()
 
         self.site = site
