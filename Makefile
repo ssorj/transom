@@ -69,11 +69,16 @@ test: build
 
 .PHONY: render
 render: build
-	transom render --verbose config input output
+	transom render --force --verbose config input output
 
 .PHONY: serve
 serve: build
-	transom render --serve 8080 config input output
+	transom render --force --verbose --serve 8080 config input output
+
+# pip3 install --user py-spy
+.PHONY: profile
+profile: build
+	py-spy record -o profile.svg -- transom render --force config input output
 
 .PHONY: check-links
 check-links: build
