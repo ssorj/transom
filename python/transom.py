@@ -186,10 +186,10 @@ class Transom:
             except Exception as e:
                 self.warn("Error collecting link data from {}: {}", file_, str(e))
 
-        def retain(link):
+        def not_ignored(link):
             return not any((_fnmatch.fnmatchcase(x) for x in self._ignored_link_patterns))
 
-        links = filter(retain, link_sources.keys())
+        links = filter(not_ignored, link_sources.keys())
         errors = 0
 
         for link in links:
@@ -350,15 +350,17 @@ class _TemplatePage(_File):
             files.append(file_)
             file_ = file_.parent
 
-        return [f"<a href=\"{x.url}\">{x.title}</a>" for x in reversed(files)]
+        return (f"<a href=\"{x.url}\">{x.title}</a>" for x in reversed(files))
 
     def path_nav(self, start=None, end=None):
-        return f"<nav id=\"-path-nav\">{''.join(self.path_nav_links[start:end])}</nav>"
+        return f"<nav id=\"-path-nav\">{''.join(list(self.path_nav_links)[start:end])}</nav>"
 
     def _render_template(self, template):
+        local_vars = {"page": self}
+
         for elem in template:
             if type(elem) is _types.CodeType:
-                result = eval(elem, self.site._config, {"page": self})
+                result = eval(elem, self.site._config, local_vars)
 
                 if type(result) is _types.GeneratorType:
                     yield from result
@@ -435,86 +437,61 @@ class _ServerThread(_threading.Thread):
         self.site.notice("Serving at http://localhost:{}", self.port)
         self.server.serve_forever()
 
-_epilog = """
-subcommands:
-  init                  Prepare an input directory
-  render                Generate the output files
-  check-links           Check for broken links
-  check-files           Check for missing or extra files
-"""
-
-def _add_common_args(parser):
-    parser.add_argument("--quiet", action="store_true",
-                        help="Print no logging to the console")
-    parser.add_argument("--verbose", action="store_true",
-                        help="Print detailed logging to the console")
-    parser.add_argument("--init-only", action="store_true",
-                        help=_argparse.SUPPRESS)
-
 class TransomCommand(_commandant.Command):
     def __init__(self, home=None):
         super().__init__(home=home, name="transom", standard_args=False)
 
         self.description = "Generate static websites from Markdown and Python"
-        self.epilog = _epilog
 
-        subparsers = self.add_subparsers()
+        subparsers = self.add_subparsers(title="subcommands")
 
-        init = subparsers.add_parser("init")
-        init.description = "Prepare an input directory"
-        init.set_defaults(func=self.init_command)
+        common = _argparse.ArgumentParser()
+        common.add_argument("--verbose", action="store_true",
+                            help="Print detailed logging to the console")
+        common.add_argument("--quiet", action="store_true",
+                            help="Print no logging to the console")
+        common.add_argument("--init-only", action="store_true",
+                            help=_argparse.SUPPRESS)
+
+        common_io = _argparse.ArgumentParser(add_help=False)
+        common_io.add_argument("config_dir", metavar="CONFIG-DIR",
+                        help="Read config files from CONFIG-DIR")
+        common_io.add_argument("input_dir", metavar="INPUT-DIR",
+                        help="The base directory for input files")
+        common_io.add_argument("output_dir", metavar="OUTPUT-DIR",
+                        help="The base directory for output files")
+
+        init = subparsers.add_parser("init", parents=(common,), add_help=False,
+                                     help="Prepare an input directory")
+        init.set_defaults(command_fn=self.init_command)
         init.add_argument("config_dir", metavar="CONFIG-DIR",
                           help="Read config files from CONFIG-DIR")
         init.add_argument("input_dir", metavar="INPUT-DIR",
                           help="Place default input files in INPUT-DIR")
-        _add_common_args(init)
 
-        render = subparsers.add_parser("render")
-        render.description = "Generate output files"
-        render.set_defaults(func=self.render_command)
-        render.add_argument("config_dir", metavar="CONFIG-DIR",
-                            help="Read config files from CONFIG-DIR")
-        render.add_argument("input_dir", metavar="INPUT-DIR",
-                            help="Read input files from INPUT-DIR")
-        render.add_argument("output_dir", metavar="OUTPUT-DIR",
-                            help="Write output files to OUTPUT-DIR")
+        render = subparsers.add_parser("render", parents=(common, common_io), add_help=False,
+                                       help="Generate output files")
+        render.set_defaults(command_fn=self.render_command)
         render.add_argument("--force", action="store_true",
                             help="Render all input files, including unmodified ones")
         render.add_argument("--serve", type=int, metavar="PORT",
                             help="Serve the site and rerender when input files change")
-        _add_common_args(render)
 
-        check_links = subparsers.add_parser("check-links")
-        check_links.description = "Check for broken links"
-        check_links.set_defaults(func=self.check_links_command)
-        check_links.add_argument("config_dir", metavar="CONFIG-DIR",
-                                 help="Read config files from CONFIG-DIR")
-        check_links.add_argument("input_dir", metavar="INPUT-DIR",
-                                 help="Check input files in INPUT-DIR")
-        check_links.add_argument("output_dir", metavar="OUTPUT-DIR",
-                                 help="Check output files in OUTPUT-DIR")
-        _add_common_args(check_links)
+        check_links = subparsers.add_parser("check-links", parents=(common, common_io), add_help=False,
+                                            help="Check for broken links")
+        check_links.set_defaults(command_fn=self.check_links_command)
 
-        check_files = subparsers.add_parser("check-files")
-        check_files.description = "Check for missing or extra files"
-        check_files.set_defaults(func=self.check_files_command)
-        check_files.add_argument("config_dir", metavar="CONFIG-DIR",
-                                 help="Read config files from CONFIG-DIR")
-        check_files.add_argument("input_dir", metavar="INPUT-DIR",
-                                 help="Check input files in INPUT-DIR")
-        check_files.add_argument("output_dir", metavar="OUTPUT-DIR",
-                                 help="Check output files in OUTPUT-DIR")
-        _add_common_args(check_files)
-
-        self.lib = None
+        check_files = subparsers.add_parser("check-files", parents=(common, common_io), add_help=False,
+                                            help="Check for missing or extra files")
+        check_files.set_defaults(command_fn=self.check_files_command)
 
     def init(self):
         super().init()
 
-        if "func" not in self.args:
+        if "command_fn" not in self.args:
             self.fail("Missing subcommand")
 
-        if self.args.func != self.init_command:
+        if self.args.command_fn != self.init_command:
             self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir,
                                verbose=self.args.verbose, quiet=self.args.quiet)
             self.lib.init()
@@ -523,7 +500,7 @@ class TransomCommand(_commandant.Command):
                 self.parser.exit()
 
     def run(self):
-        self.args.func()
+        self.args.command_fn()
 
     def init_command(self):
         if self.home is None:
