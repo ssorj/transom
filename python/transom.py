@@ -18,6 +18,7 @@
 #
 
 import argparse as _argparse
+import collections as _collections
 import commandant as _commandant
 import csv as _csv
 import fnmatch as _fnmatch
@@ -29,7 +30,6 @@ import subprocess as _subprocess
 import threading as _threading
 import types as _types
 
-from collections import defaultdict as _defaultdict
 from urllib import parse as _urlparse
 from xml.etree.ElementTree import XML as _XML
 from xml.sax.saxutils import escape as _xml_escape
@@ -177,7 +177,7 @@ class Transom:
         return len(missing_paths), len(extra_paths)
 
     def check_links(self):
-        link_sources = _defaultdict(set) # link => files
+        link_sources = _collections.defaultdict(set) # link => files
         link_targets = set()
 
         for file_ in self._init_files():
@@ -620,72 +620,47 @@ def _convert_markdown(text):
     return _markdown_converter.convert("".join(lines))
 
 _lipsum_words = [
-    "Lorem", "ipsum", "dolor", "sit", "amet,", "consectetur", "adipiscing", "elit.",
-    "Vestibulum", "enim", "urna,", "ornare", "pellentesque", "felis", "eget,", "maximus", "lacinia", "lorem.",
-    "Nulla", "auctor", "massa", "vitae", "ultricies", "varius.",
-    "Curabitur", "consectetur", "lacus", "sapien,", "a", "lacinia", "urna", "tempus", "quis.",
-    "Vestibulum", "vitae", "augue", "non", "augue", "lobortis", "semper.",
-    "Nullam", "fringilla", "odio", "quis", "ligula", "consequat", "condimentum.",
-    "Integer", "tempus", "sem.",
+    "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "vestibulum", "enim", "urna",
+    "ornare", "pellentesque", "felis", "eget", "maximus", "lacinia", "lorem", "nulla", "auctor", "massa", "vitae",
+    "ultricies", "varius", "curabitur", "consectetur", "lacus", "sapien", "a", "lacinia", "urna", "tempus", "quis",
+    "vestibulum", "vitae", "augue", "non", "augue", "lobortis", "semper", "nullam", "fringilla", "odio", "quis",
+    "ligula", "consequat", "condimentum", "integer", "tempus", "sem",
 ]
 
-def _lipsum(count=50):
-    words = (_lipsum_words[i % len(_lipsum_words)] for i in range(count))
-    text = " ".join(words)
-
-    if text.endswith(","):
-        text = text[:-1] + "."
-
-    if not text.endswith("."):
-        text = text + "."
-
-    return text
+def _lipsum(count=50, end="."):
+    return (" ".join((_lipsum_words[i % len(_lipsum_words)] for i in range(count))) + end).capitalize()
 
 def _html_table_csv(path, **attrs):
     with open(path, newline="") as f:
-        return _html_table([x for x in _csv.reader(f)], **attrs)
+        return _html_table((x for x in _csv.reader(f)), **attrs)
 
-def _html_table(items, column_headings=True, row_headings=False, escape_cell_data=False, cell_render_fn=None, **attrs):
-    rows = list()
+def _html_table_cell(column_index, value):
+    return _html_elem("td", str(value if value is not None else ""))
 
-    if column_headings:
-        headings = (_html_elem("th", cell) for cell in items[0])
-        rows.append(_html_elem("tr", "".join(headings)))
-        items = items[1:]
+def _html_table(data, headings=None, cell_fn=_html_table_cell, **attrs):
+    out = list()
 
-    for row_index, item in enumerate(items):
-        columns = list()
+    if headings:
+        out.append(_html_elem("tr", (_html_elem("th", x) for x in headings)))
 
-        for column_index, cell in enumerate(item):
-            if escape_cell_data:
-                cell = _xml_escape(cell)
+    for row in data:
+        out.append(_html_elem("tr", (cell_fn(i, x) for i, x in enumerate(row))))
 
-            if cell_render_fn is not None:
-                cell = cell_render_fn(row_index, column_index, cell)
-
-            if column_index == 0 and row_headings:
-                columns.append(_html_elem("th", cell))
-            else:
-                columns.append(_html_elem("td", cell))
-
-        rows.append(_html_elem("tr", "".join(columns)))
-
-    tbody = _html_elem("tbody", "".join(rows))
-
-    return _html_elem("table", tbody, **attrs)
+    return _html_elem("table", _html_elem("tbody", out, **attrs))
 
 def _html_elem(tag, content, **attrs):
+    if isinstance(content, _collections.Iterable) and not isinstance(content, str):
+        content = "".join(content)
+
     attrs = (_html_attr(name, value) for name, value in attrs.items() if value is not False)
-    return f"<{tag} {' '.join(attrs)}>{content or ''}</{tag}>"
+
+    return f"<{tag}{''.join(attrs)}>{content or ''}</{tag}>"
 
 def _html_attr(name, value):
-    if value is True:
-        value = name
+    name = "class" if name in ("class_", "_class") else name
+    value = name if value is True else value
 
-    if name in ("class_", "_class"):
-        name = "class"
-
-    return f"{name}=\"{_xml_escape(value)}\""
+    return f" {name}=\"{_xml_escape(value)}\""
 
 if __name__ == "__main__":
     command = TransomCommand()

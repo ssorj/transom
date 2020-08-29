@@ -17,7 +17,11 @@
 # under the License.
 #
 
+import csv as _csv
+
 from plano import *
+from transom import _lipsum, _html_table, _html_table_csv
+from xml.etree.ElementTree import XML as _XML
 
 def open_test_session(session):
     enable_logging(level="error")
@@ -25,10 +29,10 @@ def open_test_session(session):
     if session.module.command.verbose:
         enable_logging(level="notice")
 
-def test_transom_options(session):
+def test_command_options(session):
     call("transom --help")
 
-def test_transom_init(session):
+def test_command_init(session):
     call("transom init --help")
     call("transom init --init-only --verbose config input")
 
@@ -36,7 +40,7 @@ def test_transom_init(session):
         call("transom init config input")
         call("transom init config input") # Re-init
 
-def test_transom_render(session):
+def test_command_render(session):
     call("transom render --help")
     call("transom render --init-only --quiet config input output")
 
@@ -47,7 +51,7 @@ def test_transom_render(session):
         call("transom render config input output")
         call("transom render --force config input output")
 
-def test_transom_check_links(session):
+def test_command_check_links(session):
     call("transom check-links --help")
     call("transom check-links --init-only --verbose config input output")
 
@@ -61,7 +65,7 @@ def test_transom_check_links(session):
 
         call("transom check-links config input output")
 
-def test_transom_check_files(session):
+def test_command_check_files(session):
     call("transom check-files --help")
     call("transom check-files --init-only --quiet config input output")
 
@@ -74,6 +78,33 @@ def test_transom_check_files(session):
         remove(join("output", "test-page-2.html")) # A missing output file
 
         call("transom check-files config input output")
+
+def test_lipsum_function(session):
+    result = _lipsum(0, end="")
+    assert result == "", result
+
+    result = _lipsum(1)
+    assert result == "Lorem."
+
+    result = _lipsum(1000)
+    assert result
+
+def test_html_table_functions(session):
+    data = (
+        (1, 2, 3),
+        ("a", "b", "c"),
+        (None, "", 0),
+    )
+
+    _XML(_html_table(data))
+    _XML(_html_table(data, headings=("A", "B", "C")))
+
+    with temp_working_dir():
+        with open("test.csv", "w", newline="") as f:
+            writer = _csv.writer(f)
+            writer.writerows(data)
+
+        _XML(_html_table_csv("test.csv"))
 
 _index_page = """
 # Index
