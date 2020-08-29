@@ -212,7 +212,7 @@ class Transom:
             print(message.format(*args))
 
     def warn(self, message, *args):
-        print("Warning!", message.format(*args))
+        print("Warning:", message.format(*args))
 
 class _File:
     __slots__ = "site", "_input_path", "_input_mtime", "_output_path", "_output_mtime", "url", "title", "parent"
@@ -291,7 +291,7 @@ class _File:
                 normalized_url = _urlparse.urljoin(self.url, f"#{elem.attrib['id']}")
 
                 if normalized_url in link_targets:
-                    self.site.info("Duplicate link target in '{}'", normalized_url)
+                    self.site.warn("Duplicate link target in '{}'", normalized_url)
 
                 link_targets.add(normalized_url)
 
