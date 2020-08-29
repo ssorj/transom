@@ -129,6 +129,8 @@ class Transom:
             self._serve(serve)
 
     def _serve(self, port):
+        livereload = None
+
         try:
             watcher = _WatcherThread(self)
             watcher.start()
@@ -142,8 +144,6 @@ class Transom:
             self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
             self.notice("Use 'npm install -g livereload' to install the server")
             self.notice("Subprocess error: {}", e)
-
-            livereload = None
 
         try:
             server = _ServerThread(self, port)
@@ -560,24 +560,19 @@ def _copy_file(from_path, to_path):
     _shutil.copyfile(from_path, to_path)
 
 def _extract_metadata(content):
-    attributes = dict()
+    attrs = dict()
 
     if content.startswith("---\n"):
         end = content.index("---\n", 4)
         lines = content[4:end].strip().split("\n")
 
         for line in lines:
-            key, value = line.split(":", 1)
-            key, value = key.strip(), value.strip()
-
-            if value.lower() in ("none", "null"):
-                value = None
-
-            attributes[key] = value
+            key, value = (x.strip() for x in line.split(":", 1))
+            attrs[key] = None if value.lower() in ("none", "null") else value
 
         content = content[end + 4:]
 
-    return content, attributes
+    return content, attrs
 
 def _load_template(path, default_text):
     if path is None or not _os.path.isfile(path):
@@ -609,35 +604,34 @@ def _lipsum(count=50, end="."):
 
 def _html_table_csv(path, **attrs):
     with open(path, newline="") as f:
-        return _html_table((x for x in _csv.reader(f)), **attrs)
+        return _html_table(_csv.reader(f), **attrs)
 
 def _html_table_cell(column_index, value):
     return _html_elem("td", str(value if value is not None else ""))
 
 def _html_table(data, headings=None, cell_fn=_html_table_cell, **attrs):
-    out = list()
+    return _html_elem("table", _html_elem("tbody", _html_table_rows(data, headings, cell_fn), **attrs))
 
+def _html_table_rows(data, headings, cell_fn):
     if headings:
-        out.append(_html_elem("tr", (_html_elem("th", x) for x in headings)))
+        yield _html_elem("tr", (_html_elem("th", x) for x in headings))
 
     for row in data:
-        out.append(_html_elem("tr", (cell_fn(i, x) for i, x in enumerate(row))))
-
-    return _html_elem("table", _html_elem("tbody", out, **attrs))
+        yield _html_elem("tr", (cell_fn(i, x) for i, x in enumerate(row)))
 
 def _html_elem(tag, content, **attrs):
     if isinstance(content, _collections.Iterable) and not isinstance(content, str):
         content = "".join(content)
 
-    attrs = (_html_attr(name, value) for name, value in attrs.items() if value is not False)
+    return f"<{tag}{''.join(_html_attrs(attrs))}>{content or ''}</{tag}>"
 
-    return f"<{tag}{''.join(attrs)}>{content or ''}</{tag}>"
+def _html_attrs(attrs):
+    for name, value in attrs:
+        name = "class" if name in ("class_", "_class") else name
+        value = name if value is True else value
 
-def _html_attr(name, value):
-    name = "class" if name in ("class_", "_class") else name
-    value = name if value is True else value
-
-    return f" {name}=\"{_xml_escape(value)}\""
+        if value is not False:
+            yield f" {name}=\"{_xml_escape(value)}\""
 
 if __name__ == "__main__":
     command = TransomCommand()
