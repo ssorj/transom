@@ -41,22 +41,22 @@ _markdown_title_regex = _re.compile(r"(#|##)(.+)")
 _reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
 _variable_regex = _re.compile("({{.+?}})")
 
-_markdown_extras = {
+_markdown_converter = _markdown.Markdown(extras={
     "code-friendly": True,
     "footnotes": True,
     "header-ids": True,
     "markdown-in-html": True,
     "tables": True,
-}
+})
 
 class Transom:
-    def __init__(self, config_dir, input_dir, output_dir):
+    def __init__(self, config_dir, input_dir, output_dir, verbose=False, quiet=False):
         self.config_dir = config_dir
         self.input_dir = input_dir
         self.output_dir = output_dir
 
-        self.verbose = False
-        self.quiet = False
+        self.verbose = verbose
+        self.quiet = quiet
         self._reload = False
 
         self._config_file = _os.path.join(self.config_dir, "config.py")
@@ -69,8 +69,6 @@ class Transom:
 
         self._ignored_file_patterns = [".git", ".svn", ".#*", "#*"]
         self._ignored_link_patterns = []
-
-        self._markdown_converter = _markdown.Markdown(extras=_markdown_extras)
 
     def init(self):
         self._page_template = _load_template(_os.path.join(self.config_dir, "default-page.html"), _default_page_template)
@@ -103,11 +101,7 @@ class Transom:
                 yield self._init_file(_os.path.join(root, name))
 
     def _is_ignored_file(self, name):
-        for pattern in self._ignored_file_patterns:
-            if _fnmatch.fnmatchcase(name, pattern):
-                return True
-
-        return False
+        return any((_fnmatch.fnmatchcase(name, x) for x in self._ignored_file_patterns))
 
     def _init_file(self, input_path):
         output_path = _os.path.join(self.output_dir, input_path[len(self.input_dir) + 1:])
@@ -160,9 +154,13 @@ class Transom:
 
     def check_files(self):
         expected_paths = {x._output_path for x in self._init_files()}
-        found_paths = self._find_output_paths()
-        missing_paths = expected_paths.difference(found_paths)
-        extra_paths = found_paths.difference(expected_paths)
+        found_paths = set()
+
+        for root, dirs, files in _os.walk(self.output_dir):
+            found_paths.update((_os.path.join(root, x) for x in files))
+
+        missing_paths = expected_paths - found_paths
+        extra_paths = found_paths - expected_paths
 
         if missing_paths:
             print("Missing output files:")
@@ -178,14 +176,6 @@ class Transom:
 
         return len(missing_paths), len(extra_paths)
 
-    def _find_output_paths(self):
-        output_paths = set()
-
-        for root, dirs, files in _os.walk(self.output_dir):
-            output_paths.update({_os.path.join(root, x) for x in files})
-
-        return output_paths
-
     def check_links(self):
         link_sources = _defaultdict(set) # link => files
         link_targets = set()
@@ -197,11 +187,7 @@ class Transom:
                 self.warn("Error collecting link data from {}: {}", file_, str(e))
 
         def retain(link):
-            for pattern in self._ignored_link_patterns:
-                if _fnmatch.fnmatchcase(link, pattern):
-                    return False
-
-            return True
+            return not any((_fnmatch.fnmatchcase(x) for x in self._ignored_link_patterns))
 
         links = filter(retain, link_sources.keys())
         errors = 0
@@ -385,7 +371,7 @@ class _TemplatePage(_File):
         content = _read_file(input_path)
 
         if input_path.endswith(".md"):
-            content = self.site._markdown_converter.convert(content)
+            content = _convert_markdown(content)
 
         return self._render_template(_parse_template(content))
 
@@ -400,21 +386,15 @@ class _MarkdownPage(_TemplatePage):
             self.title = match.group(2).strip() if match else ""
 
     def _convert_content(self):
-        # Strip out comments
-        content_lines = self._content.splitlines()
-        content_lines = (x for x in content_lines if not x.startswith(";;"))
-
-        self._content = _os.linesep.join(content_lines)
-        self._content = self.site._markdown_converter.convert(self._content)
+        self._content = _convert_markdown(self._content)
 
 class _WatcherThread(_threading.Thread):
     def __init__(self, site):
         import pyinotify as _pyinotify
 
-        super().__init__()
+        super().__init__(name="watcher", daemon=True)
 
         self.site = site
-        self.daemon = True
 
         watcher = _pyinotify.WatchManager()
         mask = _pyinotify.IN_CREATE | _pyinotify.IN_MODIFY
@@ -443,24 +423,17 @@ class _ServerThread(_threading.Thread):
         import http.server as _http
         import functools as _functools
 
-        super().__init__()
+        super().__init__(name="server", daemon=True)
 
         self.site = site
         self.port = port
-        self.daemon = True
 
-        address = "localhost", self.port
         handler = _functools.partial(_http.SimpleHTTPRequestHandler, directory=self.site.output_dir)
-
-        self.server = _http.ThreadingHTTPServer(address, handler)
+        self.server = _http.ThreadingHTTPServer(("localhost", self.port), handler)
 
     def run(self):
         self.site.notice("Serving at http://localhost:{}", self.port)
         self.server.serve_forever()
-
-_description = """
-Generate static websites from Markdown and Python
-"""
 
 _epilog = """
 subcommands:
@@ -470,11 +443,19 @@ subcommands:
   check-files           Check for missing or extra files
 """
 
+def _add_common_args(parser):
+    parser.add_argument("--quiet", action="store_true",
+                        help="Print no logging to the console")
+    parser.add_argument("--verbose", action="store_true",
+                        help="Print detailed logging to the console")
+    parser.add_argument("--init-only", action="store_true",
+                        help=_argparse.SUPPRESS)
+
 class TransomCommand(_commandant.Command):
     def __init__(self, home=None):
         super().__init__(home=home, name="transom", standard_args=False)
 
-        self.description = _description
+        self.description = "Generate static websites from Markdown and Python"
         self.epilog = _epilog
 
         subparsers = self.add_subparsers()
@@ -486,12 +467,7 @@ class TransomCommand(_commandant.Command):
                           help="Read config files from CONFIG-DIR")
         init.add_argument("input_dir", metavar="INPUT-DIR",
                           help="Place default input files in INPUT-DIR")
-        init.add_argument("--quiet", action="store_true",
-                          help="Print no logging to the console")
-        init.add_argument("--verbose", action="store_true",
-                          help="Print detailed logging to the console")
-        init.add_argument("--init-only", action="store_true",
-                          help=_argparse.SUPPRESS)
+        _add_common_args(init)
 
         render = subparsers.add_parser("render")
         render.description = "Generate output files"
@@ -506,12 +482,7 @@ class TransomCommand(_commandant.Command):
                             help="Render all input files, including unmodified ones")
         render.add_argument("--serve", type=int, metavar="PORT",
                             help="Serve the site and rerender when input files change")
-        render.add_argument("--quiet", action="store_true",
-                            help="Print no logging to the console")
-        render.add_argument("--verbose", action="store_true",
-                            help="Print detailed logging to the console")
-        render.add_argument("--init-only", action="store_true",
-                            help=_argparse.SUPPRESS)
+        _add_common_args(render)
 
         check_links = subparsers.add_parser("check-links")
         check_links.description = "Check for broken links"
@@ -522,12 +493,7 @@ class TransomCommand(_commandant.Command):
                                  help="Check input files in INPUT-DIR")
         check_links.add_argument("output_dir", metavar="OUTPUT-DIR",
                                  help="Check output files in OUTPUT-DIR")
-        check_links.add_argument("--quiet", action="store_true",
-                                 help="Print no logging to the console")
-        check_links.add_argument("--verbose", action="store_true",
-                                 help="Print detailed logging to the console")
-        check_links.add_argument("--init-only", action="store_true",
-                                 help=_argparse.SUPPRESS)
+        _add_common_args(check_links)
 
         check_files = subparsers.add_parser("check-files")
         check_files.description = "Check for missing or extra files"
@@ -538,12 +504,7 @@ class TransomCommand(_commandant.Command):
                                  help="Check input files in INPUT-DIR")
         check_files.add_argument("output_dir", metavar="OUTPUT-DIR",
                                  help="Check output files in OUTPUT-DIR")
-        check_files.add_argument("--quiet", action="store_true",
-                                 help="Print no logging to the console")
-        check_files.add_argument("--verbose", action="store_true",
-                                 help="Print detailed logging to the console")
-        check_files.add_argument("--init-only", action="store_true",
-                                 help=_argparse.SUPPRESS)
+        _add_common_args(check_files)
 
         self.lib = None
 
@@ -553,17 +514,13 @@ class TransomCommand(_commandant.Command):
         if "func" not in self.args:
             self.fail("Missing subcommand")
 
-    def init_lib(self):
-        assert self.lib is None
+        if self.args.func != self.init_command:
+            self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir,
+                               verbose=self.args.verbose, quiet=self.args.quiet)
+            self.lib.init()
 
-        self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir)
-        self.lib.verbose = self.args.verbose
-        self.lib.quiet = self.args.quiet
-
-        self.lib.init()
-
-        if self.args.init_only:
-            self.parser.exit()
+            if self.args.init_only:
+                self.parser.exit()
 
     def run(self):
         self.args.func()
@@ -593,12 +550,9 @@ class TransomCommand(_commandant.Command):
         copy("index.md", _os.path.join(self.args.input_dir, "index.md"))
 
     def render_command(self):
-        self.init_lib()
         self.lib.render(force=self.args.force, serve=self.args.serve)
 
     def check_links_command(self):
-        self.init_lib()
-
         errors = self.lib.check_links()
 
         if errors == 0:
@@ -607,8 +561,6 @@ class TransomCommand(_commandant.Command):
             self.fail("FAILED")
 
     def check_files_command(self):
-        self.init_lib()
-
         missing_files, extra_files = self.lib.check_files()
 
         if extra_files != 0:
@@ -623,8 +575,8 @@ def _make_dir(path):
     _os.makedirs(path, exist_ok=True)
 
 def _read_file(path):
-    with open(path, "r") as file_:
-        return file_.read()
+    with open(path, "r") as f:
+        return f.read()
 
 def _copy_file(from_path, to_path):
     _make_dir(_os.path.dirname(to_path))
@@ -662,6 +614,10 @@ def _parse_template(text):
             yield compile(token[2:-2], "<string>", "eval")
         else:
             yield token
+
+def _convert_markdown(text):
+    lines = (x for x in text.splitlines(keepends=True) if not x.startswith(";;"))
+    return _markdown_converter.convert("".join(lines))
 
 _lipsum_words = [
     "Lorem", "ipsum", "dolor", "sit", "amet,", "consectetur", "adipiscing", "elit.",
