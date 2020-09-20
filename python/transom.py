@@ -137,7 +137,7 @@ class Transom:
             self.notice("Try installing the python3-pyinotify package")
 
         try:
-            livereload = _subprocess.Popen(f"livereload {self.output_dir}", shell=True)
+            livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100", shell=True)
         except _subprocess.CalledProcessError as e:
             self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
             self.notice("Use 'npm install -g livereload' to install the server")
