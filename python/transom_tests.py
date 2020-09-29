@@ -30,54 +30,54 @@ def open_test_session(session):
         enable_logging(level="notice")
 
 def test_command_options(session):
-    call("transom --help")
+    run("transom --help")
 
 def test_command_init(session):
-    call("transom init --help")
-    call("transom init --init-only --verbose config input")
+    run("transom init --help")
+    run("transom init --init-only --verbose config input")
 
-    with temp_working_dir():
-        call("transom init config input")
-        call("transom init config input") # Re-init
+    with working_dir():
+        run("transom init config input")
+        run("transom init config input") # Re-init
 
 def test_command_render(session):
-    call("transom render --help")
-    call("transom render --init-only --quiet config input output")
+    run("transom render --help")
+    run("transom render --init-only --quiet config input output")
 
-    with temp_working_dir():
+    with working_dir():
         make_input_files("config", "input")
 
-        call("transom render config input output")
-        call("transom render config input output")
-        call("transom render --force config input output")
+        run("transom render config input output")
+        run("transom render config input output")
+        run("transom render --force config input output")
 
 def test_command_check_links(session):
-    call("transom check-links --help")
-    call("transom check-links --init-only --verbose config input output")
+    run("transom check-links --help")
+    run("transom check-links --init-only --verbose config input output")
 
-    with temp_working_dir():
+    with working_dir():
         make_input_files("config", "input")
 
-        call("transom render config input output")
-        call("transom check-links config input output")
+        run("transom render config input output")
+        run("transom check-links config input output")
 
         append(join("a", "index.md"), "[Not there](not-there.html)")
 
-        call("transom check-links config input output")
+        run("transom check-links config input output")
 
 def test_command_check_files(session):
-    call("transom check-files --help")
-    call("transom check-files --init-only --quiet config input output")
+    run("transom check-files --help")
+    run("transom check-files --init-only --quiet config input output")
 
-    with temp_working_dir():
+    with working_dir():
         make_input_files("config", "input")
 
-        call("transom render config input output")
+        run("transom render config input output")
 
         remove(join("input", "test-page-1.md")) # An extra output file
         remove(join("output", "test-page-2.html")) # A missing output file
 
-        call("transom check-files config input output")
+        run("transom check-files config input output")
 
 def test_lipsum_function(session):
     result = _lipsum(0, end="")
@@ -99,7 +99,7 @@ def test_html_table_functions(session):
     _XML(_html_table(data))
     _XML(_html_table(data, headings=("A", "B", "C")))
 
-    with temp_working_dir():
+    with working_dir():
         with open("test.csv", "w", newline="") as f:
             writer = _csv.writer(f)
             writer.writerows(data)
@@ -121,7 +121,7 @@ _test_page_2 = """
 """
 
 def make_input_files(config_dir, input_dir):
-    call("transom init {} {}", config_dir, input_dir)
+    run("transom init {} {}", config_dir, input_dir)
 
     write(join(input_dir, "index.md"), _index_page)
     write(join(input_dir, "test-1.md"), _test_page_1)

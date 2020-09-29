@@ -59,8 +59,12 @@ class Transom:
         self.quiet = quiet
         self._reload = False
 
-        self._config_file = _os.path.join(self.config_dir, "config.py")
-        self._config = None
+        self._config = {
+            "site": self,
+            "lipsum": _lipsum,
+            "html_table": _html_table,
+            "html_table_csv": _html_table_csv,
+        }
 
         self._body_template = None
         self._page_template = None
@@ -74,15 +78,10 @@ class Transom:
         self._page_template = _load_template(_os.path.join(self.config_dir, "default-page.html"), _default_page_template)
         self._body_template = _load_template(_os.path.join(self.config_dir, "default-body.html"), _default_body_template)
 
-        self._config = {
-            "site": self,
-            "lipsum": _lipsum,
-            "html_table": _html_table,
-            "html_table_csv": _html_table_csv,
-        }
-
-        if _os.path.isfile(self._config_file):
-            exec(_read_file(self._config_file), self._config)
+        try:
+            exec(_read_file(_os.path.join(self.config_dir, "config.py")), self._config)
+        except Exception as e:
+            self.warn("Failed to read configuration: {}", e)
 
     def _init_files(self):
         for root, dirs, files in _os.walk(self.input_dir):

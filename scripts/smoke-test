@@ -20,5 +20,7 @@
 
 from plano import *
 
-call("transom --help", quiet=True)
-call("transom render --init-only config input output", quiet=True)
+with working_dir(quiet=True):
+    touch("config/config.py")
+    call("transom --help", quiet=True)
+    call("transom render --init-only config input output", quiet=True)
