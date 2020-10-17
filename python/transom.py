@@ -19,6 +19,7 @@
 
 import argparse as _argparse
 import collections as _collections
+import collections.abc as _abc
 import commandant as _commandant
 import csv as _csv
 import fnmatch as _fnmatch
@@ -607,7 +608,7 @@ def _html_table_cell(column_index, value):
     return _html_elem("td", str(value if value is not None else ""))
 
 def _html_table(data, headings=None, cell_fn=_html_table_cell, **attrs):
-    return _html_elem("table", _html_elem("tbody", _html_table_rows(data, headings, cell_fn), **attrs))
+    return _html_elem("table", _html_elem("tbody", _html_table_rows(data, headings, cell_fn)), **attrs)
 
 def _html_table_rows(data, headings, cell_fn):
     if headings:
@@ -617,13 +618,13 @@ def _html_table_rows(data, headings, cell_fn):
         yield _html_elem("tr", (cell_fn(i, x) for i, x in enumerate(row)))
 
 def _html_elem(tag, content, **attrs):
-    if isinstance(content, _collections.Iterable) and not isinstance(content, str):
+    if isinstance(content, _abc.Iterable) and not isinstance(content, str):
         content = "".join(content)
 
     return f"<{tag}{''.join(_html_attrs(attrs))}>{content or ''}</{tag}>"
 
 def _html_attrs(attrs):
-    for name, value in attrs:
+    for name, value in attrs.items():
         name = "class" if name in ("class_", "_class") else name
         value = name if value is True else value
 
