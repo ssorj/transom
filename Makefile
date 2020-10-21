@@ -96,10 +96,6 @@ build/prefix.txt:
 build/bin/%: bin/%.in
 	scripts/configure-file -a transom_home=${INSTALLED_TRANSOM_HOME} $< $@
 
-build/transom/python/transom/%: python/transom/% python/transom/common.py python/commandant.py python/plano.py
-	@mkdir -p ${@D}
-	cp $< $@
-
 build/transom/python/%: python/%
 	@mkdir -p ${@D}
 	cp $< $@
