@@ -367,13 +367,14 @@ class _TemplatePage(_File):
             else:
                 yield elem
 
+    def render_text(self, text, markdown=False):
+        if markdown:
+            text = _convert_markdown(text)
+
+        return self._render_template(_parse_template(text))
+
     def include(self, input_path):
-        content = _read_file(input_path)
-
-        if input_path.endswith(".md"):
-            content = _convert_markdown(content)
-
-        return self._render_template(_parse_template(content))
+        return self.render_text(_read_file(input_path), markdown=input_path.endswith(".md"))
 
 class _MarkdownPage(_TemplatePage):
     __slots__ = ()
