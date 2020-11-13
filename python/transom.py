@@ -484,8 +484,8 @@ class TransomCommand(_commandant.Command):
                                             help="Check for missing or extra files")
         check_files.set_defaults(command_fn=self.check_files_command)
 
-    def init(self):
-        super().init()
+    def init(self, args=None):
+        super().init(args)
 
         if "command_fn" not in self.args:
             self.fail("Missing subcommand")

@@ -41,10 +41,10 @@ class Command(object):
         self.name = name
         self.standard_args = standard_args
 
-        self._parser = _argparse.ArgumentParser()
-        self._parser.formatter_class = _argparse.RawDescriptionHelpFormatter
+        self.parser = _argparse.ArgumentParser()
+        self.parser.formatter_class = _argparse.RawDescriptionHelpFormatter
 
-        self._args = None
+        self.args = None
 
         if self.standard_args:
             self.add_argument("--quiet", action="store_true",
@@ -55,7 +55,7 @@ class Command(object):
                               help=_argparse.SUPPRESS)
 
         if self.name is None:
-            self.name = self._parser.prog
+            self.name = self.parser.prog
 
         self.id = self.name
 
@@ -68,14 +68,6 @@ class Command(object):
 
     def add_subparsers(self, *args, **kwargs):
         return self.parser.add_subparsers(*args, **kwargs)
-
-    @property
-    def parser(self):
-        return self._parser
-
-    @property
-    def args(self):
-        return self._args
 
     @property
     def description(self):
@@ -104,10 +96,10 @@ class Command(object):
 
         return config
 
-    def init(self):
-        assert self._args is None
+    def init(self, args=None):
+        assert self.args is None
 
-        self._args = self.parser.parse_args()
+        self.args = self.parser.parse_args(args)
 
         if self.standard_args:
             self.quiet = self.args.quiet
@@ -117,15 +109,15 @@ class Command(object):
     def run(self):
         raise NotImplementedError()
 
-    def main(self):
+    def main(self, args=None):
+        self.init(args)
+
+        assert self.args is not None
+
+        if self.init_only:
+            return
+
         try:
-            self.init()
-
-            assert self._args is not None
-
-            if self.init_only:
-                return
-
             self.run()
         except KeyboardInterrupt:
             pass
@@ -139,7 +131,7 @@ class Command(object):
             self.print_message(message, *args)
 
     def warn(self, message, *args):
-        message = "Warning! {0}".format(message)
+        message = "Warning: {0}".format(message)
         self.print_message(message, *args)
 
     def error(self, message, *args):
@@ -188,8 +180,8 @@ class TestCommand(Command):
         self.add_argument("--timeout", metavar="SECONDS", type=int, default=300,
                           help="Fail any test running longer than SECONDS (default 300)")
 
-    def init(self):
-        super(TestCommand, self).init()
+    def init(self, args=None):
+        super(TestCommand, self).init(args)
 
         self.list_only = self.args.list
         self.include_patterns = self.args.include
