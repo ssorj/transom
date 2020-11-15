@@ -121,7 +121,7 @@ _test_page_2 = """
 """
 
 def make_input_files(config_dir, input_dir):
-    run("transom init {} {}", config_dir, input_dir)
+    run(f"transom init {config_dir} {input_dir}")
 
     write(join(input_dir, "index.md"), _index_page)
     write(join(input_dir, "test-1.md"), _test_page_1)
