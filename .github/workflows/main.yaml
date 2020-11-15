@@ -8,4 +8,5 @@ jobs:
     - uses: actions/setup-python@v2
     - run: |
         ./plano modules
+    - run: |
         ./plano test
