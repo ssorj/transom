@@ -17,24 +17,17 @@
 # under the License.
 #
 
-from bullseye import *
+import sys
 
-project.name = "transom"
-project.extra_dirs = ["files"]
+sys.path.insert(0, "../python")
 
-@target(extends=build, default=True)
-def build():
-    run("transom --help", quiet=True, stash=True)
+from transom_targets import *
 
-    with project_env(), working_dir(quiet=True):
-        touch("config/config.py")
-        run("transom render --init-only config input output", quiet=True)
-
-@target(extends=clean)
-def clean():
-    remove("qpid-site/output")
-
-@target(requires=build)
+@target(requires=(clean, render, check_files, check_links))
 def test():
+    pass
+
+@target(help="Run the renderer under a profiler")
+def profile():
     with project_env():
-        run("transom-test")
+        run("py-spy record -o /tmp/profile.svg -- transom render --force config input output")

@@ -18,11 +18,37 @@
 #
 
 from plano import *
+from transom import TransomCommand
 
-@target(help="Render and serve the site", default=True)
-def serve():
-    with working_env(PYTHONPATH="python"):
-        run("python3 -m transom render --serve 65535 --force config input output")
+class _Site:
+    def __init__(self):
+        self.config_dir = "config"
+        self.input_dir = "input"
+        self.output_dir = "output"
+
+site = _Site()
+
+@target(help="Render site output")
+def render():
+    with project_env():
+        TransomCommand().main(["render", "--force", site.config_dir, site.input_dir, site.output_dir])
+
+# https://stackoverflow.com/questions/22475849/node-js-what-is-enospc-error-and-how-to-solve
+# $ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+@target(help="Render and serve the site")
+def serve(port=8080):
+    with project_env():
+        TransomCommand().main(["render", "--serve", str(port), "--force", site.config_dir, site.input_dir, site.output_dir])
+
+@target(help="Check for broken links", requires=render)
+def check_links():
+    with project_env():
+        TransomCommand().main(["check-links", site.config_dir, site.input_dir, site.output_dir])
+
+@target(help="Check for missing or extra files", requires=render)
+def check_files():
+    with project_env():
+        TransomCommand().main(["check-files", site.config_dir, site.input_dir, site.output_dir])
 
 @target
 def clean():
@@ -37,3 +63,7 @@ def clean():
 @target(help="Initialize and update Git submodules")
 def modules():
     run("git submodule update --init --remote --recursive")
+
+class project_env(working_env):
+    def __init__(self):
+        super(project_env, self).__init__(PYTHONPATH="python")
