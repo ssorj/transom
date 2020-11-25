@@ -24,11 +24,12 @@ project.extra_dirs = ["files"]
 
 @target(extends=build, default=True)
 def build():
-    run("transom --help", quiet=True, stash=True)
+    with project_env():
+        run("transom --help", quiet=True, stash=True)
 
-    with project_env(), working_dir(quiet=True):
-        touch("config/config.py")
-        run("transom render --init-only config input output", quiet=True)
+        with working_dir(quiet=True):
+            touch("config/config.py")
+            run("transom render --init-only config input output", quiet=True)
 
 @target(extends=clean)
 def clean():
