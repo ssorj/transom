@@ -20,6 +20,8 @@
 from plano import *
 from transom import TransomCommand
 
+import_targets("bullseye", "modules")
+
 class _Site:
     def __init__(self):
         self.config_dir = "config"
@@ -59,10 +61,6 @@ def clean():
 
     for path in find(".", "*.pyc"):
         remove(path)
-
-@target(help="Initialize and update Git submodules")
-def modules():
-    run("git submodule update --init --remote --recursive")
 
 class project_env(working_env):
     def __init__(self):

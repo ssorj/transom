@@ -19,8 +19,11 @@
 
 from bullseye import *
 
+import_targets("bullseye", "modules")
+
 project.name = "transom"
-project.extra_dirs = ["files"]
+project.extra_source_dirs = ["files"]
+project.test_modules = ["transom_tests"]
 
 @target(extends=build, default=True)
 def build():
@@ -33,9 +36,4 @@ def build():
 
 @target(extends=clean)
 def clean():
-    remove("qpid-site/output")
-
-@target(requires=build)
-def test():
-    with project_env():
-        run("transom-test")
+    remove("test-site/output")
