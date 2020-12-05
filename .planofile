@@ -23,6 +23,7 @@ import_targets("bullseye", "modules")
 
 project.name = "transom"
 project.extra_source_dirs = ["files"]
+project.build_deps = ["bullseye"]
 project.test_modules = ["transom_tests"]
 
 @target(extends=build, default=True)
