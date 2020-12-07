@@ -42,13 +42,17 @@ def serve(port=8080):
     with project_env():
         TransomCommand().main(["render", "--serve", str(port), "--force", site.config_dir, site.input_dir, site.output_dir])
 
-@target(help="Check for broken links", requires=render)
+@target(help="Check for broken links")
 def check_links():
+    render()
+
     with project_env():
         TransomCommand().main(["check-links", site.config_dir, site.input_dir, site.output_dir])
 
-@target(help="Check for missing or extra files", requires=render)
+@target(help="Check for missing or extra files")
 def check_files():
+    render()
+
     with project_env():
         TransomCommand().main(["check-files", site.config_dir, site.input_dir, site.output_dir])
 
