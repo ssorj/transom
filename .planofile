@@ -19,8 +19,6 @@
 
 from bullseye import *
 
-import_targets("bullseye", "modules")
-
 project.name = "transom"
 project.extra_source_dirs = ["files"]
 project.build_deps = ["bullseye"]
