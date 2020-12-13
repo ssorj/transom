@@ -23,6 +23,15 @@ from plano import *
 from transom import _lipsum, _html_table, _html_table_csv
 from xml.etree.ElementTree import XML as _XML
 
+_test_site_dir = get_absolute_path("test-site")
+_result_file = "output/result.json"
+
+class _test_site(working_dir):
+    def __enter__(self):
+        dir = super(_test_site, self).__enter__()
+        copy(_test_site_dir, ".", inside=False, symlinks=False)
+        return dir
+
 def open_test_session(session):
     enable_logging(level="error")
 
@@ -38,16 +47,34 @@ def test_command_init(session):
 
     with working_dir():
         run("transom init config input")
+
+        assert is_dir("config"), list_dir()
+        assert is_dir("input"), list_dir()
+        assert is_file("config/config.py"), list_dir("config")
+        assert is_file("input/index.md"), list_dir("input")
+        assert is_file("input/main.css"), list_dir("input")
+        assert is_file("input/main.js"), list_dir("input")
+
         run("transom init config input") # Re-init
 
 def test_command_render(session):
     run("transom render --help")
     run("transom render --init-only --quiet config input output")
 
-    with working_dir():
-        make_input_files("config", "input")
-
+    with _test_site():
         run("transom render config input output")
+
+        assert is_dir("output"), list_dir()
+        assert is_file("output/index.html"), list_dir("output")
+        assert is_file("output/test-1.html"), list_dir("output")
+        assert is_file("output/test-2.html"), list_dir("output")
+        assert is_file("output/main.css"), list_dir("output")
+        assert is_file("output/main.js"), list_dir("output")
+
+        result = read("output/index.html")
+        assert "<title>Doorjamb</title>" in result, result
+        assert "<h1 id=\"doorjamb\">Doorjamb</h1>" in result, result
+
         run("transom render config input output")
         run("transom render --force config input output")
 
@@ -55,9 +82,7 @@ def test_command_check_links(session):
     run("transom check-links --help")
     run("transom check-links --init-only --verbose config input output")
 
-    with working_dir():
-        make_input_files("config", "input")
-
+    with _test_site():
         run("transom render config input output")
         run("transom check-links config input output")
 
@@ -69,15 +94,53 @@ def test_command_check_files(session):
     run("transom check-files --help")
     run("transom check-files --init-only --quiet config input output")
 
-    with working_dir():
-        make_input_files("config", "input")
-
+    with _test_site():
         run("transom render config input output")
 
         remove(join("input", "test-page-1.md")) # An extra output file
         remove(join("output", "test-page-2.html")) # A missing output file
 
         run("transom check-files config input output")
+
+def test_target_render(session):
+    with _test_site():
+        PlanoCommand().main(["render"])
+
+        result = read_json(_result_file)
+        assert result["rendered"], result
+
+# def test_target_serve(session):
+#     with _test_site():
+#         PlanoCommand().main(["render", "--serve"])
+
+#         result = read_json(_result_file)
+#         assert result["served"], result
+
+def test_target_check_links(session):
+    with _test_site():
+        PlanoCommand().main(["check-links"])
+
+        result = read_json(_result_file)
+        assert result["links_checked"], result
+
+def test_target_check_files(session):
+    with _test_site():
+        PlanoCommand().main(["check-files"])
+
+        result = read_json(_result_file)
+        assert result["files_checked"], result
+
+def test_target_clean(session):
+    with _test_site():
+        PlanoCommand().main(["clean"])
+
+def test_target_modules(session):
+    with _test_site():
+        try:
+            PlanoCommand().main(["modules", "--remote", "--recursive"])
+            assert False
+        except PlanoException:
+            pass
 
 def test_lipsum_function(session):
     result = _lipsum(0, end="")
@@ -105,24 +168,3 @@ def test_html_table_functions(session):
             writer.writerows(data)
 
         _XML(_html_table_csv("test.csv"))
-
-_index_page = """
-# Index
-[Test 1](test-1.html)
-[Test 2](test-2.html)
-"""
-
-_test_page_1 = """
-# Test 1
-"""
-
-_test_page_2 = """
-# Test 2
-"""
-
-def make_input_files(config_dir, input_dir):
-    run(f"transom init {config_dir} {input_dir}")
-
-    write(join(input_dir, "index.md"), _index_page)
-    write(join(input_dir, "test-1.md"), _test_page_1)
-    write(join(input_dir, "test-2.md"), _test_page_2)

@@ -28,11 +28,12 @@ class _Site:
 
 site = _Site()
 
-_force_arg = Argument("force", help="Render all input files, including unmodified ones")
-_verbose_arg = Argument("verbose", help="Print detailed logging to the console")
+_force_arg = TargetArgument("force", help="Render all input files, including unmodified ones")
+_verbose_arg = TargetArgument("verbose", help="Print detailed logging to the console")
 
-@target(help="Render site output", default=True,
-        args=(_force_arg, _verbose_arg))
+set_default_target("render")
+
+@target(help="Render site output", args=(_force_arg, _verbose_arg))
 def render(force=False, verbose=False):
     with project_env():
         args = ["render", "--force", site.config_dir, site.input_dir, site.output_dir]
@@ -48,7 +49,7 @@ def render(force=False, verbose=False):
 # https://stackoverflow.com/questions/22475849/node-js-what-is-enospc-error-and-how-to-solve
 # $ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
 @target(help="Serve the site and rerender when input files change",
-        args=(Argument("port", help="Serve on PORT"), _force_arg, _verbose_arg))
+        args=(TargetArgument("port", help="Serve on PORT"), _force_arg, _verbose_arg))
 def serve(port=8080, force=False, verbose=False):
     with project_env():
         args = ["render", "--serve", str(port), site.config_dir, site.input_dir, site.output_dir]
@@ -94,8 +95,8 @@ def clean():
         remove(path)
 
 @target(help="Update Git submodules",
-        args=[Argument("remote", help="Get remote commits"),
-              Argument("recursive", help="Update modules recursively")])
+        args=(TargetArgument("remote", help="Get remote commits"),
+              TargetArgument("recursive", help="Update modules recursively")))
 def modules(remote=False, recursive=False):
     check_program("git")
 
@@ -112,3 +113,17 @@ def modules(remote=False, recursive=False):
 class project_env(working_env):
     def __init__(self):
         super(project_env, self).__init__(PYTHONPATH="python")
+
+def configure_file(input_file, output_file, substitutions, quiet=False):
+    notice("Configuring '{0}' for output '{1}'", input_file, output_file)
+
+    content = read(input_file)
+
+    for name, value in substitutions.items():
+        content = content.replace("@{0}@".format(name), value)
+
+    write(output_file, content)
+
+    _shutil.copymode(input_file, output_file)
+
+    return output_file

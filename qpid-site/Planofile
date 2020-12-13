@@ -21,30 +21,13 @@ import sys
 
 sys.path.insert(0, "../python")
 
-import transom_targets
-
-if not transom_targets.PlanoCommand._targets:
-    if PYTHON2:
-        reload(transom_targets)
-    else:
-        import importlib
-        importlib.reload(transom_targets)
-
 from transom_targets import *
 
-_result_file = "output/result.json"
+@target(requires=(clean, render, check_files, check_links))
+def test():
+    pass
 
-@target(extends=render)
-def render():
-    data = {"rendered": True}
-    write_json(_result_file, data)
-
-@target(extends=check_links)
-def check_links():
-    data = {"links_checked": True}
-    write_json(_result_file, data)
-
-@target(extends=check_files)
-def check_files():
-    data = {"files_checked": True}
-    write_json(_result_file, data)
+@target(help="Run the renderer under a profiler")
+def profile():
+    with project_env():
+        run("py-spy record -o /tmp/profile.svg -- transom render --force config input output")

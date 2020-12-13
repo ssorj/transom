@@ -18,21 +18,36 @@
 #
 
 from bullseye import *
+from transom import TransomCommand
 
 project.name = "transom"
 project.extra_source_dirs = ["files"]
 project.build_deps = ["bullseye"]
 project.test_modules = ["transom_tests"]
 
-@target(extends=build, default=True)
+set_default_target("build")
+
+@target(extends=build)
 def build():
     with project_env():
         run("transom --help", quiet=True, stash=True)
 
         with working_dir(quiet=True):
-            touch("config/config.py")
+            touch("config/config.py", quiet=True)
             run("transom render --init-only config input output", quiet=True)
 
 @target(extends=clean)
 def clean():
-    remove("test-site/output")
+    remove("test-site/output", "qpid-site/output")
+    remove("htmlcov", ".coverage")
+
+@target
+def coverage():
+    check_project()
+    check_program("coverage")
+
+    run("coverage run --omit /tmp/* plano test", stash=True)
+    run("coverage report")
+    run("coverage html")
+
+    print("OUTPUT:", get_path_url("htmlcov/index.html"))
