@@ -20,6 +20,8 @@
 from plano import *
 from transom import TransomCommand
 
+import shutil as _shutil
+
 class _Site:
     def __init__(self):
         self.config_dir = "config"

@@ -142,6 +142,13 @@ def test_target_modules(session):
         except PlanoException:
             pass
 
+def test_configure_file(session):
+    with working_dir():
+        input_file = write("zeta-file", "X@replace-me@X")
+        output_file = configure_file(input_file, "zeta-file", {"replace-me": "Y"})
+        output = read(output_file)
+        assert output == "XYX", output
+
 def test_lipsum_function(session):
     result = _lipsum(0, end="")
     assert result == "", result
