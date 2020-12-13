@@ -21,30 +21,30 @@ import sys
 
 sys.path.insert(0, "../python")
 
-import transom_targets
+import transom_commands
 
-if not transom_targets.PlanoCommand._targets:
+if not transom_commands.PlanoCommand._commands:
     if PYTHON2:
-        reload(transom_targets)
+        reload(transom_commands)
     else:
         import importlib
-        importlib.reload(transom_targets)
+        importlib.reload(transom_commands)
 
-from transom_targets import *
+from transom_commands import *
 
 _result_file = "output/result.json"
 
-@target(extends=render)
+@command(extends=render)
 def render():
     data = {"rendered": True}
     write_json(_result_file, data)
 
-@target(extends=check_links)
+@command(extends=check_links)
 def check_links():
     data = {"links_checked": True}
     write_json(_result_file, data)
 
-@target(extends=check_files)
+@command(extends=check_files)
 def check_files():
     data = {"files_checked": True}
     write_json(_result_file, data)

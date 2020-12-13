@@ -25,9 +25,9 @@ project.extra_source_dirs = ["files"]
 project.build_deps = ["bullseye"]
 project.test_modules = ["transom_tests"]
 
-set_default_target("build")
+set_default_command("build")
 
-@target(extends=build)
+@command(extends=build)
 def build():
     with project_env():
         run("transom --help", quiet=True, stash=True)
@@ -36,12 +36,12 @@ def build():
             touch("config/config.py", quiet=True)
             run("transom render --init-only config input output", quiet=True)
 
-@target(extends=clean)
+@command(extends=clean)
 def clean():
     remove("test-site/output", "qpid-site/output")
     remove("htmlcov", ".coverage")
 
-@target
+@command
 def coverage():
     check_project()
     check_program("coverage")

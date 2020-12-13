@@ -38,10 +38,10 @@ def open_test_session(session):
     if session.module.command.verbose:
         enable_logging(level="notice")
 
-def test_command_options(session):
+def test_transom_options(session):
     run("transom --help")
 
-def test_command_init(session):
+def test_transom_init(session):
     run("transom init --help")
     run("transom init --init-only --verbose config input")
 
@@ -57,7 +57,7 @@ def test_command_init(session):
 
         run("transom init config input") # Re-init
 
-def test_command_render(session):
+def test_transom_render(session):
     run("transom render --help")
     run("transom render --init-only --quiet config input output")
 
@@ -78,7 +78,7 @@ def test_command_render(session):
         run("transom render config input output")
         run("transom render --force config input output")
 
-def test_command_check_links(session):
+def test_transom_check_links(session):
     run("transom check-links --help")
     run("transom check-links --init-only --verbose config input output")
 
@@ -90,7 +90,7 @@ def test_command_check_links(session):
 
         run("transom check-links config input output")
 
-def test_command_check_files(session):
+def test_transom_check_files(session):
     run("transom check-files --help")
     run("transom check-files --init-only --quiet config input output")
 
@@ -102,39 +102,39 @@ def test_command_check_files(session):
 
         run("transom check-files config input output")
 
-def test_target_render(session):
+def test_plano_render(session):
     with _test_site():
         PlanoCommand().main(["render"])
 
         result = read_json(_result_file)
         assert result["rendered"], result
 
-# def test_target_serve(session):
+# def test_command_serve(session):
 #     with _test_site():
 #         PlanoCommand().main(["render", "--serve"])
 
 #         result = read_json(_result_file)
 #         assert result["served"], result
 
-def test_target_check_links(session):
+def test_plano_check_links(session):
     with _test_site():
         PlanoCommand().main(["check-links"])
 
         result = read_json(_result_file)
         assert result["links_checked"], result
 
-def test_target_check_files(session):
+def test_plano_check_files(session):
     with _test_site():
         PlanoCommand().main(["check-files"])
 
         result = read_json(_result_file)
         assert result["files_checked"], result
 
-def test_target_clean(session):
+def test_plano_clean(session):
     with _test_site():
         PlanoCommand().main(["clean"])
 
-def test_target_modules(session):
+def test_plano_modules(session):
     with _test_site():
         try:
             PlanoCommand().main(["modules", "--remote", "--recursive"])
