@@ -139,7 +139,7 @@ def test_plano_modules(session):
         try:
             PlanoCommand().main(["modules", "--remote", "--recursive"])
             assert False
-        except PlanoException:
+        except SystemExit:
             pass
 
 def test_configure_file(session):

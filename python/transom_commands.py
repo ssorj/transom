@@ -66,7 +66,7 @@ def serve(port=8080, force=False, verbose=False):
 
 @command(help="Check for broken links", args=(_verbose_arg,))
 def check_links(verbose=False):
-    run_command("render")
+    render()
 
     args = ["check-links", site.config_dir, site.input_dir, site.output_dir]
 
@@ -78,7 +78,7 @@ def check_links(verbose=False):
 
 @command(help="Check for missing or extra files", args=(_verbose_arg,))
 def check_files(verbose=False):
-    run_command("render")
+    render()
 
     args = ["check-files", site.config_dir, site.input_dir, site.output_dir]
 
@@ -100,7 +100,7 @@ def clean():
          args=(CommandArgument("remote", help="Get remote commits"),
                CommandArgument("recursive", help="Update modules recursively")))
 def modules(remote=False, recursive=False):
-    check_program("git")
+    check_programs("git")
 
     command = ["git", "submodule", "update", "--init"]
 

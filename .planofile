@@ -44,7 +44,7 @@ def clean():
 @command
 def coverage():
     check_project()
-    check_program("coverage")
+    check_programs("coverage")
 
     run("coverage run --omit /tmp/* plano test", stash=True)
     run("coverage report")

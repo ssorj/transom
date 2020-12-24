@@ -21,15 +21,6 @@ import sys
 
 sys.path.insert(0, "../python")
 
-import transom_commands
-
-if not transom_commands.PlanoCommand._commands:
-    if PYTHON2:
-        reload(transom_commands)
-    else:
-        import importlib
-        importlib.reload(transom_commands)
-
 from transom_commands import *
 
 _result_file = "output/result.json"
