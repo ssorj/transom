@@ -45,12 +45,12 @@ def transom_init():
     with working_dir():
         run("transom init config input")
 
-        assert is_dir("config"), list_dir()
-        assert is_dir("input"), list_dir()
-        assert is_file("config/config.py"), list_dir("config")
-        assert is_file("input/index.md"), list_dir("input")
-        assert is_file("input/main.css"), list_dir("input")
-        assert is_file("input/main.js"), list_dir("input")
+        check_dir("config")
+        check_dir("input")
+        check_file("config/config.py")
+        check_file("input/index.md")
+        check_file("input/main.css")
+        check_file("input/main.js")
 
         run("transom init config input") # Re-init
 
@@ -62,12 +62,12 @@ def transom_render():
     with test_site():
         run("transom render config input output")
 
-        assert is_dir("output"), list_dir()
-        assert is_file("output/index.html"), list_dir("output")
-        assert is_file("output/test-1.html"), list_dir("output")
-        assert is_file("output/test-2.html"), list_dir("output")
-        assert is_file("output/main.css"), list_dir("output")
-        assert is_file("output/main.js"), list_dir("output")
+        check_dir("output")
+        check_file("output/index.html")
+        check_file("output/test-1.html")
+        check_file("output/test-2.html")
+        check_file("output/main.css")
+        check_file("output/main.js")
 
         result = read("output/index.html")
         assert "<title>Doorjamb</title>" in result, result
@@ -142,11 +142,8 @@ def plano_clean():
 @test
 def plano_modules():
     with test_site():
-        try:
+        with expect_system_exit():
             PlanoCommand().main(["modules", "--remote", "--recursive"])
-            assert False
-        except SystemExit:
-            pass
 
 @test
 def configure_file_function():
