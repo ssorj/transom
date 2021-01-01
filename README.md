@@ -2,7 +2,7 @@
 
 [![main](https://github.com/ssorj/transom/workflows/main/badge.svg)](https://github.com/ssorj/transom/actions?query=workflow%3Amain)
 
-Transom renders website content from markdown source files
+Transom renders static websites from Markdown and Python
 
 ## Setting up the project
 
