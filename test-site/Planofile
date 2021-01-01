@@ -23,19 +23,19 @@ sys.path.insert(0, "../python")
 
 from transom_commands import *
 
-_result_file = "output/result.json"
+result_file = "output/result.json"
 
 @command(extends=render)
 def render():
     data = {"rendered": True}
-    write_json(_result_file, data)
+    write_json(result_file, data)
 
 @command(extends=check_links)
 def check_links():
     data = {"links_checked": True}
-    write_json(_result_file, data)
+    write_json(result_file, data)
 
 @command(extends=check_files)
 def check_files():
     data = {"files_checked": True}
-    write_json(_result_file, data)
+    write_json(result_file, data)

@@ -33,8 +33,6 @@ site = _Site()
 _force_arg = CommandArgument("force", help="Render all input files, including unmodified ones")
 _verbose_arg = CommandArgument("verbose", help="Print detailed logging to the console")
 
-set_default_command("render")
-
 @command(help="Render site output", args=(_force_arg, _verbose_arg))
 def render(force=False, verbose=False):
     with project_env():
@@ -100,7 +98,7 @@ def clean():
          args=(CommandArgument("remote", help="Get remote commits"),
                CommandArgument("recursive", help="Update modules recursively")))
 def modules(remote=False, recursive=False):
-    check_programs("git")
+    check_program("git")
 
     command = ["git", "submodule", "update", "--init"]
 
