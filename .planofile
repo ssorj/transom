@@ -25,10 +25,12 @@ project.excluded_modules = ["bullseye"]
 project.data_dirs = ["files"]
 project.test_modules = ["transom_tests"]
 
-plano.set_default_command("build")
+app.set_default_command("build")
 
-@command(extends=build)
-def build():
+@command(parent=build)
+def build(app, *args, **kwargs):
+    build.super(app, *args, **kwargs)
+
     with project_env():
         run("transom --help", quiet=True, stash=True)
 
@@ -36,13 +38,15 @@ def build():
             touch("config/config.py", quiet=True)
             run("transom render --init-only config input output", quiet=True)
 
-@command(extends=clean)
-def clean():
+@command(parent=clean)
+def clean(app, *args, **kwargs):
+    clean.super(app, *args, **kwargs)
+
     remove("test-site/output", "qpid-site/output")
     remove("htmlcov", ".coverage")
 
 @command
-def coverage():
+def coverage(app):
     check_project()
     check_program("coverage")
 

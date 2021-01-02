@@ -24,10 +24,11 @@ sys.path.insert(0, "../python")
 from transom_commands import *
 
 @command(help="Run the renderer under a profiler")
-def profile():
+def profile(app):
     with project_env():
         run("py-spy record -o /tmp/profile.svg -- transom render --force config input output")
 
-@command(extends=clean)
-def clean():
+@command(parent=clean)
+def clean(app, *args, **kwargs):
+    clean.super(app, *args, **kwargs)
     remove("output")
