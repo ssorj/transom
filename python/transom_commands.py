@@ -33,8 +33,9 @@ site = _Site()
 _force_arg = CommandArgument("force", help="Render all input files, including unmodified ones")
 _verbose_arg = CommandArgument("verbose", help="Print detailed logging to the console")
 
-@command(help="Render site output", args=(_force_arg, _verbose_arg))
+@command(args=(_force_arg, _verbose_arg))
 def render(app, force=False, verbose=False):
+    """Render site output"""
     with project_env():
         args = ["render", "--force", site.config_dir, site.input_dir, site.output_dir]
 
@@ -48,9 +49,10 @@ def render(app, force=False, verbose=False):
 
 # https://stackoverflow.com/questions/22475849/node-js-what-is-enospc-error-and-how-to-solve
 # $ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
-@command(help="Serve the site and rerender when input files change",
-         args=(CommandArgument("port", help="Serve on PORT"), _force_arg, _verbose_arg))
+@command(args=(CommandArgument("port", help="Serve on PORT"), _force_arg, _verbose_arg))
 def serve(app, port=8080, force=False, verbose=False):
+    """Serve the site and rerender when input files change"""
+
     with project_env():
         args = ["render", "--serve", str(port), site.config_dir, site.input_dir, site.output_dir]
 
@@ -62,8 +64,10 @@ def serve(app, port=8080, force=False, verbose=False):
 
         TransomCommand().main(args)
 
-@command(help="Check for broken links", args=(_verbose_arg,))
+@command(args=(_verbose_arg,))
 def check_links(app, verbose=False):
+    """Check for broken links"""
+
     render(app)
 
     args = ["check-links", site.config_dir, site.input_dir, site.output_dir]
@@ -74,8 +78,10 @@ def check_links(app, verbose=False):
     with project_env():
         TransomCommand().main(args)
 
-@command(help="Check for missing or extra files", args=(_verbose_arg,))
+@command(args=(_verbose_arg,))
 def check_files(app, verbose=False):
+    """Check for missing or extra files"""
+
     render(app)
 
     args = ["check-files", site.config_dir, site.input_dir, site.output_dir]
@@ -94,10 +100,11 @@ def clean(app):
     for path in find(".", "*.pyc"):
         remove(path)
 
-@command(help="Update Git submodules",
-         args=(CommandArgument("remote", help="Get remote commits"),
+@command(args=(CommandArgument("remote", help="Get remote commits"),
                CommandArgument("recursive", help="Update modules recursively")))
 def modules(app, remote=False, recursive=False):
+    """Update Git submodules"""
+
     check_program("git")
 
     command = ["git", "submodule", "update", "--init"]

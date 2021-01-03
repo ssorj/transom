@@ -47,6 +47,8 @@ def clean(app, *args, **kwargs):
 
 @command
 def coverage(app):
+    """Analyze test coverage"""
+
     check_project()
     check_program("coverage")
 
