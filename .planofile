@@ -54,4 +54,4 @@ def coverage(app):
     run("coverage report")
     run("coverage html")
 
-    print("OUTPUT:", get_path_url("htmlcov/index.html"))
+    print("OUTPUT:", get_file_url("htmlcov/index.html"))
