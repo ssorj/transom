@@ -81,8 +81,8 @@ class Transom:
 
         try:
             exec(_read_file(_os.path.join(self.config_dir, "config.py")), self._config)
-        except Exception as e:
-            self.warn("Failed to read configuration: {}", e)
+        except FileNotFoundError as e:
+            self.warn("Config file not found: {}", e)
 
     def _init_files(self):
         for root, dirs, files in _os.walk(self.input_dir):
