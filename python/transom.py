@@ -131,10 +131,11 @@ class Transom:
 
         try:
             watcher = _WatcherThread(self)
-            watcher.start()
         except ImportError:
             self.notice("Failed to import pyinotify, so I won't auto-render updated input files")
             self.notice("Try installing the python3-pyinotify package")
+        else:
+            watcher.start()
 
         try:
             livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100", shell=True)
