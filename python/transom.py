@@ -227,6 +227,7 @@ class _File:
 
         self.url = self._output_path[len(self.site.output_dir):]
         self.title = ""
+        self.parent = None
 
         dir_, name = _os.path.split(self._input_path)
 
@@ -234,7 +235,13 @@ class _File:
             self.site._index_files[dir_] = self
             dir_ = _os.path.dirname(dir_)
 
-        self.parent = self.site._index_files.get(dir_)
+        while dir_ != "":
+            try:
+                self.parent = self.site._index_files[dir_]
+            except:
+                dir_ = _os.path.dirname(dir_)
+            else:
+                break
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._input_path}, {self._output_path})"
