@@ -37,7 +37,7 @@ _verbose_arg = CommandArgument("verbose", help="Print detailed logging to the co
 def render(app, force=False, verbose=False):
     """Render site output"""
     with project_env():
-        args = ["render", "--force", site.config_dir, site.input_dir, site.output_dir]
+        args = ["render", site.config_dir, site.input_dir, site.output_dir]
 
         if force:
             args.append("--force")
