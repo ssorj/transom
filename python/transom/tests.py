@@ -19,10 +19,10 @@
 
 import csv as _csv
 
+from .commands import configure_file
+from .main import _lipsum, _html_table, _html_table_csv
 from plano import *
 from plano.commands import PlanoCommand
-from transom import _lipsum, _html_table, _html_table_csv
-from transom_commands import configure_file
 from xml.etree.ElementTree import XML as _XML
 
 test_site_dir = get_absolute_path("test-site")

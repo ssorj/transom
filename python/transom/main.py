@@ -22,7 +22,6 @@ import collections as _collections
 import collections.abc as _abc
 import csv as _csv
 import fnmatch as _fnmatch
-import markdown2 as _markdown
 import os as _os
 import re as _re
 import shutil as _shutil
@@ -31,6 +30,7 @@ import sys as _sys
 import threading as _threading
 import types as _types
 
+from . import markdown2 as _markdown
 from urllib import parse as _urlparse
 from xml.etree.ElementTree import XML as _XML
 from xml.sax.saxutils import escape as _xml_escape

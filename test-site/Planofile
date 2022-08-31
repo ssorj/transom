@@ -21,7 +21,7 @@ import sys
 
 sys.path.insert(0, "../python")
 
-from transom_commands import *
+from transom.commands import *
 
 result_file = "output/result.json"
 

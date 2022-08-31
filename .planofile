@@ -23,7 +23,7 @@ from transom import TransomCommand
 project.name = "transom"
 project.excluded_modules = ["bullseye"]
 project.data_dirs = ["files"]
-project.test_modules = ["transom_tests"]
+project.test_modules = ["transom.tests"]
 
 app.set_default_command("build")
 
