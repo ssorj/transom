@@ -39,8 +39,9 @@ _default_body_template = "<body>{{page.content}}</body>"
 _default_page_template = "{{page.body}}"
 _index_file_names = "index.md", "index.html.in", "index.html"
 _markdown_title_regex = _re.compile(r"(#|##)(.+)")
-_reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
 _variable_regex = _re.compile("({{.+?}})")
+
+# _reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
 
 _markdown_converter = _markdown.Markdown(extras={
     "code-friendly": True,
@@ -58,7 +59,6 @@ class Transom:
 
         self.verbose = verbose
         self.quiet = quiet
-        self._reload = False
 
         self._config = {
             "site": self,
@@ -114,9 +114,6 @@ class Transom:
     def render(self, force=False, serve=None):
         self.notice("Rendering input files")
 
-        if serve is not None:
-            self._reload = True
-
         for file_ in self._init_files():
             file_._render(force=force)
 
@@ -127,8 +124,6 @@ class Transom:
             self._serve(serve)
 
     def _serve(self, port):
-        livereload = None
-
         try:
             watcher = _WatcherThread(self)
         except ImportError:
@@ -137,19 +132,24 @@ class Transom:
         else:
             watcher.start()
 
-        try:
-            livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100", shell=True)
-        except _subprocess.CalledProcessError as e:
-            self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
-            self.notice("Use 'npm install -g livereload' to install the server")
-            self.notice("Subprocess error: {}", e)
+        server = _ServerThread(self, port)
+        server.run()
 
-        try:
-            server = _ServerThread(self, port)
-            server.run()
-        finally:
-            if livereload is not None:
-                livereload.terminate()
+        # livereload = None
+        #
+        # try:
+        #     livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100", shell=True)
+        # except _subprocess.CalledProcessError as e:
+        #     self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
+        #     self.notice("Use 'npm install -g livereload' to install the server")
+        #     self.notice("Subprocess error: {}", e)
+        #
+        # try:
+        #     server = _ServerThread(self, port)
+        #     server.run()
+        # finally:
+        #     if livereload is not None:
+        #         livereload.terminate()
 
     def check_files(self):
         expected_paths = {x._output_path for x in self._init_files()}
@@ -326,10 +326,6 @@ class _TemplatePage(_File):
         with open(self._output_path, "w") as f:
             for elem in self._render_template(self._page_template):
                 f.write(elem)
-
-    @property
-    def reload_script(self):
-        return _reload_script if self.site._reload else ""
 
     @property
     def extra_headers(self):

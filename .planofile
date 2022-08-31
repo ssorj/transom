@@ -42,8 +42,10 @@ def build(*args, **kwargs):
 def clean(*args, **kwargs):
     clean.parent.function(*args, **kwargs)
 
-    remove("test-site/output", "qpid-site/output")
-    remove("htmlcov", ".coverage")
+    remove("test-site/output")
+    remove("qpid-site/output")
+    remove("htmlcov")
+    remove(".coverage")
 
 @command
 def coverage():
