@@ -34,8 +34,11 @@ _force_arg = CommandArgument("force", help="Render all input files, including un
 _verbose_arg = CommandArgument("verbose", help="Print detailed logging to the console")
 
 @command(args=(_force_arg, _verbose_arg))
-def render(app, force=False, verbose=False):
-    """Render site output"""
+def render(force=False, verbose=False):
+    """
+    Render site output
+    """
+
     with project_env():
         args = ["render", site.config_dir, site.input_dir, site.output_dir]
 
@@ -50,8 +53,10 @@ def render(app, force=False, verbose=False):
 # https://stackoverflow.com/questions/22475849/node-js-what-is-enospc-error-and-how-to-solve
 # $ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
 @command(args=(CommandArgument("port", help="Serve on PORT"), _force_arg, _verbose_arg))
-def serve(app, port=8080, force=False, verbose=False):
-    """Serve the site and rerender when input files change"""
+def serve(port=8080, force=False, verbose=False):
+    """
+    Serve the site and rerender when input files change
+    """
 
     with project_env():
         args = ["render", "--serve", str(port), site.config_dir, site.input_dir, site.output_dir]
@@ -65,10 +70,12 @@ def serve(app, port=8080, force=False, verbose=False):
         TransomCommand().main(args)
 
 @command(args=(_verbose_arg,))
-def check_links(app, verbose=False):
-    """Check for broken links"""
+def check_links(verbose=False):
+    """
+    Check for broken links
+    """
 
-    render(app)
+    render()
 
     args = ["check-links", site.config_dir, site.input_dir, site.output_dir]
 
@@ -79,10 +86,12 @@ def check_links(app, verbose=False):
         TransomCommand().main(args)
 
 @command(args=(_verbose_arg,))
-def check_files(app, verbose=False):
-    """Check for missing or extra files"""
+def check_files(verbose=False):
+    """
+    Check for missing or extra files
+    """
 
-    render(app)
+    render()
 
     args = ["check-files", site.config_dir, site.input_dir, site.output_dir]
 
@@ -93,7 +102,7 @@ def check_files(app, verbose=False):
         TransomCommand().main(args)
 
 @command
-def clean(app):
+def clean():
     for path in find(".", "__pycache__"):
         remove(path)
 

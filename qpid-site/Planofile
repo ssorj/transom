@@ -24,7 +24,7 @@ sys.path.insert(0, "../python")
 from transom_commands import *
 
 @command
-def profile(app):
+def profile():
     """
     Run the renderer under a profiler
     """
@@ -32,6 +32,6 @@ def profile(app):
         run("py-spy record -o /tmp/profile.svg -- transom render --force config input output")
 
 @command(parent=clean)
-def clean(app, *args, **kwargs):
-    clean.super(app, *args, **kwargs)
+def clean(*args, **kwargs):
+    clean.parent.function(*args, **kwargs)
     remove("output")

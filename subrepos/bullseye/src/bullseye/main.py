@@ -107,6 +107,8 @@ def build(prefix=None, clean_=False):
         debug("Already built")
         return
 
+    print(111, build_file, new_build_data)
+
     write_json(build_file, new_build_data)
 
     default_home = join(prefix, "lib", project.name)
