@@ -110,15 +110,9 @@ class Transom:
         threads = list()
         file_lists = [list() for x in range(thread_count)]
 
-        import time
-        start = time.time()
-
         for i, file_ in enumerate(self._init_files()):
             file_._load()
             file_lists[i % thread_count].append(file_)
-
-        print(111, time.time() - start)
-        start = time.time()
 
         for i in range(thread_count):
             threads.append(_RenderThread(file_lists[i], force))
@@ -128,8 +122,6 @@ class Transom:
 
         for thread in threads:
             thread.join()
-
-        print(222, time.time() - start)
 
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
