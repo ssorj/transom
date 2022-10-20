@@ -106,12 +106,19 @@ class Transom:
     def render(self, force=False):
         self.notice("Rendering input files")
 
-        thread_count = _os.cpu_count()
+        thread_count = 4
         threads = list()
         file_lists = [list() for x in range(thread_count)]
 
+        import time
+        start = time.time()
+
         for i, file_ in enumerate(self._init_files()):
+            file_._load()
             file_lists[i % thread_count].append(file_)
+
+        print(111, time.time() - start)
+        start = time.time()
 
         for i in range(thread_count):
             threads.append(_RenderThread(file_lists[i], force))
@@ -121,6 +128,8 @@ class Transom:
 
         for thread in threads:
             thread.join()
+
+        print(222, time.time() - start)
 
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
@@ -248,6 +257,9 @@ class _File:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._input_path}, {self._output_path})"
 
+    def _load(self):
+        pass
+
     def _render(self, force=False):
         self._process_input()
 
@@ -306,11 +318,14 @@ class _File:
 class _TemplatePage(_File):
     __slots__ = "_content", "_attributes", "_page_template", "_body_template"
 
-    def _process_input(self):
+    def _load(self):
         self._content = _read_file(self._input_path)
         self._content, self._attributes = _extract_metadata(self._content)
 
         self.title = self._attributes.get("title", self.title)
+
+    def _process_input(self):
+        assert self._content is not None
 
         try:
             self._page_template = _load_template(self._attributes["page_template"], _default_page_template)
@@ -385,8 +400,8 @@ class _TemplatePage(_File):
 class _MarkdownPage(_TemplatePage):
     __slots__ = ()
 
-    def _process_input(self):
-        super()._process_input()
+    def _load(self):
+        super()._load()
 
         if not self.title:
             match = _markdown_title_regex.search(self._content)
@@ -423,7 +438,9 @@ class _WatcherThread(_threading.Thread):
             if _os.path.isdir(input_path) or self.site._is_ignored_file(_os.path.basename(input_path)):
                 return True
 
-            self.site._init_file(input_path)._render()
+            file_ = self.site._init_file(input_path)
+            file._load()
+            file._render()
 
             if _os.path.exists(self.site.output_dir):
                 _os.utime(self.site.output_dir)
