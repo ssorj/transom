@@ -82,10 +82,9 @@ def transom_serve():
     run("transom serve --help")
 
     with test_site():
-        with start("transom serve --port 63456 --quiet config input output"):
-            await_port(63456)
-            sleep(0.2)
-            http_get("http://localhost:63456/index.html")
+        with start("transom serve --port 9191 --quiet config input output"):
+            await_port(9191)
+            http_get("http://localhost:9191/index.html")
 
 @test
 def transom_check_links():
