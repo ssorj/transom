@@ -22,6 +22,7 @@ import collections as _collections
 import collections.abc as _abc
 import csv as _csv
 import fnmatch as _fnmatch
+import http.server as _http
 import os as _os
 import re as _re
 import shutil as _shutil
@@ -40,8 +41,6 @@ _default_page_template = "{{page.body}}"
 _index_file_names = "index.md", "index.html.in", "index.html"
 _markdown_title_regex = _re.compile(r"(#|##)(.+)")
 _variable_regex = _re.compile("({{.+?}})")
-
-# _reload_script = "<script src=\"http://localhost:35729/livereload.js\"></script>"
 
 class Transom:
     def __init__(self, config_dir, input_dir, output_dir, verbose=False, quiet=False):
@@ -135,24 +134,21 @@ class Transom:
         else:
             watcher.start()
 
-        server = _ServerThread(self, port)
-        server.run()
+        livereload = None
 
-        # livereload = None
-        #
-        # try:
-        #     livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100", shell=True)
-        # except _subprocess.CalledProcessError as e:
-        #     self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
-        #     self.notice("Use 'npm install -g livereload' to install the server")
-        #     self.notice("Subprocess error: {}", e)
-        #
-        # try:
-        #     server = _ServerThread(self, port)
-        #     server.run()
-        # finally:
-        #     if livereload is not None:
-        #         livereload.terminate()
+        try:
+            livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100", shell=True)
+        except _subprocess.CalledProcessError as e:
+            self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
+            self.notice("Use 'npm install -g livereload' to install the server")
+            self.notice("Subprocess error: {}", e)
+
+        try:
+            server = _ServerThread(self, port)
+            server.run()
+        finally:
+            if livereload is not None:
+                livereload.terminate()
 
     def check_files(self):
         expected_paths = {x._output_path for x in self._init_files()}
@@ -431,8 +427,8 @@ class _WatcherThread(_threading.Thread):
                 return True
 
             file_ = self.site._init_file(input_path)
-            file._load()
-            file._render()
+            file_._load()
+            file_._render()
 
             if _os.path.exists(self.site.output_dir):
                 _os.utime(self.site.output_dir)
@@ -447,20 +443,45 @@ class _WatcherThread(_threading.Thread):
 
 class _ServerThread(_threading.Thread):
     def __init__(self, site, port):
-        import http.server as _http
-        import functools as _functools
-
         super().__init__(name="server", daemon=True)
 
         self.site = site
         self.port = port
-
-        handler = _functools.partial(_http.SimpleHTTPRequestHandler, directory=self.site.output_dir)
-        self.server = _http.ThreadingHTTPServer(("localhost", self.port), handler)
+        self.server = _Server(site, port)
 
     def run(self):
         self.site.notice("Serving at http://localhost:{}", self.port)
         self.server.serve_forever()
+
+class _Server(_http.ThreadingHTTPServer):
+    def __init__(self, site, port):
+        super().__init__(("localhost", port), _ServerRequestHandler)
+
+        self.site = site
+
+class _ServerRequestHandler(_http.SimpleHTTPRequestHandler):
+    def __init__(self, request, client_address, server, directory=None):
+        super().__init__(request, client_address, server, directory=server.site.output_dir)
+
+    def do_GET(self):
+        path = _os.path.join(self.directory, self.path.removeprefix("/"))
+
+        if _os.path.isdir(path):
+            path = _os.path.join(path, "index.html")
+
+        if path.endswith(".html"):
+            with open(path) as file_:
+                content = file_.read()
+                content = content.replace("</head>", "<script src=\"http://localhost:35729/livereload.js\"></script></head>")
+
+                self.send_response(_http.HTTPStatus.OK)
+                self.send_header("Content-type", "text/html; charset=UTF-8")
+                self.send_header("Content-length", len(content))
+                self.end_headers()
+
+                self.wfile.write(content.encode("utf-8"))
+        else:
+            super().do_GET()
 
 class TransomCommand:
     def __init__(self, home=None):
