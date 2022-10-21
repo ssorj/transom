@@ -61,6 +61,7 @@ class Transom:
         self._body_template = None
         self._page_template = None
 
+        self._files = list()
         self._index_files = dict() # parent input dir => _File
 
         self.ignored_file_patterns = [".git", ".svn", ".#*", "#*"]
@@ -76,18 +77,18 @@ class Transom:
             self.warn("Config file not found: {}", e)
 
     def _init_files(self):
-        for root, dirs, files in _os.walk(self.input_dir):
-            files = {x for x in files if not self._is_ignored_file(x)}
-            index_files = {x for x in files if x in _index_file_names}
+        for root, dirs, names in _os.walk(self.input_dir):
+            files = {x for x in names if not self._is_ignored_file(x)}
+            index_files = {x for x in names if x in _index_file_names}
 
             if len(index_files) > 1:
                 raise Exception(f"Duplicate index files in {root}")
 
             for name in index_files:
-                yield self._init_file(_os.path.join(root, name))
+                self._files.append(self._init_file(_os.path.join(root, name)))
 
             for name in files - index_files:
-                yield self._init_file(_os.path.join(root, name))
+                self._files.append(self._init_file(_os.path.join(root, name)))
 
     def _is_ignored_file(self, name):
         return any((_fnmatch.fnmatchcase(name, x) for x in self.ignored_file_patterns))
@@ -105,16 +106,23 @@ class Transom:
     def render(self, force=False):
         self.notice("Rendering input files")
 
+        self._init_files()
+
+        # Index files must be processed serially in order to extract
+        # their titles.  The rest can be processed in parallel.
+        for file_ in self._index_files.values():
+            if isinstance(file_, _TemplatePage):
+                file_._process_input()
+
         thread_count = 4
         threads = list()
-        file_lists = [list() for x in range(thread_count)]
+        batches = [list() for x in range(thread_count)]
 
-        for i, file_ in enumerate(self._init_files()):
-            file_._load()
-            file_lists[i % thread_count].append(file_)
+        for i, file_ in enumerate(self._files):
+            batches[i % thread_count].append(file_)
 
-        for i in range(thread_count):
-            threads.append(_RenderThread(file_lists[i], force))
+        for batch in batches:
+            threads.append(_RenderThread(batch, force))
 
         for thread in threads:
             thread.start()
@@ -152,11 +160,13 @@ class Transom:
                 livereload.terminate()
 
     def check_files(self):
-        expected_paths = {x._output_path for x in self._init_files()}
+        self._init_files()
+
+        expected_paths = {x._output_path for x in self._files}
         found_paths = set()
 
-        for root, dirs, files in _os.walk(self.output_dir):
-            found_paths.update((_os.path.join(root, x) for x in files))
+        for root, dirs, names in _os.walk(self.output_dir):
+            found_paths.update((_os.path.join(root, x) for x in names))
 
         missing_paths = expected_paths - found_paths
         extra_paths = found_paths - expected_paths
@@ -176,10 +186,12 @@ class Transom:
         return len(missing_paths), len(extra_paths)
 
     def check_links(self):
+        self._init_files()
+
         link_sources = _collections.defaultdict(set) # link => files
         link_targets = set()
 
-        for file_ in self._init_files():
+        for file_ in self._files:
             try:
                 file_._collect_link_data(link_sources, link_targets)
             except Exception as e:
@@ -246,18 +258,11 @@ class _File:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._input_path}, {self._output_path})"
 
-    def _load(self):
-        pass
-
     def _render(self, force=False):
-        self._process_input()
-
-        if self._is_modified() or force:
+        if force or self._is_modified():
             self.site.info("Rendering {}", self)
-            self._render_output()
 
-    def _process_input(self):
-        pass
+            _copy_file(self._input_path, self._output_path)
 
     def _is_modified(self):
         if self._output_mtime is None:
@@ -267,9 +272,6 @@ class _File:
                 return True
 
         return self._input_mtime > self._output_mtime
-
-    def _render_output(self):
-        _copy_file(self._input_path, self._output_path)
 
     def _collect_link_data(self, link_sources, link_targets):
         link_targets.add(self.url)
@@ -305,16 +307,20 @@ class _File:
                 link_targets.add(normalized_url)
 
 class _TemplatePage(_File):
-    __slots__ = "_content", "_attributes", "_page_template", "_body_template"
+    __slots__ = "_processed", "_content", "_attributes", "_page_template", "_body_template"
 
-    def _load(self):
+    def __init__(self, site, input_path, output_path):
+        super().__init__(site, input_path, output_path)
+
+        self._processed = False
+
+    def _process_input(self):
+        self._processed = True
+
         self._content = _read_file(self._input_path)
         self._content, self._attributes = _extract_metadata(self._content)
 
         self.title = self._attributes.get("title", self.title)
-
-    def _process_input(self):
-        assert self._content is not None
 
         try:
             self._page_template = _load_template(self._attributes["page_template"], _default_page_template)
@@ -326,12 +332,18 @@ class _TemplatePage(_File):
         except KeyError:
             self._body_template = self.site._body_template
 
-    def _render_output(self):
-        _os.makedirs(_os.path.dirname(self._output_path), exist_ok=True)
+    def _render(self, force=False):
+        if not self._processed:
+            self._process_input()
 
-        with open(self._output_path, "w") as f:
-            for elem in self._render_template(self._page_template):
-                f.write(elem)
+        if force or self._is_modified():
+            self.site.info("Rendering {}", self)
+
+            _os.makedirs(_os.path.dirname(self._output_path), exist_ok=True)
+
+            with open(self._output_path, "w") as f:
+                for elem in self._render_template(self._page_template):
+                    f.write(elem)
 
     @property
     def extra_headers(self):
@@ -389,8 +401,8 @@ class _TemplatePage(_File):
 class _MarkdownPage(_TemplatePage):
     __slots__ = ()
 
-    def _load(self):
-        super()._load()
+    def _process_input(self):
+        super()._process_input()
 
         if not self.title:
             match = _markdown_title_regex.search(self._content)
@@ -428,7 +440,6 @@ class _WatcherThread(_threading.Thread):
                 return True
 
             file_ = self.site._init_file(input_path)
-            file_._load()
             file_._render()
 
             if _os.path.exists(self.site.output_dir):
