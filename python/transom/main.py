@@ -327,7 +327,7 @@ class _TemplatePage(_File):
             self._body_template = self.site._body_template
 
     def _render_output(self):
-        _make_dir(_os.path.dirname(self._output_path))
+        _os.makedirs(_os.path.dirname(self._output_path), exist_ok=True)
 
         with open(self._output_path, "w") as f:
             for elem in self._render_template(self._page_template):
@@ -658,16 +658,16 @@ class TransomCommand:
         else:
             self.fail("FAILED")
 
-def _make_dir(path):
-    _os.makedirs(path, exist_ok=True)
-
 def _read_file(path):
     with open(path, "r") as f:
         return f.read()
 
 def _copy_file(from_path, to_path):
-    _make_dir(_os.path.dirname(to_path))
-    _shutil.copyfile(from_path, to_path)
+    try:
+        _shutil.copyfile(from_path, to_path)
+    except FileNotFoundError:
+        _os.makedirs(_os.path.dirname(to_path), exist_ok=True)
+        _shutil.copyfile(from_path, to_path)
 
 def _extract_metadata(text):
     attrs = dict()
