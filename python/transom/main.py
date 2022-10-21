@@ -108,12 +108,6 @@ class Transom:
 
         self._init_files()
 
-        # Index files must be processed serially in order to extract
-        # their titles.  The rest can be processed in parallel.
-        for file_ in self._index_files.values():
-            if isinstance(file_, _TemplatePage):
-                file_._process_input()
-
         thread_count = 4
         threads = list()
         batches = [list() for x in range(thread_count)]
@@ -307,16 +301,9 @@ class _File:
                 link_targets.add(normalized_url)
 
 class _TemplatePage(_File):
-    __slots__ = "_processed", "_content", "_attributes", "_page_template", "_body_template"
-
-    def __init__(self, site, input_path, output_path):
-        super().__init__(site, input_path, output_path)
-
-        self._processed = False
+    __slots__ = "_content", "_attributes", "_page_template", "_body_template"
 
     def _process_input(self):
-        self._processed = True
-
         self._content = _read_file(self._input_path)
         self._content, self._attributes = _extract_metadata(self._content)
 
@@ -333,8 +320,7 @@ class _TemplatePage(_File):
             self._body_template = self.site._body_template
 
     def _render(self, force=False):
-        if not self._processed:
-            self._process_input()
+        self._process_input()
 
         if force or self._is_modified():
             self.site.info("Rendering {}", self)
