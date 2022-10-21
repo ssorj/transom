@@ -550,7 +550,7 @@ class TransomCommand:
 
         if self.args.command_fn != self.init_command:
             self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir,
-                               verbose=self.args.verbose, quiet=self.args.quiet)
+                               verbose=self.verbose, quiet=self.quiet)
             self.lib.init()
 
             if self.args.init_only:
