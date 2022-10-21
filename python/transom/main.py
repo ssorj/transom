@@ -508,11 +508,11 @@ class TransomCommand:
 
         common_io = _argparse.ArgumentParser(add_help=False)
         common_io.add_argument("config_dir", metavar="CONFIG-DIR",
-                        help="Read config files from CONFIG-DIR")
+                               help="Read config files from CONFIG-DIR")
         common_io.add_argument("input_dir", metavar="INPUT-DIR",
-                        help="The base directory for input files")
+                               help="The base directory for input files")
         common_io.add_argument("output_dir", metavar="OUTPUT-DIR",
-                        help="The base directory for output files")
+                               help="The base directory for output files")
 
         init = subparsers.add_parser("init", parents=(common,), add_help=False,
                                      help="Prepare an input directory")
