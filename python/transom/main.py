@@ -131,6 +131,7 @@ class Transom:
         except ImportError:
             self.notice("Failed to import pyinotify, so I won't auto-render updated input files")
             self.notice("Try installing the Python inotify package")
+            self.notice("On Fedora, use 'dnf install python-inotify'")
         else:
             watcher.start()
 
