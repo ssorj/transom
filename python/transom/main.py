@@ -36,8 +36,8 @@ from urllib import parse as _urlparse
 from xml.etree.ElementTree import XML as _XML
 from xml.sax.saxutils import escape as _xml_escape
 
-_default_body_template = "<body>{{page.content}}</body>"
 _default_page_template = "{{page.body}}"
+_default_body_template = "{{page.content}}"
 _index_file_names = "index.md", "index.html.in", "index.html"
 _markdown_title_regex = _re.compile(r"(#|##)(.+)")
 _variable_regex = _re.compile("({{.+?}})")
@@ -545,17 +545,6 @@ class TransomCommand:
         check_files = subparsers.add_parser("check-files", parents=(common, common_io), add_help=False,
                                             help="Check for missing or extra files")
         check_files.set_defaults(command_fn=self.check_files_command)
-
-    def load_config(self):
-        dir_ = _os.path.expanduser("~")
-        config_file = _os.path.join(dir_, ".config", self.name, "config.py")
-        config = dict()
-
-        if _os.path.exists(config_file):
-            entries = _runpy.run_path(config_file, config)
-            config.update(entries)
-
-        return config
 
     def init(self, args=None):
         assert self.args is None
