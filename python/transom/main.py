@@ -462,120 +462,22 @@ class _ServerThread(_threading.Thread):
         self.site.notice("Serving at http://localhost:{}", self.port)
         self.server.serve_forever()
 
-class _Command:
-    def __init__(self, home=None, name=None, standard_args=True):
+class TransomCommand:
+    def __init__(self, home=None):
         self.home = home
-        self.name = name
-        self.standard_args = standard_args
+        self.name = "transom"
 
         self.parser = _argparse.ArgumentParser()
+        self.parser.description = "Generate static websites from Markdown and Python"
         self.parser.formatter_class = _argparse.RawDescriptionHelpFormatter
 
         self.args = None
-
-        if self.name is None:
-            self.name = self.parser.prog
-
-        self.id = self.name
 
         self.quiet = False
         self.verbose = False
         self.init_only = False
 
-    def add_argument(self, *args, **kwargs):
-        self.parser.add_argument(*args, **kwargs)
-
-    def add_subparsers(self, *args, **kwargs):
-        return self.parser.add_subparsers(*args, **kwargs)
-
-    @property
-    def description(self):
-        return self.parser.description
-
-    @description.setter
-    def description(self, text):
-        self.parser.description = text.strip()
-
-    @property
-    def epilog(self):
-        return self.parser.epilog
-
-    @epilog.setter
-    def epilog(self, text):
-        self.parser.epilog = text.strip()
-
-    def load_config(self):
-        dir_ = _os.path.expanduser("~")
-        config_file = _os.path.join(dir_, ".config", self.name, "config.py")
-        config = dict()
-
-        if _os.path.exists(config_file):
-            entries = _runpy.run_path(config_file, config)
-            config.update(entries)
-
-        return config
-
-    def init(self, args=None):
-        assert self.args is None
-
-        self.args = self.parser.parse_args(args)
-
-        if self.standard_args:
-            self.quiet = self.args.quiet
-            self.verbose = self.args.verbose
-            self.init_only = self.args.init_only
-
-    def run(self):
-        raise NotImplementedError()
-
-    def main(self, args=None):
-        self.init(args)
-
-        assert self.args is not None
-
-        if self.init_only:
-            return
-
-        try:
-            self.run()
-        except KeyboardInterrupt: # pragma: nocover
-            pass
-
-    def info(self, message, *args):
-        if self.verbose:
-            self.print_message(message, *args)
-
-    def notice(self, message, *args):
-        if not self.quiet:
-            self.print_message(message, *args)
-
-    def warn(self, message, *args):
-        message = "Warning: {0}".format(message)
-        self.print_message(message, *args)
-
-    def error(self, message, *args):
-        message = "Error! {0}".format(message)
-        self.print_message(message, *args)
-
-    def fail(self, message, *args):
-        self.error(message, *args)
-        _sys.exit(1)
-
-    def print_message(self, message, *args):
-        message = message[0].upper() + message[1:]
-        message = message.format(*args)
-        message = "{0}: {1}".format(self.id, message)
-
-        _sys.stderr.write("{0}\n".format(message))
-        _sys.stderr.flush()
-
-class TransomCommand(_Command):
-    def __init__(self, home=None):
-        super().__init__(home=home, name="transom", standard_args=False)
-
-        self.description = "Generate static websites from Markdown and Python"
-
-        subparsers = self.add_subparsers(title="subcommands")
+        subparsers = self.parser.add_subparsers(title="subcommands")
 
         common = _argparse.ArgumentParser()
         common.add_argument("--verbose", action="store_true",
@@ -623,8 +525,25 @@ class TransomCommand(_Command):
                                             help="Check for missing or extra files")
         check_files.set_defaults(command_fn=self.check_files_command)
 
+    def load_config(self):
+        dir_ = _os.path.expanduser("~")
+        config_file = _os.path.join(dir_, ".config", self.name, "config.py")
+        config = dict()
+
+        if _os.path.exists(config_file):
+            entries = _runpy.run_path(config_file, config)
+            config.update(entries)
+
+        return config
+
     def init(self, args=None):
-        super().init(args)
+        assert self.args is None
+
+        self.args = self.parser.parse_args(args)
+
+        self.quiet = self.args.quiet
+        self.verbose = self.args.verbose
+        self.init_only = self.args.init_only
 
         if "command_fn" not in self.args:
             self.fail("Missing subcommand")
@@ -637,8 +556,46 @@ class TransomCommand(_Command):
             if self.args.init_only:
                 self.parser.exit()
 
-    def run(self):
-        self.args.command_fn()
+    def main(self, args=None):
+        self.init(args)
+
+        assert self.args is not None
+
+        if self.init_only:
+            return
+
+        try:
+            self.args.command_fn()
+        except KeyboardInterrupt: # pragma: nocover
+            pass
+
+    def info(self, message, *args):
+        if self.verbose:
+            self.print_message(message, *args)
+
+    def notice(self, message, *args):
+        if not self.quiet:
+            self.print_message(message, *args)
+
+    def warn(self, message, *args):
+        message = "Warning: {0}".format(message)
+        self.print_message(message, *args)
+
+    def error(self, message, *args):
+        message = "Error! {0}".format(message)
+        self.print_message(message, *args)
+
+    def fail(self, message, *args):
+        self.error(message, *args)
+        _sys.exit(1)
+
+    def print_message(self, message, *args):
+        message = message[0].upper() + message[1:]
+        message = message.format(*args)
+        message = "{0}: {1}".format(self.name, message)
+
+        _sys.stderr.write("{0}\n".format(message))
+        _sys.stderr.flush()
 
     def init_command(self):
         if self.home is None:
