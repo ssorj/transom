@@ -8,5 +8,6 @@ jobs:
       with:
         submodules: recursive
     - uses: actions/setup-python@v2
-    - run: |
-        ./plano test
+    - uses: actions/setup-node@v2
+    - run: npm install -g livereload
+    - run: ./plano test
