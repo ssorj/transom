@@ -108,6 +108,9 @@ class Transom:
 
         self._init_files()
 
+        for file_ in self._index_files.values():
+            file_._process_input()
+
         thread_count = 4
         threads = list()
         batches = [list() for x in range(thread_count)]
@@ -258,6 +261,9 @@ class _File:
 
             _copy_file(self._input_path, self._output_path)
 
+    def _process_input(self):
+        pass
+
     def _is_modified(self):
         if self._output_mtime is None:
             try:
@@ -320,7 +326,8 @@ class _TemplatePage(_File):
             self._body_template = self.site._body_template
 
     def _render(self, force=False):
-        self._process_input()
+        if not hasattr(self, "_content"):
+            self._process_input()
 
         if force or self._is_modified():
             self.site.info("Rendering {}", self)
