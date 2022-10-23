@@ -19,7 +19,7 @@
 
 import csv as _csv
 
-from .main import _lipsum, _html_table, _html_table_csv
+from .main import _lipsum, _plural, _html_table, _html_table_csv
 from plano import *
 from plano.commands import PlanoCommand
 from xml.etree.ElementTree import XML as _XML
@@ -165,6 +165,29 @@ def lipsum_function():
 
     result = _lipsum(1000)
     assert result
+
+@test
+def plural_function():
+    result = _plural(None)
+    assert result == "", result
+
+    result = _plural("")
+    assert result == "", result
+
+    result = _plural("test")
+    assert result == "tests", result
+
+    result = _plural("test", 1)
+    assert result == "test", result
+
+    result = _plural("bus")
+    assert result == "busses", result
+
+    result = _plural("bus", 1)
+    assert result == "bus", result
+
+    result = _plural("terminus", 2, "termini")
+    assert result == "termini", result
 
 @test
 def html_table_functions():
