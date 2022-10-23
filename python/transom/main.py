@@ -485,7 +485,7 @@ class _ServerRequestHandler(_http.SimpleHTTPRequestHandler):
         super().__init__(request, client_address, server, directory=server.site.output_dir)
 
     def do_GET(self):
-        path = _os.path.join(self.directory, self.path.removeprefix("/"))
+        path = _os.path.join(self.directory, self.path[1:])
 
         if _os.path.isdir(path):
             path = _os.path.join(path, "index.html")
