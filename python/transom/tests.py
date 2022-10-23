@@ -19,7 +19,6 @@
 
 import csv as _csv
 
-from .commands import configure_file
 from .main import _lipsum, _html_table, _html_table_csv
 from plano import *
 from plano.commands import PlanoCommand
@@ -155,14 +154,6 @@ def plano_modules():
     with test_site():
         with expect_system_exit():
             PlanoCommand().main(["modules", "--remote", "--recursive"])
-
-@test
-def configure_file_function():
-    with working_dir():
-        input_file = write("zeta-file", "X@replace-me@X")
-        output_file = configure_file(input_file, "zeta-file", {"replace-me": "Y"})
-        output = read(output_file)
-        assert output == "XYX", output
 
 @test
 def lipsum_function():
