@@ -108,9 +108,11 @@ class Transom:
             return _File(self, input_path, output_path)
 
     def render(self, force=False):
-        self.notice("Rendering input files")
+        self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
 
         self._init_files()
+
+        self.notice("Found {:,} input {}", len(self._files), _plural("file", len(self._files)))
 
         for file_ in self._index_files.values():
             file_._process_input()
@@ -134,7 +136,7 @@ class Transom:
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
 
-        self.notice("Rendered {:,} {}", self._render_count, _plural("file", self._render_count))
+        self.notice("Rendered {:,} output {}", self._render_count, _plural("file", self._render_count))
 
     def serve(self, port=8080):
         try:
