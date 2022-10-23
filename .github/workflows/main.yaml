@@ -4,7 +4,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - run: apt update
-    - run: apt install python3 npm
+    - run: sudo apt update
+    - run: sudo apt install python3 npm
     - run: npm install -g livereload
     - run: ./plano test
