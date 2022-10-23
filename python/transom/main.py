@@ -135,11 +135,12 @@ class Transom:
 
         rendered_count = len([x for x in self._files if x._rendered])
         unmodified_count = len(self._files) - rendered_count
+        unmodified_note = ""
 
         if unmodified_count > 0:
-            self.notice("{:,} {} are unchanged", unmodified_count, _plural("file", unmodified_count))
+            unmodified_note = " ({:,} unchanged)".format(unmodified_count)
 
-        self.notice("Rendered {:,} output {}", rendered_count, _plural("file", rendered_count))
+        self.notice("Rendered {:,} output {}{}", rendered_count, _plural("file", rendered_count), unmodified_note)
 
     def serve(self, port=8080):
         try:
