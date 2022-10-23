@@ -40,7 +40,7 @@ _default_page_template = "{{page.body}}"
 _default_body_template = "{{page.content}}"
 _index_file_names = "index.md", "index.html.in", "index.html"
 _markdown_title_regex = _re.compile(r"(#|##)(.+)")
-_variable_regex = _re.compile("({{.+?}})")
+_variable_regex = _re.compile(r"({{.+?}})")
 
 class Transom:
     def __init__(self, config_dir, input_dir, output_dir, verbose=False, quiet=False):
@@ -51,9 +51,13 @@ class Transom:
         self.verbose = verbose
         self.quiet = quiet
 
+        self.ignored_file_patterns = [".git", ".svn", ".#*", "#*"]
+        self.ignored_link_patterns = []
+
         self._config = {
             "site": self,
             "lipsum": _lipsum,
+            "plural": _plural,
             "html_table": _html_table,
             "html_table_csv": _html_table_csv,
         }
@@ -64,12 +68,15 @@ class Transom:
         self._files = list()
         self._index_files = dict() # parent input dir => _File
 
-        self.ignored_file_patterns = [".git", ".svn", ".#*", "#*"]
-        self.ignored_link_patterns = []
+        self._render_count = 0
+        self._render_count_lock = _threading.Lock()
 
     def init(self):
         self._page_template = _load_template(_os.path.join(self.config_dir, "page.html"), _default_page_template)
         self._body_template = _load_template(_os.path.join(self.config_dir, "body.html"), _default_body_template)
+
+        self._ignored_file_regex = "({})".format("|".join([_fnmatch.translate(x) for x in self.ignored_file_patterns]))
+        self._ignored_file_regex = _re.compile(self._ignored_file_regex)
 
         try:
             exec(_read_file(_os.path.join(self.config_dir, "config.py")), self._config)
@@ -78,7 +85,7 @@ class Transom:
 
     def _init_files(self):
         for root, dirs, names in _os.walk(self.input_dir):
-            files = {x for x in names if not self._is_ignored_file(x)}
+            files = {x for x in names if not self._ignored_file_regex.match(x)}
             index_files = {x for x in names if x in _index_file_names}
 
             if len(index_files) > 1:
@@ -89,9 +96,6 @@ class Transom:
 
             for name in files - index_files:
                 self._files.append(self._init_file(_os.path.join(root, name)))
-
-    def _is_ignored_file(self, name):
-        return any((_fnmatch.fnmatchcase(name, x) for x in self.ignored_file_patterns))
 
     def _init_file(self, input_path):
         output_path = _os.path.join(self.output_dir, input_path[len(self.input_dir) + 1:])
@@ -129,6 +133,8 @@ class Transom:
 
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
+
+        self.notice("Rendered {:,} {}", self._render_count, _plural("file", self._render_count))
 
     def serve(self, port=8080):
         try:
@@ -263,6 +269,9 @@ class _File:
 
         _copy_file(self._input_path, self._output_path)
 
+        with self.site._render_count_lock:
+            self.site._render_count += 1
+
     def _process_input(self):
         pass
 
@@ -341,6 +350,9 @@ class _TemplatePage(_File):
         with open(self._output_path, "w") as f:
             for elem in self._render_template(self._page_template):
                 f.write(elem)
+
+        with self.site._render_count_lock:
+            self.site._render_count += 1
 
     @property
     def extra_headers(self):
@@ -433,7 +445,7 @@ class _WatcherThread(_threading.Thread):
         def render(event):
             input_path = _os.path.relpath(event.pathname, _os.getcwd())
 
-            if _os.path.isdir(input_path) or self.site._is_ignored_file(_os.path.basename(input_path)):
+            if _os.path.isdir(input_path) or self.site._ignored_file_regex.match(input_path):
                 return True
 
             file_ = self.site._init_file(input_path)
@@ -731,6 +743,21 @@ _lipsum_words = [
 
 def _lipsum(count=50, end="."):
     return (" ".join((_lipsum_words[i % len(_lipsum_words)] for i in range(count))) + end).capitalize()
+
+def _plural(noun, count=0, plural=None):
+    if noun in (None, ""):
+        return ""
+
+    if count == 1:
+        return noun
+
+    if plural is None:
+        if noun.endswith("s"):
+            plural = "{}ses".format(noun)
+        else:
+            plural = "{}s".format(noun)
+
+    return plural
 
 def _html_table_csv(path, **attrs):
     with open(path, newline="") as f:
