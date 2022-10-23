@@ -256,10 +256,12 @@ class _File:
         return f"{self.__class__.__name__}({self._input_path}, {self._output_path})"
 
     def _render(self, force=False):
-        if force or self._is_modified():
-            self.site.info("Rendering {}", self)
+        if not force and not self._is_modified():
+            return
 
-            _copy_file(self._input_path, self._output_path)
+        self.site.info("Rendering {}", self)
+
+        _copy_file(self._input_path, self._output_path)
 
     def _process_input(self):
         pass
@@ -326,17 +328,19 @@ class _TemplatePage(_File):
             self._body_template = self.site._body_template
 
     def _render(self, force=False):
+        if not force and not self._is_modified():
+            return
+
+        self.site.info("Rendering {}", self)
+
         if not hasattr(self, "_content"):
             self._process_input()
 
-        if force or self._is_modified():
-            self.site.info("Rendering {}", self)
+        _os.makedirs(_os.path.dirname(self._output_path), exist_ok=True)
 
-            _os.makedirs(_os.path.dirname(self._output_path), exist_ok=True)
-
-            with open(self._output_path, "w") as f:
-                for elem in self._render_template(self._page_template):
-                    f.write(elem)
+        with open(self._output_path, "w") as f:
+            for elem in self._render_template(self._page_template):
+                f.write(elem)
 
     @property
     def extra_headers(self):
