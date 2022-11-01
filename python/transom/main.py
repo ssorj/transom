@@ -454,8 +454,9 @@ class _WatcherThread(_threading.Thread):
 
         def render(event):
             input_path = _os.path.relpath(event.pathname, _os.getcwd())
+            _, base_name = _os.path.split(input_path)
 
-            if _os.path.isdir(input_path) or self.site._ignored_file_regex.match(input_path):
+            if _os.path.isdir(input_path) or self.site._ignored_file_regex.match(base_name):
                 return True
 
             file_ = self.site._init_file(input_path)
