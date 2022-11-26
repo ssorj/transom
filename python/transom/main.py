@@ -583,12 +583,12 @@ class TransomCommand:
 
         self.args = self.parser.parse_args(args)
 
+        if "command_fn" not in self.args:
+            self.fail("Missing subcommand")
+
         self.quiet = self.args.quiet
         self.verbose = self.args.verbose
         self.init_only = self.args.init_only
-
-        if "command_fn" not in self.args:
-            self.fail("Missing subcommand")
 
         if self.args.command_fn != self.init_command:
             self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir,
