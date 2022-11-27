@@ -620,11 +620,11 @@ class TransomCommand:
             self.print_message(message, *args)
 
     def warn(self, message, *args):
-        message = "Warning: {0}".format(message)
+        message = "Warning: {}".format(message)
         self.print_message(message, *args)
 
     def error(self, message, *args):
-        message = "Error! {0}".format(message)
+        message = "Error! {}".format(message)
         self.print_message(message, *args)
 
     def fail(self, message, *args):
@@ -634,9 +634,9 @@ class TransomCommand:
     def print_message(self, message, *args):
         message = message[0].upper() + message[1:]
         message = message.format(*args)
-        message = "{0}: {1}".format(self.name, message)
+        message = "{}: {}".format(self.name, message)
 
-        _sys.stderr.write("{0}\n".format(message))
+        _sys.stderr.write("{}\n".format(message))
         _sys.stderr.flush()
 
     def init_command(self):
