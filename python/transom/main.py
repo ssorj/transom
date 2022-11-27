@@ -661,7 +661,14 @@ class TransomCommand:
 
         copy("main.css", _os.path.join(self.args.input_dir, "main.css"))
         copy("main.js", _os.path.join(self.args.input_dir, "main.js"))
-        copy("index.md", _os.path.join(self.args.input_dir, "index.md"))
+
+        index_html = _os.path.join(self.args.input_dir, "index.html")
+        index_html_in = _os.path.join(self.args.input_dir, "index.html.in")
+
+        if _os.path.exists(index_html) or _os.path.exists(index_html_in):
+            self.notice("An index file already exists")
+        else:
+            copy("index.md", _os.path.join(self.args.input_dir, "index.md"))
 
     def render_command(self):
         self.lib.render(force=self.args.force)
