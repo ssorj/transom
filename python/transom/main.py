@@ -145,7 +145,7 @@ class Transom:
     def serve(self, port=8080):
         try:
             watcher = _WatcherThread(self)
-        except ImportError:
+        except ImportError: # pragma: nocover
             self.notice("Failed to import pyinotify, so I won't auto-render updated input files")
             self.notice("Try installing the Python inotify package")
             self.notice("On Fedora, use 'dnf install python-inotify'")
@@ -156,7 +156,7 @@ class Transom:
 
         try:
             livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100", shell=True)
-        except _subprocess.CalledProcessError as e:
+        except _subprocess.CalledProcessError as e: # pragma: nocover
             self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
             self.notice("Use 'npm install -g livereload' to install the server")
             self.notice("Subprocess error: {}", e)
@@ -267,7 +267,7 @@ class _File:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._input_path}, {self._output_path})"
 
-    def _process_input(self):
+    def _process_input(self): # pragma: nocover
         pass
 
     def _render(self, force=False):
@@ -515,6 +515,13 @@ class _ServerRequestHandler(_http.SimpleHTTPRequestHandler):
         else:
             super().do_GET()
 
+    def do_POST(self):
+        if self.path == "/STOP":
+            self.server.shutdown()
+
+        self.send_response(_http.HTTPStatus.OK)
+        self.end_headers()
+
 class TransomCommand:
     def __init__(self, home=None):
         self.home = home
@@ -579,8 +586,6 @@ class TransomCommand:
         check_files.set_defaults(command_fn=self.check_files_command)
 
     def init(self, args=None):
-        assert self.args is None
-
         self.args = self.parser.parse_args(args)
 
         if "command_fn" not in self.args:
@@ -611,9 +616,9 @@ class TransomCommand:
         except KeyboardInterrupt: # pragma: nocover
             pass
 
-    def info(self, message, *args):
-        if self.verbose:
-            self.print_message(message, *args)
+    # def info(self, message, *args):
+    #     if self.verbose:
+    #         self.print_message(message, *args)
 
     def notice(self, message, *args):
         if not self.quiet:
@@ -808,6 +813,6 @@ def _html_attrs(attrs):
         if value is not False:
             yield f" {name}=\"{_escape(value, quote=True)}\""
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: nocover
     command = TransomCommand()
     command.main()

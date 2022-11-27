@@ -32,6 +32,13 @@ def render(*args, **kwargs):
     data = {"rendered": True}
     write_json(result_file, data)
 
+@command(parent=serve)
+def serve(*args, **kwargs):
+    serve.parent.function(*args, **kwargs)
+
+    data = {"served": True}
+    write_json(result_file, data)
+
 @command(parent=check_links)
 def check_links(*args, **kwargs):
     check_links.parent.function(*args, **kwargs)

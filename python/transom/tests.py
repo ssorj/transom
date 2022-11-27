@@ -19,11 +19,13 @@
 
 import csv as _csv
 
-from .main import _lipsum, _plural, _html_table, _html_table_csv
+from .main import TransomCommand, _lipsum, _plural, _html_table, _html_table_csv
 from plano import *
 from plano.commands import PlanoCommand
+from threading import Thread
 from xml.etree.ElementTree import XML as _XML
 
+transom_command = TransomCommand(home=get_absolute_path("build/transom"))
 test_site_dir = get_absolute_path("test-site")
 result_file = "output/result.json"
 
@@ -37,13 +39,22 @@ class test_site(working_dir):
 def transom_options():
     run("transom --help")
 
+    with expect_system_exit():
+        transom_command.main(["--help"])
+
+    with expect_system_exit():
+        transom_command.main()
+
 @test
 def transom_init():
     run("transom init --help")
     run("transom init --init-only --verbose config input")
 
+    with expect_system_exit():
+        TransomCommand(home=None).main(["init", "config", "input"])
+
     with working_dir():
-        run("transom init config input")
+        transom_command.main(["init", "config", "input"])
 
         check_dir("config")
         check_dir("input")
@@ -52,7 +63,7 @@ def transom_init():
         check_file("input/main.css")
         check_file("input/main.js")
 
-        run("transom init config input") # Re-init
+        transom_command.main(["init", "config", "input"]) # Re-init
 
 @test
 def transom_render():
@@ -60,7 +71,7 @@ def transom_render():
     run("transom render --init-only --quiet config input output")
 
     with test_site():
-        run("transom render config input output")
+        transom_command.main(["render", "--verbose", "config", "input", "output"])
 
         check_dir("output")
         check_file("output/index.html")
@@ -73,17 +84,30 @@ def transom_render():
         assert "<title>Doorjamb</title>" in result, result
         assert "<h1 id=\"doorjamb\">Doorjamb</h1>" in result, result
 
-        run("transom render config input output")
-        run("transom render --force config input output")
+        transom_command.main(["render", "--quiet", "config", "input", "output"])
+        transom_command.main(["render", "--force", "config", "input", "output"])
 
 @test
 def transom_serve():
     run("transom serve --help")
+    run("transom serve --init-only --port 9191 --quiet config input output")
 
     with test_site():
-        with start("transom serve --port 9191 --quiet config input output"):
-            await_port(9191)
-            http_get("http://localhost:9191/index.html")
+        def run_():
+            transom_command.main(["serve", "--port", "9191", "config", "input", "output"])
+
+        server = Thread(target=run_)
+        server.start()
+
+        await_port(9191)
+
+        http_get("http://localhost:9191/")
+        http_get("http://localhost:9191/index.html")
+        http_get("http://localhost:9191/main.css")
+
+        http_post("http://localhost:9191/STOP", "please")
+
+        server.join()
 
 @test
 def transom_check_links():
@@ -91,12 +115,12 @@ def transom_check_links():
     run("transom check-links --init-only --verbose config input output")
 
     with test_site():
-        run("transom render config input output")
-        run("transom check-links config input output")
+        transom_command.main(["render", "config", "input", "output"])
+        transom_command.main(["check-links", "config", "input", "output"])
 
         append(join("a", "index.md"), "[Not there](not-there.html)")
 
-        run("transom check-links config input output")
+        transom_command.main(["check-links", "config", "input", "output"])
 
 @test
 def transom_check_files():
@@ -104,12 +128,12 @@ def transom_check_files():
     run("transom check-files --init-only --quiet config input output")
 
     with test_site():
-        run("transom render config input output")
+        transom_command.main(["render", "config", "input", "output"])
 
         remove(join("input", "test-page-1.md")) # An extra output file
         remove(join("output", "test-page-2.html")) # A missing output file
 
-        run("transom check-files config input output")
+        transom_command.main(["check-files", "config", "input", "output"])
 
 @test
 def plano_render():
@@ -119,14 +143,23 @@ def plano_render():
         result = read_json(result_file)
         assert result["rendered"], result
 
-# @test
-# def plano_serve():
-#     with test_site():
-#         # XXX Need a serve that stops promptly
-#         PlanoCommand().main(["serve"])
-#
-#         result = read_json(result_file)
-#         assert result["served"], result
+@test
+def plano_serve():
+    with test_site():
+        def run():
+            PlanoCommand().main(["serve", "--port", "9191"])
+
+        server = Thread(target=run)
+        server.start()
+
+        await_port(9191)
+
+        http_post("http://localhost:9191/STOP", "please")
+
+        server.join()
+
+        result = read_json(result_file)
+        assert result["served"], result
 
 @test
 def plano_check_links():
@@ -197,7 +230,7 @@ def html_table_functions():
         (None, "", 0),
     )
 
-    _XML(_html_table(data))
+    _XML(_html_table(data, class_="X"))
     _XML(_html_table(data, headings=("A", "B", "C")))
 
     with working_dir():
