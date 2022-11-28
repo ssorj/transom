@@ -143,6 +143,9 @@ class Transom:
         self.notice("Rendered {:,} output {}{}", rendered_count, _plural("file", rendered_count), unmodified_note)
 
     def serve(self, port=8080):
+        watcher = None
+        livereload = None
+
         try:
             watcher = _WatcherThread(self)
         except ImportError: # pragma: nocover
@@ -151,8 +154,6 @@ class Transom:
             self.notice("On Fedora, use 'dnf install python-inotify'")
         else:
             watcher.start()
-
-        livereload = None
 
         try:
             livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100", shell=True)
@@ -167,6 +168,9 @@ class Transom:
         finally:
             if livereload is not None:
                 livereload.terminate()
+
+            if watcher is not None:
+                watcher.stop()
 
     def check_files(self):
         self._init_files()
@@ -441,11 +445,9 @@ class _RenderThread(_threading.Thread):
         for file_ in self.files:
             file_._render(force=self.force)
 
-class _WatcherThread(_threading.Thread):
+class _WatcherThread:
     def __init__(self, site):
         import pyinotify as _pyinotify
-
-        super().__init__(name="watcher", daemon=True)
 
         self.site = site
 
@@ -467,11 +469,14 @@ class _WatcherThread(_threading.Thread):
 
         watcher.add_watch(self.site.input_dir, mask, render, rec=True, auto_add=True)
 
-        self.notifier = _pyinotify.Notifier(watcher)
+        self.notifier = _pyinotify.ThreadedNotifier(watcher)
 
-    def run(self):
+    def start(self):
         self.site.notice("Watching for input file changes")
-        self.notifier.loop()
+        self.notifier.start()
+
+    def stop(self):
+        self.notifier.stop()
 
 class _ServerThread(_threading.Thread):
     def __init__(self, site, port):

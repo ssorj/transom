@@ -71,6 +71,12 @@ def transom_render():
     run("transom render --init-only --quiet config input output")
 
     with test_site():
+        touch("input/index.html") # A duplicate index file
+
+        with expect_exception():
+            transom_command.main(["render", "--verbose", "config", "input", "output"])
+
+    with test_site():
         transom_command.main(["render", "--verbose", "config", "input", "output"])
 
         check_dir("output")
@@ -105,6 +111,8 @@ def transom_serve():
         http_get("http://localhost:9191/index.html")
         http_get("http://localhost:9191/main.css")
 
+        write("input/another.md", "# Another")
+
         http_post("http://localhost:9191/STOP", "please")
 
         server.join()
@@ -118,9 +126,12 @@ def transom_check_links():
         transom_command.main(["render", "config", "input", "output"])
         transom_command.main(["check-links", "config", "input", "output"])
 
-        append(join("a", "index.md"), "[Not there](not-there.html)")
+        append("input/test-1.md", "[Not there](not-there.html)")
 
-        transom_command.main(["check-links", "config", "input", "output"])
+        transom_command.main(["render", "config", "input", "output"])
+
+        with expect_system_exit():
+            transom_command.main(["check-links", "config", "input", "output"])
 
 @test
 def transom_check_files():
@@ -130,10 +141,11 @@ def transom_check_files():
     with test_site():
         transom_command.main(["render", "config", "input", "output"])
 
-        remove(join("input", "test-page-1.md")) # An extra output file
-        remove(join("output", "test-page-2.html")) # A missing output file
+        remove("input/test-1.md") # An extra output file
+        remove("output/test-2.html") # A missing output file
 
-        transom_command.main(["check-files", "config", "input", "output"])
+        with expect_system_exit():
+            transom_command.main(["check-files", "config", "input", "output"])
 
 @test
 def plano_render():
