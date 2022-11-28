@@ -91,7 +91,7 @@ def transom_render():
         assert "<h1 id=\"doorjamb\">Doorjamb</h1>" in result, result
 
         transom_command.main(["render", "--quiet", "config", "input", "output"])
-        transom_command.main(["render", "--force", "config", "input", "output"])
+        transom_command.main(["render", "--force", "--verbose", "config", "input", "output"])
 
 @test
 def transom_serve():

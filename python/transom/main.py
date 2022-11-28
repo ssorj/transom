@@ -263,7 +263,7 @@ class _File:
         while dir_ != "":
             try:
                 self.parent = self.site._index_files[dir_]
-            except:
+            except KeyError:
                 dir_ = _os.path.dirname(dir_)
             else:
                 break
@@ -620,10 +620,6 @@ class TransomCommand:
             self.args.command_fn()
         except KeyboardInterrupt: # pragma: nocover
             pass
-
-    # def info(self, message, *args):
-    #     if self.verbose:
-    #         self.print_message(message, *args)
 
     def notice(self, message, *args):
         if not self.quiet:
