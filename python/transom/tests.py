@@ -53,6 +53,8 @@ def transom_init():
     with expect_system_exit():
         TransomCommand(home=None).main(["init", "config", "input"])
 
+    transom_command.main(["init", "--init-only", "config", "input"])
+
     with working_dir():
         transom_command.main(["init", "config", "input"])
 
@@ -65,16 +67,15 @@ def transom_init():
 
         transom_command.main(["init", "config", "input"]) # Re-init
 
+    with working_dir():
+        touch("input/index.html") # A preexisting index file
+
+        transom_command.main(["init", "config", "input"])
+
 @test
 def transom_render():
     run("transom render --help")
     run("transom render --init-only --quiet config input output")
-
-    with test_site():
-        touch("input/index.html") # A duplicate index file
-
-        with expect_exception():
-            transom_command.main(["render", "--verbose", "config", "input", "output"])
 
     with test_site():
         transom_command.main(["render", "--verbose", "config", "input", "output"])
@@ -92,6 +93,22 @@ def transom_render():
 
         transom_command.main(["render", "--quiet", "config", "input", "output"])
         transom_command.main(["render", "--force", "--verbose", "config", "input", "output"])
+
+    with test_site():
+        touch("input/index.html") # A duplicate index file
+
+        with expect_exception():
+            transom_command.main(["render", "--verbose", "config", "input", "output"])
+
+    with test_site():
+        remove("config/config.py") # No config.py
+
+        transom_command.main(["render", "--verbose", "config", "input", "output"])
+
+    with test_site():
+        remove("config/body.html") # No body template
+
+        transom_command.main(["render", "--verbose", "config", "input", "output"])
 
 @test
 def transom_serve():
@@ -111,7 +128,8 @@ def transom_serve():
         http_get("http://localhost:9191/index.html")
         http_get("http://localhost:9191/main.css")
 
-        write("input/another.md", "# Another")
+        write("input/another.md", "# Another") # A new file
+        write("input/#ignore.md", "# Ignore")  # A new ignored file
 
         http_post("http://localhost:9191/STOP", "please")
 
@@ -150,7 +168,7 @@ def transom_check_files():
 @test
 def plano_render():
     with test_site():
-        PlanoCommand().main(["render"])
+        PlanoCommand().main(["render", "--force", "--verbose"])
 
         result = read_json(result_file)
         assert result["rendered"], result
@@ -159,7 +177,7 @@ def plano_render():
 def plano_serve():
     with test_site():
         def run():
-            PlanoCommand().main(["serve", "--port", "9191"])
+            PlanoCommand().main(["serve", "--port", "9191", "--force", "--verbose"])
 
         server = Thread(target=run)
         server.start()
@@ -176,7 +194,7 @@ def plano_serve():
 @test
 def plano_check_links():
     with test_site():
-        PlanoCommand().main(["check-links"])
+        PlanoCommand().main(["check-links", "--verbose"])
 
         result = read_json(result_file)
         assert result["links_checked"], result
@@ -184,7 +202,7 @@ def plano_check_links():
 @test
 def plano_check_files():
     with test_site():
-        PlanoCommand().main(["check-files"])
+        PlanoCommand().main(["check-files", "--verbose"])
 
         result = read_json(result_file)
         assert result["files_checked"], result

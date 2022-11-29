@@ -12,3 +12,7 @@ title: Doorjamb
 <h2 id="animal">Animal</h2>
 
 {{page.include("config/swatch.md")}}
+
+{{albert}}
+
+{{benny()}}

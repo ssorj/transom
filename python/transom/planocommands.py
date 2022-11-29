@@ -104,9 +104,6 @@ def clean():
     for path in find(".", "__pycache__"):
         remove(path)
 
-    for path in find(".", "*.pyc"):
-        remove(path)
-
 class project_env(working_env):
     def __init__(self):
         super(project_env, self).__init__(PYTHONPATH="python")

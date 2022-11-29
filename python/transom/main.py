@@ -593,8 +593,7 @@ class TransomCommand:
     def init(self, args=None):
         self.args = self.parser.parse_args(args)
 
-        if "command_fn" not in self.args:
-            self.fail("Missing subcommand")
+        assert "command_fn" in self.args, self.args
 
         self.quiet = self.args.quiet
         self.verbose = self.args.verbose
@@ -604,9 +603,6 @@ class TransomCommand:
             self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir,
                                verbose=self.verbose, quiet=self.quiet)
             self.lib.init()
-
-            if self.args.init_only:
-                self.parser.exit()
 
     def main(self, args=None):
         self.init(args)
@@ -657,9 +653,6 @@ class TransomCommand:
             _copy_file(_os.path.join(self.home, "files", file_name), to_path)
 
             self.notice("Creating '{}'", to_path)
-
-        if self.args.init_only:
-            self.parser.exit()
 
         copy("page.html", _os.path.join(self.args.config_dir, "page.html"))
         copy("body.html", _os.path.join(self.args.config_dir, "body.html"))
