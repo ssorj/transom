@@ -149,7 +149,7 @@ def test_(include="*", exclude=None, unskip=None, list_=False, verbose=False, cl
         modules = [_importlib.import_module(x) for x in project.test_modules]
 
         if not modules: # pragma: nocover
-            notice("No tests found")
+            notice("Test modules not found: {}".format(",".join(project.test_modules)))
             return
 
         args = list()
@@ -162,6 +162,21 @@ def test_(include="*", exclude=None, unskip=None, list_=False, verbose=False, cl
         unskip = nvl(unskip, ())
 
         run_tests(modules, include=include, exclude=exclude, unskip=unskip, verbose=verbose)
+
+@command
+def coverage():
+    """
+    Analyze test coverage
+    """
+
+    check_project()
+    check_program("coverage", "Install the Python coverage package")
+
+    run(f"coverage run --include {project.source_dir}/\* {which('plano')} test", stash=True)
+    run("coverage report")
+    run("coverage html")
+
+    print("OUTPUT:", get_file_url("htmlcov/index.html"))
 
 @command(args=(CommandArgument("staging_dir", help="A path prepended to installed files"),
                _prefix_arg, _clean_arg))
@@ -278,17 +293,6 @@ def _generate_file(project_files, filename, stdout):
         print(content, end="")
     else:
         write(filename, content)
-
-# @command
-# def coverage():
-#     check_program("coverage3")
-
-#     with project_env():
-#         run("coverage3 run --include python/qtools/\* build/scripts-3.9/qtools-self-test")
-#         run("coverage3 report")
-#         run("coverage3 html")
-
-#         print(f"file:{get_current_dir()}/htmlcov/index.html")
 
 class _StringCatalog(dict):
     def __init__(self, path):

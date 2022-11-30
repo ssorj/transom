@@ -17,10 +17,11 @@
 # under the License.
 #
 
-from bullseye import *
+from .main import *
+from .main import _StringCatalog
 from plano.commands import *
 
-test_project_dir = join(get_parent_dir(__file__), "testproject")
+test_project_dir = get_absolute_path("test-project")
 result_file = "build/result.json"
 
 class test_project(working_dir):
@@ -46,8 +47,14 @@ def project_operations():
         assert output == "XYX", output
 
 @test
+def string_catalog():
+    catalog = _StringCatalog(join(get_parent_dir(__file__), "main.strings"))
+
+    print(catalog)
+
+@test
 def build_command():
-    if WINDOWS:
+    if WINDOWS: # pragma: nocover
         raise PlanoTestSkipped("Not ready for Windows")
 
     with test_project():
@@ -57,9 +64,9 @@ def build_command():
         assert result["built"], result
 
         check_file("build/bin/chucker")
-        check_file("build/bin/chucker-self-test")
-        check_file("build/chucker/python/chucker.py")
-        check_file("build/chucker/python/chuckertests.py")
+        check_file("build/chucker/python/chucker/__init__.py")
+        check_file("build/chucker/python/chucker/main.py")
+        check_file("build/chucker/python/chucker/tests.py")
 
         result = read("build/bin/chucker").strip()
         assert result.endswith(join(".local", "lib", "chucker")), result
@@ -87,12 +94,22 @@ def test_command():
 
         run_plano("test", "--verbose")
         run_plano("test", "--list")
-        run_plano("test", "--include", "test_hello")
+        run_plano("test", "--include", "test-hello")
         run_plano("test", "--clean")
 
 @test
+def coverage_command():
+    with test_project():
+        run_plano("coverage")
+
+        check_file(result_file)
+
+        result = read_json(result_file)
+        assert result["tested"], result
+
+@test
 def install_command():
-    if WINDOWS:
+    if WINDOWS: # pragma: nocover
         raise PlanoTestSkipped("Not ready for Windows")
 
     with test_project():
