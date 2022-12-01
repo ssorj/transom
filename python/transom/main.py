@@ -23,6 +23,7 @@ import collections.abc as _abc
 import csv as _csv
 import fnmatch as _fnmatch
 import http.server as _http
+import mistune as _mistune
 import os as _os
 import re as _re
 import shutil as _shutil
@@ -31,7 +32,6 @@ import sys as _sys
 import threading as _threading
 import types as _types
 
-from . import markdown2 as _markdown
 from html import escape as _escape
 from html.parser import HTMLParser as _HTMLParser
 from urllib import parse as _urlparse
@@ -378,11 +378,13 @@ class _TemplatePage(_File):
 
     @property
     def content(self):
-        self._convert_content()
-        return self._render_template(_parse_template(self._content))
+        parsed = _parse_template(self._content)
+        rendered = "".join(self._render_template(parsed))
 
-    def _convert_content(self):
-        pass
+        return self._convert_content(rendered)
+
+    def _convert_content(self, content):
+        return content
 
     @property
     def path_nav_links(self):
@@ -431,8 +433,8 @@ class _MarkdownPage(_TemplatePage):
             match = _markdown_title_regex.search(self._content)
             self.title = match.group(2).strip() if match else ""
 
-    def _convert_content(self):
-        self._content = _convert_markdown(self._content)
+    def _convert_content(self, content):
+        return _convert_markdown(content)
 
 class _RenderThread(_threading.Thread):
     def __init__(self, files, force):
@@ -734,21 +736,26 @@ def _parse_template(text):
         else:
             yield token
 
+_heading_id_regex_1 = _re.compile(r"[^a-zA-Z0-9_ ]+")
+_heading_id_regex_2 = _re.compile(r"[_ ]")
+
+class _HtmlRenderer(_mistune.renderers.html.HTMLRenderer):
+    def heading(self, text, level, **attrs):
+        id = _heading_id_regex_1.sub("", text)
+        id = _heading_id_regex_2.sub("-", id)
+        id = id.lower()
+
+        return f"<h{level} id=\"{id}\">{text}</h{level}>\n"
+
 class _MarkdownLocal(_threading.local):
     def __init__(self):
-        self.value = _markdown.Markdown(extras={
-            "code-friendly": True,
-            "footnotes": True,
-            "header-ids": True,
-            "markdown-in-html": True,
-            "tables": True,
-        })
+        self.value = _mistune.create_markdown(renderer=_HtmlRenderer(escape=False), plugins=["table"])
 
 _markdown_local = _MarkdownLocal()
 
 def _convert_markdown(text):
     lines = (x for x in text.splitlines(keepends=True) if not x.startswith(";;"))
-    return _markdown_local.value.convert("".join(lines))
+    return _markdown_local.value("".join(lines))
 
 _lipsum_words = [
     "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "vestibulum", "enim", "urna",
