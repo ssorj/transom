@@ -25,8 +25,11 @@ from plano.commands import PlanoCommand
 from threading import Thread
 from xml.etree.ElementTree import XML as _XML
 
-transom_command = TransomCommand(home=get_absolute_path("build/transom"))
-test_site_dir = get_absolute_path("test-site")
+transom_home = get_parent_dir(get_parent_dir(get_parent_dir(__file__)))
+transom_command = TransomCommand(home=transom_home)
+#transom_command = TransomCommand(home=None)
+
+test_site_dir = join(transom_home, "test-site")
 result_file = "output/result.json"
 
 class test_site(working_dir):
@@ -40,10 +43,13 @@ def transom_options():
     run("transom --help")
 
     with expect_system_exit():
+        TransomCommand(home=None).main([])
+
+    with expect_system_exit():
         transom_command.main(["--help"])
 
     with expect_system_exit():
-        transom_command.main()
+        transom_command.main([])
 
 @test
 def transom_init():

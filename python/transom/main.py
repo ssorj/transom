@@ -595,7 +595,9 @@ class TransomCommand:
     def init(self, args=None):
         self.args = self.parser.parse_args(args)
 
-        assert "command_fn" in self.args, self.args
+        if "command_fn" not in self.args:
+            self.parser.print_usage()
+            _sys.exit(1)
 
         self.quiet = self.args.quiet
         self.verbose = self.args.verbose
@@ -647,29 +649,29 @@ class TransomCommand:
         if self.home is None:
             self.fail("I can't find the default input files")
 
-        def copy(file_name, to_path):
+        def copy(from_path, to_path):
             if _os.path.exists(to_path):
                 self.notice("Skipping '{}'. It already exists.", to_path)
                 return
 
-            _copy_file(_os.path.join(self.home, "files", file_name), to_path)
+            _copy_file(from_path, to_path)
 
             self.notice("Creating '{}'", to_path)
 
-        copy("page.html", _os.path.join(self.args.config_dir, "page.html"))
-        copy("body.html", _os.path.join(self.args.config_dir, "body.html"))
-        copy("config.py", _os.path.join(self.args.config_dir, "config.py"))
+        config_dir = _os.path.join(self.home, "files", "config")
+        input_dir = _os.path.join(self.home, "files", "input")
 
-        copy("main.css", _os.path.join(self.args.input_dir, "main.css"))
-        copy("main.js", _os.path.join(self.args.input_dir, "main.js"))
+        for name in _os.listdir(config_dir):
+            copy(_os.path.join(config_dir, name), _os.path.join(self.args.config_dir, name))
 
-        index_html = _os.path.join(self.args.input_dir, "index.html")
-        index_html_in = _os.path.join(self.args.input_dir, "index.html.in")
+        for name in _os.listdir(input_dir):
+            copy(_os.path.join(input_dir, name), _os.path.join(self.args.input_dir, name))
 
-        if _os.path.exists(index_html) or _os.path.exists(index_html_in):
-            self.notice("An index file already exists")
-        else:
-            copy("index.md", _os.path.join(self.args.input_dir, "index.md"))
+        # index_html = _os.path.join(self.args.input_dir, "index.html")
+        # index_html_in = _os.path.join(self.args.input_dir, "index.html.in")
+
+        # if _os.path.exists(index_html) or _os.path.exists(index_html_in):
+        #     self.notice("An index file already exists")
 
     def render_command(self):
         self.lib.render(force=self.args.force)
