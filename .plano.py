@@ -20,7 +20,6 @@
 from bullseye import *
 
 project.name = "transom"
-project.excluded_modules = ["bullseye"]
 project.data_dirs = ["files", "test-site"]
 project.test_modules = ["transom.tests"]
 
