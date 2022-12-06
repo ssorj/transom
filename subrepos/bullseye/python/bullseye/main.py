@@ -30,8 +30,7 @@ class _Project:
     def __init__(self):
         self.name = None
         self.source_dir = "python"
-        self.included_modules = ["*"]
-        self.excluded_modules = ["plano", "bullseye"]
+        self.source_exclude = [".gitignore", "/bullseye"]
         self.data_dirs = []
         self.build_dir = "build"
         self.test_modules = []
@@ -107,8 +106,6 @@ def build(prefix=None, clean_=False):
         debug("Already built")
         return
 
-    print(111, build_file, new_build_data)
-
     write_json(build_file, new_build_data)
 
     default_home = join(prefix, "lib", project.name)
@@ -119,12 +116,11 @@ def build(prefix=None, clean_=False):
     for path in find("bin", exclude="*.in"):
         copy(path, join(project.build_dir, path), inside=False, symlinks=False)
 
-    for path in find(project.source_dir, "*.py"):
-        module_name = get_name_stem(path)
-        included = any([_fnmatch.fnmatchcase(module_name, x) for x in project.included_modules])
-        excluded = any([_fnmatch.fnmatchcase(module_name, x) for x in project.excluded_modules])
+    excluded_dirs = [x[1:] for x in project.source_exclude if x.startswith("/")]
+    excluded_files = [x for x in project.source_exclude if not x.startswith("/")]
 
-        if included and not excluded:
+    for dir_name in list_dir(project.source_dir, exclude=excluded_dirs):
+        for path in find(join(project.source_dir, dir_name), exclude=excluded_files):
             copy(path, join(project.build_dir, project.name, path), inside=False, symlinks=False)
 
     for dir_name in project.data_dirs:
