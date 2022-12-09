@@ -31,7 +31,7 @@ class test_project(working_dir):
         return dir
 
 def run_plano(*args):
-    PlanoCommand().main(["-f", join(test_project_dir, "Planofile")] + list(args))
+    PlanoCommand().main(["-f", join(test_project_dir, ".plano.py")] + list(args))
 
 @test
 def project_operations():
@@ -67,6 +67,9 @@ def build_command():
         check_file("build/chucker/python/chucker/__init__.py")
         check_file("build/chucker/python/chucker/main.py")
         check_file("build/chucker/python/chucker/tests.py")
+        check_file("build/chucker/python/flipper.py")
+
+        assert not exists("build/chucker/python/bumper.py")
 
         result = read("build/bin/chucker").strip()
         assert result.endswith(join(".local", "lib", "chucker")), result

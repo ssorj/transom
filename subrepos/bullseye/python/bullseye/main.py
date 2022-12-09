@@ -118,13 +118,23 @@ def build(prefix=None, clean_=False):
 
     excluded_dirs = [x[1:] for x in project.source_exclude if x.startswith("/")]
     excluded_files = [x for x in project.source_exclude if not x.startswith("/")]
+    top_level_names = list_dir(project.source_dir, exclude=excluded_dirs)
 
-    for dir_name in list_dir(project.source_dir, exclude=excluded_dirs):
-        for path in find(join(project.source_dir, dir_name), exclude=excluded_files):
+    for name in top_level_names:
+        path = join(project.source_dir, name)
+
+        if is_file(path) and not any([_fnmatch.fnmatchcase(name, x) for x in excluded_files]):
             copy(path, join(project.build_dir, project.name, path), inside=False, symlinks=False)
 
-    for dir_name in project.data_dirs:
-        for path in find(dir_name):
+    for name in top_level_names:
+        path = join(project.source_dir, name)
+
+        if is_dir(path):
+            for subpath in find(path, exclude=excluded_files):
+                copy(subpath, join(project.build_dir, project.name, subpath), inside=False, symlinks=False)
+
+    for name in project.data_dirs:
+        for path in find(name):
             copy(path, join(project.build_dir, project.name, path), inside=False, symlinks=False)
 
 @command(args=(CommandArgument("include", help="Run tests with names matching PATTERN", metavar="PATTERN"),

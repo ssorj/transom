@@ -1,8 +1,12 @@
+import sys
+
+sys.path.insert(0, "../python")
+
 from bullseye import *
 
 project.name = "chucker"
+project.source_exclude = ["bumper.*"]
 project.data_dirs = ["files"]
-project.excluded_modules = ["flipper"]
 project.test_modules = ["chucker.tests"]
 
 result_file = "build/result.json"
