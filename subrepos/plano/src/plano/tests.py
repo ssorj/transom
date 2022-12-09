@@ -1089,7 +1089,7 @@ def plano_command():
         PlanoCommand().main([])
 
     with working_dir():
-        write("Planofile", "garbage")
+        write(".plano.py", "garbage")
 
         with expect_system_exit():
             PlanoCommand().main([])
@@ -1169,6 +1169,9 @@ def plano_command():
         # Ensure indirect calls (through parent commands) are specialized
         run_command("vixen")
         assert exists("prancer.json")
+
+        with expect_system_exit():
+            run_command("no-parent")
 
 @command
 def prancer():
