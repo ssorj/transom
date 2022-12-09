@@ -25,7 +25,7 @@ project.test_modules = ["transom.tests"]
 
 @command(parent=build)
 def build(*args, **kwargs):
-    build.parent.function(*args, **kwargs)
+    parent(*args, **kwargs)
 
     with project_env():
         run("transom --help", quiet=True, stash=True)
@@ -36,7 +36,7 @@ def build(*args, **kwargs):
 
 @command(parent=clean)
 def clean(*args, **kwargs):
-    clean.parent.function(*args, **kwargs)
+    parent(*args, **kwargs)
 
     remove("test-site/output")
     remove("qpid-site/output")
