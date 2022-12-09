@@ -114,7 +114,7 @@ class Transom:
         for file_ in self._index_files.values():
             file_._process_input()
 
-        thread_count = 4
+        thread_count = 2
         threads = list()
         batches = [list() for x in range(thread_count)]
 
