@@ -23,11 +23,10 @@ from .main import TransomCommand, _lipsum, _plural, _html_table, _html_table_csv
 from plano import *
 from plano.commands import PlanoCommand
 from threading import Thread
-from xml.etree.ElementTree import XML as _XML
+from xml.etree.ElementTree import XML
 
 transom_home = get_parent_dir(get_parent_dir(get_parent_dir(__file__)))
 transom_command = TransomCommand(home=transom_home)
-#transom_command = TransomCommand(home=None)
 
 test_site_dir = join(transom_home, "test-site")
 result_file = "output/result.json"
@@ -266,12 +265,12 @@ def html_table_functions():
         (None, "", 0),
     )
 
-    _XML(_html_table(data, class_="X"))
-    _XML(_html_table(data, headings=("A", "B", "C")))
+    XML(_html_table(data, class_="X"))
+    XML(_html_table(data, headings=("A", "B", "C")))
 
     with working_dir():
         with open("test.csv", "w", newline="") as f:
             writer = _csv.writer(f)
             writer.writerows(data)
 
-        _XML(_html_table_csv("test.csv"))
+        XML(_html_table_csv("test.csv"))
