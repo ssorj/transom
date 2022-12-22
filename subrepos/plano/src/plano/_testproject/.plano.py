@@ -17,6 +17,8 @@
 # under the License.
 #
 
+from plano import *
+
 @command
 def base_command(alpha, beta, omega="x"):
     """
@@ -69,6 +71,10 @@ def balderdash(required, optional="malarkey", other="rubbish", **extra_kwargs):
     write_json("balderdash.json", data)
 
 @command
+def splasher():
+    write_json("splasher.json", [1])
+
+@command
 def dasher(alpha, beta=123):
     pass
 
@@ -79,7 +85,7 @@ def dancer(gamma, omega="abc", passthrough_args=[]):
 # Vixen's parent calls prancer.  We are testing to ensure the extended
 # prancer (below) is executed.
 
-from plano.tests import prancer, vixen
+from plano._tests import prancer, vixen
 
 @command(parent=prancer)
 def prancer():
