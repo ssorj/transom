@@ -18,8 +18,6 @@
 #
 
 from .main import *
-from .main import _StringCatalog
-from plano.commands import *
 
 test_project_dir = get_absolute_path("test-project")
 result_file = "build/result.json"
@@ -47,12 +45,6 @@ def project_operations():
         assert output == "XYX", output
 
 @test
-def string_catalog():
-    catalog = _StringCatalog(join(get_parent_dir(__file__), "main.strings"))
-
-    print(catalog)
-
-@test
 def build_command():
     if WINDOWS: # pragma: nocover
         raise PlanoTestSkipped("Not ready for Windows")
@@ -77,7 +69,7 @@ def build_command():
         result = read_json("build/build.json")
         assert result["prefix"].endswith(".local"), result
 
-        run_plano("build", "--clean", "--prefix", "/usr/local")
+        run_plano("build", "--prefix", "/usr/local")
 
         result = read("build/bin/chucker").strip()
         assert result == "/usr/local/lib/chucker", result
@@ -97,8 +89,7 @@ def test_command():
 
         run_plano("test", "--verbose")
         run_plano("test", "--list")
-        run_plano("test", "--include", "test-hello")
-        run_plano("test", "--clean")
+        run_plano("test", "test-hello")
 
 @test
 def coverage_command():
@@ -147,23 +138,3 @@ def env_command():
     with test_project():
         run_plano("env")
         run_plano("env", "--undo")
-
-@test
-def generate_command():
-    with test_project():
-        run_plano("generate", "README.md")
-
-        assert exists("README.md"), list_dir()
-
-        run_plano("generate", "--stdout", "LICENSE.txt")
-
-        assert not exists("LICENSE.txt"), list_dir()
-
-        run_plano("generate", "all")
-
-        assert exists(".gitignore"), list_dir()
-        assert exists("LICENSE.txt"), list_dir()
-        assert exists("VERSION.txt"), list_dir()
-
-        with expect_system_exit():
-            run_plano("generate", "no-such-file")
