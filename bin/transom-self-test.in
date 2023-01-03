@@ -24,7 +24,7 @@ import sys
 home = os.environ.get("TRANSOM_HOME", "@default_home@")
 sys.path.insert(0, os.path.join(home, "python"))
 
-from plano.commands import PlanoTestCommand
+from plano import PlanoTestCommand
 from transom import tests
 
 if __name__ == "__main__":
