@@ -22,4 +22,5 @@ jobs:
           node-version: latest
       - run: npm install -g livereload
       - run: ./plano install
+      - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: transom-self-test
