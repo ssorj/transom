@@ -667,12 +667,6 @@ class TransomCommand:
         for name in _os.listdir(input_dir):
             copy(_os.path.join(input_dir, name), _os.path.join(self.args.input_dir, name))
 
-        # index_html = _os.path.join(self.args.input_dir, "index.html")
-        # index_html_in = _os.path.join(self.args.input_dir, "index.html.in")
-
-        # if _os.path.exists(index_html) or _os.path.exists(index_html_in):
-        #     self.notice("An index file already exists")
-
     def render_command(self):
         self.lib.render(force=self.args.force)
 
