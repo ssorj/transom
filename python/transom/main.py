@@ -81,6 +81,9 @@ class Transom:
             self.warn("Config file not found: {}", e)
 
     def _init_files(self):
+        self._files.clear()
+        self._index_files.clear()
+
         for root, dirs, names in _os.walk(self.input_dir):
             files = {x for x in names if not self._ignored_file_regex.match(x)}
             index_files = {x for x in names if x in _index_file_names}
