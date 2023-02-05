@@ -473,6 +473,7 @@ class _WatcherThread:
                 _os.utime(self.site.output_dir)
 
         def render_site(event):
+            self.site.init()
             self.site.render(force=True)
 
         watcher.add_watch(self.site.input_dir, mask, render_file, rec=True, auto_add=True)
