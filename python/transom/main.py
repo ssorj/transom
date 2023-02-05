@@ -456,7 +456,7 @@ class _WatcherThread:
         watcher = _pyinotify.WatchManager()
         mask = _pyinotify.IN_CREATE | _pyinotify.IN_MODIFY
 
-        def render(event):
+        def render_file(event):
             input_path = _os.path.relpath(event.pathname, _os.getcwd())
             _, base_name = _os.path.split(input_path)
 
@@ -469,7 +469,11 @@ class _WatcherThread:
             if _os.path.exists(self.site.output_dir):
                 _os.utime(self.site.output_dir)
 
-        watcher.add_watch(self.site.input_dir, mask, render, rec=True, auto_add=True)
+        def render_site(event):
+            self.site.render(force=True)
+
+        watcher.add_watch(self.site.input_dir, mask, render_file, rec=True, auto_add=True)
+        watcher.add_watch(self.site.config_dir, mask, render_site, rec=True, auto_add=True)
 
         self.notifier = _pyinotify.ThreadedNotifier(watcher)
 
