@@ -372,6 +372,10 @@ class _TemplatePage(_File):
                 f.write(elem)
 
     @property
+    def root_class(self):
+        return self._attributes.get("root_class", "")
+
+    @property
     def extra_headers(self):
         return self._attributes.get("extra_headers", "")
 
