@@ -24,6 +24,7 @@ import csv as _csv
 import fnmatch as _fnmatch
 import http.server as _http
 import mistune as _mistune
+import multiprocessing as _multiprocessing
 import os as _os
 import re as _re
 import shutil as _shutil
@@ -117,26 +118,26 @@ class Transom:
         for file_ in self._index_files.values():
             file_._process_input()
 
-        thread_count = 2
-        threads = list()
-        batches = [list() for x in range(thread_count)]
+        proc_count = _os.cpu_count()
+        procs = list()
+        batches = [list() for x in range(proc_count)]
 
         for i, file_ in enumerate(self._files):
-            batches[i % thread_count].append(file_)
+            batches[i % proc_count].append(file_)
 
         for batch in batches:
-            threads.append(_RenderThread(batch, force))
+            procs.append(_RenderProcess(batch, force))
 
-        for thread in threads:
-            thread.start()
+        for proc in procs:
+            proc.start()
 
-        for thread in threads:
-            thread.join()
+        for proc in procs:
+            proc.join()
 
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
 
-        rendered_count = len([x for x in self._files if x._rendered])
+        rendered_count = sum([x.rendered_count.value for x in procs])
         unmodified_count = len(self._files) - rendered_count
         unmodified_note = ""
 
@@ -443,16 +444,24 @@ class _MarkdownPage(_TemplatePage):
     def _convert_content(self, content):
         return _convert_markdown(content)
 
-class _RenderThread(_threading.Thread):
+class _RenderProcess(_multiprocessing.Process):
     def __init__(self, files, force):
         super().__init__()
 
         self.files = files
         self.force = force
+        self.rendered_count = _multiprocessing.Value('L', 0)
 
     def run(self):
+        rendered_count = 0
+
         for file_ in self.files:
             file_._render(force=self.force)
+
+            if file_._rendered:
+                rendered_count += 1
+
+        self.rendered_count.value = rendered_count
 
 class _WatcherThread:
     def __init__(self, site):
