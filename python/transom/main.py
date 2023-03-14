@@ -23,6 +23,7 @@ import collections.abc as _abc
 import csv as _csv
 import fnmatch as _fnmatch
 import http.server as _http
+import math as _math
 import mistune as _mistune
 import multiprocessing as _multiprocessing
 import os as _os
@@ -42,6 +43,12 @@ _default_body_template = "{{page.content}}"
 _index_file_names = "index.md", "index.html.in", "index.html"
 _markdown_title_regex = _re.compile(r"(#|##)(.+)")
 _variable_regex = _re.compile(r"({{.+?}})")
+
+# An improvised solution for trouble on Mac OS
+_once = False
+if not _once:
+    _multiprocessing.set_start_method("fork")
+    _once = True
 
 class Transom:
     def __init__(self, config_dir, input_dir, output_dir, verbose=False, quiet=False):
@@ -120,13 +127,13 @@ class Transom:
 
         proc_count = _os.cpu_count()
         procs = list()
-        batches = [list() for x in range(proc_count)]
+        batch_size = _math.ceil(len(self._files) / proc_count)
 
-        for i, file_ in enumerate(self._files):
-            batches[i % proc_count].append(file_)
+        for i in range(proc_count):
+            start = i * batch_size
+            end = start + batch_size
 
-        for batch in batches:
-            procs.append(_RenderProcess(batch, force))
+            procs.append(_RenderProcess(self._files[start:end], force))
 
         for proc in procs:
             proc.start()
