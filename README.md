@@ -4,18 +4,16 @@
 
 Transom renders static websites from Markdown and Python
 
-## General stuff to know about Transom
+## Overview
 
-Transom is a fairly run-of-the-mill static site generator.  It
-converts Markdown input files into HTML output files.
+Transom is a fairly run-of-the-mill static site generator written in
+Python.  It converts Markdown input files into HTML output files.
 
 But that does oversimplify things a bit.  Transom actually converts
 Markdown input files and simple HTML files and Python code into
 somewhat fancier HTML output files.  For me, I like that it automates
 a lot of the work of creating a real website, *and* it does it with a
-pretty simple transformation model.
-
-By pretty simple, I mean that I only need to think about these things:
+simple transformation model that leverages things I already know well:
 
 * Markdown converts to HTML in a conventional way.
 
@@ -27,22 +25,30 @@ By pretty simple, I mean that I only need to think about these things:
 The full power of Python is available in the generation phase.  That
 allows me to efficiently express and reuse display logic.
 
-On a different note, Transom is pleasantly quick on modern machines.
-I use it to generate the Apache Qpid website, which is large (about 2
-gigs) and has many files (more than 30,000).  Transom can render
-everything in less than a second.
+Transom is pleasantly quick on modern machines.  I use it to generate
+the Apache Qpid website, which is large (about 2 gigs) and has many
+files (more than 30,000).  Transom can render everything in less than
+a second.
 
 ## Using the transom command
 
 To generate a starter website project, use `transom init`.  It
-requires the path to the config dir and the path to the input file
-dir.  The starter site is really basic.  It just lays down an index
-page (`<input-dir>/index.md`) a CSS file (`<input-dir>/main.css`) and
-a JavaScript file (`<input-dir>/main.js`) plus the supporting Transom
+requires the path to the config dir and the path to the input dir.
+The starter site is really basic.  It just lays down an index page
+(`<input-dir>/index.md`) a CSS file (`<input-dir>/main.css`) and a
+JavaScript file (`<input-dir>/main.js`) plus the supporting Transom
 config files.
 
 ~~~ sh
 $ cd <your-new-project-dir>
+
+$ transom init --help
+usage: transom init [-h] [--verbose] [--quiet] CONFIG-DIR INPUT-DIR
+
+positional arguments:
+  CONFIG-DIR  Read config files from CONFIG-DIR
+  INPUT-DIR   Place default input files in INPUT-DIR
+
 $ transom init config input
 transom: Creating 'config/body.html'
 transom: Creating 'config/config.py'
@@ -52,10 +58,19 @@ transom: Creating 'input/main.css'
 transom: Creating 'input/main.js'
 ~~~
 
-Rendering takes the config dir and the input dir and the *output dir*.
-That's of course the interesting part.
+The `transom render` command takes the config dir and the input dir
+and the *output dir*.  That's of course the interesting part.  It uses
+the input config and input content to generate the rendered output.
 
 ~~~ sh
+$ transom render --help
+usage: transom render [-h] [--verbose] [--quiet] [--force] CONFIG-DIR INPUT-DIR OUTPUT-DIR
+
+positional arguments:
+  CONFIG-DIR  Read config files from CONFIG-DIR
+  INPUT-DIR   The base directory for input files
+  OUTPUT-DIR  The base directory for output files
+
 $ transom render config input output
 Rendering files from 'input' to 'output'
 Found 3 input files
@@ -70,7 +85,8 @@ Since I often use GitHub pages for publishing, I set my output dir to
 For local development, you will likely want to use the `transom serve`
 command.  This renders the site to the output dir and stands up a
 local webserver so you can see what you have.  Transom watches for any
-updates to the config of input files and rerenders the output.
+updates to the config or input files and re-renders the output as
+needed.
 
 ~~~ sh
 $ transom serve config input output
