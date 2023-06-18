@@ -98,10 +98,18 @@ Serving at http://localhost:8080
 Starting LiveReload v0.9.3 for /tmp/tmp.57gwncgHua/output on port 35729.
 ~~~
 
-<!-- ### Using Plano commands -->
-
+<!-- Site checks for files and links -->
+<!-- ## Implementation notes -->
+<!-- Multiprocessing -->
+<!-- Mistune (having tried others before) -->
+<!-- ## Template syntax (really Python code syntax) -->
+<!-- ## Site config options and how to set them -->
+<!-- ## Page and Site APIs -->
+<!-- ## Page metadata -->
+<!-- ## HTML generation functions -->
+<!-- Conveniences -->
+<!-- ## Using Plano project commands -->
 <!-- ## Project commands -->
-
 <!-- Once you have set up the project, you can use the `./plano` command in -->
 <!-- the root of the project to perform project tasks.  It accepts a -->
 <!-- subcommand.  Use `./plano --help` to list the available commands. -->
