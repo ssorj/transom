@@ -20,7 +20,7 @@
 from bullseye import *
 
 project.name = "transom"
-project.data_dirs = ["files", "test-site"]
+project.data_dirs = ["profiles", "test-site"]
 project.test_modules = ["transom.tests"]
 
 @command(parent=build)

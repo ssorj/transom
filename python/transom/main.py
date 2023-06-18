@@ -567,10 +567,8 @@ class TransomCommand:
         self.parser.formatter_class = _argparse.RawDescriptionHelpFormatter
 
         self.args = None
-
         self.quiet = False
         self.verbose = False
-        self.init_only = False
 
         subparsers = self.parser.add_subparsers(title="subcommands")
 
@@ -597,6 +595,10 @@ class TransomCommand:
                           help="Read config files from CONFIG-DIR")
         init.add_argument("input_dir", metavar="INPUT-DIR",
                           help="Place default input files in INPUT-DIR")
+        init.add_argument("--profile", metavar="PROFILE", choices=("website", "webapp"), default="website",
+                          help="Select starter files for different scenarios (default website)")
+        init.add_argument("--github", action="store_true",
+                          help="Add extra files for use in a GitHub repo")
 
         render = subparsers.add_parser("render", parents=(common, common_io), add_help=False,
                                        help="Generate output files")
@@ -629,7 +631,6 @@ class TransomCommand:
 
         self.quiet = self.args.quiet
         self.verbose = self.args.verbose
-        self.init_only = self.args.init_only
 
         if self.args.command_fn != self.init_command:
             self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir,
@@ -641,7 +642,7 @@ class TransomCommand:
 
         assert self.args is not None
 
-        if self.init_only:
+        if self.args.init_only:
             return
 
         try:
@@ -682,18 +683,30 @@ class TransomCommand:
                 self.notice("Skipping '{}'. It already exists.", to_path)
                 return
 
-            _copy_file(from_path, to_path)
+            _copy_path(from_path, to_path)
 
             self.notice("Creating '{}'", to_path)
 
-        config_dir = _os.path.join(self.home, "files", "config")
-        input_dir = _os.path.join(self.home, "files", "input")
+        profile_dir = _os.path.join(self.home, "profiles", self.args.profile)
+        config_dir = _os.path.join(profile_dir, "config")
+        input_dir = _os.path.join(profile_dir, "input")
+
+        assert _os.path.exists(profile_dir), profile_dir
 
         for name in _os.listdir(config_dir):
             copy(_os.path.join(config_dir, name), _os.path.join(self.args.config_dir, name))
 
         for name in _os.listdir(input_dir):
             copy(_os.path.join(input_dir, name), _os.path.join(self.args.input_dir, name))
+
+        if self.args.github:
+            python_dir = _os.path.join(self.home, "python")
+            project_dir, _ = _os.path.split(self.args.input_dir) # XXX
+
+            copy(_os.path.join(profile_dir, ".plano.py"), _os.path.join(project_dir, ".plano.py"))
+
+            copy(_os.path.join(python_dir, "mistune"), _os.path.join(project_dir, "python", "mistune"))
+            copy(_os.path.join(python_dir, "transom"), _os.path.join(project_dir, "python", "transom"))
 
     def render_command(self):
         self.lib.render(force=self.args.force)
@@ -731,6 +744,22 @@ def _copy_file(from_path, to_path):
     except FileNotFoundError:
         _os.makedirs(_os.path.dirname(to_path), exist_ok=True)
         _shutil.copyfile(from_path, to_path)
+
+def _copy_dir(from_dir, to_dir):
+    for name in _os.listdir(from_dir):
+        if name == "__pycache__":
+            continue
+
+        from_path = _os.path.join(from_dir, name)
+        to_path = _os.path.join(to_dir, name)
+
+        _copy_path(from_path, to_path)
+
+def _copy_path(from_path, to_path):
+    if _os.path.isdir(from_path):
+        _copy_dir(from_path, to_path)
+    else:
+        _copy_file(from_path, to_path)
 
 def _extract_metadata(text):
     attrs = dict()
