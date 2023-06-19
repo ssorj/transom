@@ -580,14 +580,14 @@ class TransomCommand:
                             help="Print no logging to the console")
         common.add_argument("--init-only", action="store_true",
                             help=_argparse.SUPPRESS)
-        common.add_argument("project_dir", nargs="?", default=".",
-                            help="The project root directory")
+        common.add_argument("project_dir", metavar="PROJECT-DIR", nargs="?", default=".",
+                            help="The project root directory (default: current directory)")
 
         init = subparsers.add_parser("init", parents=[common], add_help=False,
                                      help="Prepare an input directory")
         init.set_defaults(command_fn=self.init_command)
         init.add_argument("--profile", metavar="PROFILE", choices=("website", "webapp"), default="website",
-                          help="Select starter files for different scenarios (default website)")
+                          help="Select starter files for different scenarios (default: website)")
         init.add_argument("--github", action="store_true",
                           help="Add extra files for use in a GitHub repo")
 

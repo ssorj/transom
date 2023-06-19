@@ -32,24 +32,15 @@ a second.
 
 ## Using the transom command
 
-To generate a starter website project, use `transom init`.  It
-requires the path to the config dir and the path to the input dir.
-The starter site is really basic.  It just lays down an index page
-(`<input-dir>/index.md`) a CSS file (`<input-dir>/main.css`) and a
-JavaScript file (`<input-dir>/main.js`) plus the supporting Transom
-config files.
+To generate a starter website project, use `transom init`.  The
+starter site is really basic.  It just lays down an index page
+(`input/index.md`) a CSS file (`input/main.css`) and a JavaScript file
+(`input/main.js`) plus the supporting Transom config files.
 
 ~~~ sh
 $ cd <your-new-project-dir>
 
-$ transom init --help
-usage: transom init [-h] [--verbose] [--quiet] CONFIG-DIR INPUT-DIR
-
-positional arguments:
-  CONFIG-DIR  Read config files from CONFIG-DIR
-  INPUT-DIR   Place default input files in INPUT-DIR
-
-$ transom init config input
+$ transom init
 transom: Creating 'config/body.html'
 transom: Creating 'config/config.py'
 transom: Creating 'config/page.html'
@@ -58,20 +49,11 @@ transom: Creating 'input/main.css'
 transom: Creating 'input/main.js'
 ~~~
 
-The `transom render` command takes the config dir and the input dir
-and the *output dir*.  That's of course the interesting part.  It uses
-the input config and input content to generate the rendered output.
+The `transom render` command uses the config and input files to
+generate the rendered output.
 
 ~~~ sh
-$ transom render --help
-usage: transom render [-h] [--verbose] [--quiet] [--force] CONFIG-DIR INPUT-DIR OUTPUT-DIR
-
-positional arguments:
-  CONFIG-DIR  Read config files from CONFIG-DIR
-  INPUT-DIR   The base directory for input files
-  OUTPUT-DIR  The base directory for output files
-
-$ transom render config input output
+$ transom render
 Rendering files from 'input' to 'output'
 Found 3 input files
 Rendered 3 output files
@@ -89,7 +71,7 @@ updates to the config or input files and re-renders the output as
 needed.
 
 ~~~ sh
-$ transom serve config input output
+$ transom serve
 Rendering files from 'input' to 'output'
 Found 3 input files
 Rendered 0 output files (3 unchanged)
