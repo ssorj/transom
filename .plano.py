@@ -32,7 +32,7 @@ def build(*args, **kwargs):
 
         with working_dir(quiet=True):
             touch("config/config.py", quiet=True)
-            run("transom render --init-only config input output", quiet=True)
+            run("transom render --init-only", quiet=True)
 
 @command(parent=clean)
 def clean(*args, **kwargs):

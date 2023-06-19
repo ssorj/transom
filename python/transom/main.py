@@ -51,10 +51,11 @@ if not _once:
     _once = True
 
 class Transom:
-    def __init__(self, config_dir, input_dir, output_dir, verbose=False, quiet=False):
-        self.config_dir = config_dir
-        self.input_dir = input_dir
-        self.output_dir = output_dir
+    def __init__(self, project_dir, verbose=False, quiet=False):
+        self.project_dir = project_dir
+        self.config_dir = _os.path.join(self.project_dir, "config")
+        self.input_dir = _os.path.join(self.project_dir, "input")
+        self.output_dir = _os.path.join(self.project_dir, "output")
 
         self.verbose = verbose
         self.quiet = quiet
@@ -579,34 +580,24 @@ class TransomCommand:
                             help="Print no logging to the console")
         common.add_argument("--init-only", action="store_true",
                             help=_argparse.SUPPRESS)
+        common.add_argument("project_dir", nargs="?", default=".",
+                            help="The project root directory")
 
-        common_io = _argparse.ArgumentParser(add_help=False)
-        common_io.add_argument("config_dir", metavar="CONFIG-DIR",
-                               help="Read config files from CONFIG-DIR")
-        common_io.add_argument("input_dir", metavar="INPUT-DIR",
-                               help="The base directory for input files")
-        common_io.add_argument("output_dir", metavar="OUTPUT-DIR",
-                               help="The base directory for output files")
-
-        init = subparsers.add_parser("init", parents=(common,), add_help=False,
+        init = subparsers.add_parser("init", parents=[common], add_help=False,
                                      help="Prepare an input directory")
         init.set_defaults(command_fn=self.init_command)
-        init.add_argument("config_dir", metavar="CONFIG-DIR",
-                          help="Read config files from CONFIG-DIR")
-        init.add_argument("input_dir", metavar="INPUT-DIR",
-                          help="Place default input files in INPUT-DIR")
         init.add_argument("--profile", metavar="PROFILE", choices=("website", "webapp"), default="website",
                           help="Select starter files for different scenarios (default website)")
         init.add_argument("--github", action="store_true",
                           help="Add extra files for use in a GitHub repo")
 
-        render = subparsers.add_parser("render", parents=(common, common_io), add_help=False,
+        render = subparsers.add_parser("render", parents=[common], add_help=False,
                                        help="Generate output files")
         render.set_defaults(command_fn=self.render_command)
         render.add_argument("--force", action="store_true",
                             help="Render all input files, including unmodified ones")
 
-        render = subparsers.add_parser("serve", parents=(common, common_io), add_help=False,
+        render = subparsers.add_parser("serve", parents=[common], add_help=False,
                                        help="Generate output files and serve the site on a local port")
         render.set_defaults(command_fn=self.serve_command)
         render.add_argument("--port", type=int, metavar="PORT", default=8080,
@@ -614,11 +605,11 @@ class TransomCommand:
         render.add_argument("--force", action="store_true",
                             help="Render all input files, including unmodified ones")
 
-        check_links = subparsers.add_parser("check-links", parents=(common, common_io), add_help=False,
+        check_links = subparsers.add_parser("check-links", parents=[common], add_help=False,
                                             help="Check for broken links")
         check_links.set_defaults(command_fn=self.check_links_command)
 
-        check_files = subparsers.add_parser("check-files", parents=(common, common_io), add_help=False,
+        check_files = subparsers.add_parser("check-files", parents=[common], add_help=False,
                                             help="Check for missing or extra files")
         check_files.set_defaults(command_fn=self.check_files_command)
 
@@ -633,8 +624,7 @@ class TransomCommand:
         self.verbose = self.args.verbose
 
         if self.args.command_fn != self.init_command:
-            self.lib = Transom(self.args.config_dir, self.args.input_dir, self.args.output_dir,
-                               verbose=self.verbose, quiet=self.quiet)
+            self.lib = Transom(self.args.project_dir, verbose=self.verbose, quiet=self.quiet)
             self.lib.init()
 
     def main(self, args=None):
@@ -688,25 +678,27 @@ class TransomCommand:
             self.notice("Creating '{}'", to_path)
 
         profile_dir = _os.path.join(self.home, "profiles", self.args.profile)
-        config_dir = _os.path.join(profile_dir, "config")
-        input_dir = _os.path.join(profile_dir, "input")
+        project_dir = self.args.project_dir
 
         assert _os.path.exists(profile_dir), profile_dir
 
-        for name in _os.listdir(config_dir):
-            copy(_os.path.join(config_dir, name), _os.path.join(self.args.config_dir, name))
+        for name in _os.listdir(_os.path.join(profile_dir, "config")):
+            copy(_os.path.join(profile_dir, "config", name),
+                 _os.path.join(project_dir, "config", name))
 
-        for name in _os.listdir(input_dir):
-            copy(_os.path.join(input_dir, name), _os.path.join(self.args.input_dir, name))
+        for name in _os.listdir(_os.path.join(profile_dir, "input")):
+            copy(_os.path.join(profile_dir, "input", name),
+                 _os.path.join(project_dir, "input", name))
 
         if self.args.github:
             python_dir = _os.path.join(self.home, "python")
-            project_dir, _ = _os.path.split(self.args.input_dir) # XXX
 
             copy(_os.path.join(profile_dir, ".plano.py"), _os.path.join(project_dir, ".plano.py"))
-
             copy(_os.path.join(python_dir, "mistune"), _os.path.join(project_dir, "python", "mistune"))
             copy(_os.path.join(python_dir, "transom"), _os.path.join(project_dir, "python", "transom"))
+
+            with open(_os.path.join(project_dir, "config", "config.py"), "a") as f:
+                f.write("\nsite.output_dir = \"docs\"\n")
 
     def render_command(self):
         self.lib.render(force=self.args.force)
