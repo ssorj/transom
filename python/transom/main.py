@@ -52,10 +52,10 @@ if not _once:
 
 class Transom:
     def __init__(self, project_dir, verbose=False, quiet=False):
-        self.project_dir = project_dir
-        self.config_dir = _os.path.join(self.project_dir, "config")
-        self.input_dir = _os.path.join(self.project_dir, "input")
-        self.output_dir = _os.path.join(self.project_dir, "output")
+        self.project_dir = _os.path.normpath(project_dir)
+        self.config_dir = _os.path.normpath(_os.path.join(self.project_dir, "config"))
+        self.input_dir = _os.path.normpath(_os.path.join(self.project_dir, "input"))
+        self.output_dir = _os.path.normpath(_os.path.join(self.project_dir, "output"))
 
         self.verbose = verbose
         self.quiet = quiet
@@ -694,6 +694,7 @@ class TransomCommand:
             python_dir = _os.path.join(self.home, "python")
 
             copy(_os.path.join(profile_dir, ".plano.py"), _os.path.join(project_dir, ".plano.py"))
+            copy(_os.path.join(profile_dir, ".nojekyll"), _os.path.join(project_dir, ".nojekyll"))
             copy(_os.path.join(python_dir, "mistune"), _os.path.join(project_dir, "python", "mistune"))
             copy(_os.path.join(python_dir, "transom"), _os.path.join(project_dir, "python", "transom"))
 
