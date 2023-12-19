@@ -62,7 +62,7 @@ Rendered 3 output files
 Now you have the HTML website under `<your-project-dir>/output`.  You
 can send that whereever you need it to be for publishing purposes.
 Since I often use GitHub pages for publishing, I set my output dir to
-`docs` and then configure the GitHub project serve those files.
+`docs` and then configure the GitHub project to serve those files.
 
 For local development, you will likely want to use the `transom serve`
 command.  This renders the site to the output dir and stands up a
