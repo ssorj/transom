@@ -693,13 +693,10 @@ class TransomCommand:
         if self.args.github:
             python_dir = _os.path.join(self.home, "python")
 
+            copy(_os.path.join(profile_dir, ".gitignore"), _os.path.join(project_dir, ".gitignore"))
             copy(_os.path.join(profile_dir, ".plano.py"), _os.path.join(project_dir, ".plano.py"))
-            copy(_os.path.join(profile_dir, ".nojekyll"), _os.path.join(project_dir, ".nojekyll"))
             copy(_os.path.join(python_dir, "mistune"), _os.path.join(project_dir, "python", "mistune"))
             copy(_os.path.join(python_dir, "transom"), _os.path.join(project_dir, "python", "transom"))
-
-            with open(_os.path.join(project_dir, "config", "config.py"), "a") as f:
-                f.write("\nsite.output_dir = \"docs\"\n")
 
     def render_command(self):
         self.lib.render(force=self.args.force)
