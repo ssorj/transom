@@ -237,10 +237,6 @@ class Transom:
 
         return errors
 
-    def info(self, message, *args):
-        if self.verbose:
-            print(message.format(*args))
-
     def notice(self, message, *args):
         if not self.quiet:
             print(message.format(*args))
@@ -291,7 +287,7 @@ class _File:
         if not force and not self._is_modified():
             return
 
-        self.site.info("Rendering {}", self)
+        self.site.notice("Rendering {}", self)
 
         self._render_content()
 
@@ -694,6 +690,8 @@ class TransomCommand:
         if self.args.github:
             python_dir = _os.path.join(self.home, "python")
 
+            copy(_os.path.join(profile_dir, ".github/workflows/main.yaml"),
+                 _os.path.join(project_dir, ".github/workflows/main.yaml"))
             copy(_os.path.join(profile_dir, ".gitignore"), _os.path.join(project_dir, ".gitignore"))
             copy(_os.path.join(profile_dir, ".plano.py"), _os.path.join(project_dir, ".plano.py"))
             copy(_os.path.join(python_dir, "mistune"), _os.path.join(project_dir, "python", "mistune"))
