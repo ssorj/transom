@@ -42,3 +42,32 @@ def clean(*args, **kwargs):
     remove("qpid-site/output")
     remove("htmlcov")
     remove(".coverage")
+
+@command
+def update_bullseye():
+    """
+    Update the embedded Bullseye repo
+    """
+    update_external_repo("ssorj", "bullseye", "main")
+
+@command
+def update_plano():
+    """
+    Update the embedded Plano repo
+    """
+    update_external_repo("ssorj", "plano", "main")
+
+@command
+def update_mistune():
+    """
+    Update the embedded Mistune repo
+    """
+    update_external_repo("lepture", "mistune", "master")
+
+def update_external_repo(owner, repo, branch):
+    check_program("curl")
+
+    make_dir("external")
+    remove(f"external/{repo}-{branch}")
+
+    run(f"curl -sfL https://github.com/{owner}/{repo}/archive/{branch}.tar.gz | tar -C external -xz", shell=True)
