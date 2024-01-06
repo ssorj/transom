@@ -168,7 +168,8 @@ class Transom:
             watcher.start()
 
         try:
-            livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100", shell=True)
+            livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100",
+                                           shell=True, stdout=_subprocess.DEVNULL, stderr=_subprocess.DEVNULL)
         except _subprocess.CalledProcessError as e: # pragma: nocover
             self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
             self.notice("Use 'npm install -g livereload' to install the server")
