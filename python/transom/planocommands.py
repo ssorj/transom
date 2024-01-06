@@ -95,6 +95,21 @@ def check_files(verbose=False):
 def clean():
     remove(find(".", "__pycache__"))
 
+@command
+def update_transom():
+    """
+    Update the embedded Transom repo
+    """
+    update_external_repo("ssorj", "transom", "main")
+
+def update_external_repo(owner, repo, branch):
+    check_program("curl")
+
+    make_dir("external")
+    remove(f"external/{repo}-{branch}")
+
+    run(f"curl -sfL https://github.com/{owner}/{repo}/archive/{branch}.tar.gz | tar -C external -xz", shell=True)
+
 class project_env(working_env):
     def __init__(self):
         super(project_env, self).__init__(PYTHONPATH="python")
