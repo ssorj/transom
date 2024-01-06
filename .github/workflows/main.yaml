@@ -21,11 +21,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.version}}
-          cache: pip
-      # - uses: actions/setup-node@v4
-      #   with:
-      #     node-version: latest
-      #     cache: npm
-      # - run: npm install -g livereload
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+      - run: npm install -g livereload
       - run: ./plano install
       - run: transom-self-test
