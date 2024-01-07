@@ -237,6 +237,10 @@ class Transom:
 
         return errors
 
+    def debug(self, message, *args):
+        if self.verbose:
+            print(message.format(*args))
+
     def notice(self, message, *args):
         if not self.quiet:
             print(message.format(*args))
@@ -287,7 +291,7 @@ class _File:
         if not force and not self._is_modified():
             return
 
-        self.site.notice("Rendering {}", self)
+        self.site.debug("Rendering {}", self)
 
         self._render_content()
 
