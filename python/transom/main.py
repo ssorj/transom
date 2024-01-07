@@ -87,7 +87,7 @@ class Transom:
         try:
             exec(_read_file(_os.path.join(self.config_dir, "config.py")), self._config)
         except FileNotFoundError as e:
-            self.warn("Config file not found: {}", e)
+            self.warning("Config file not found: {}", e)
 
     def _init_files(self):
         self._files.clear()
@@ -245,7 +245,7 @@ class Transom:
         if not self.quiet:
             print(message.format(*args))
 
-    def warn(self, message, *args):
+    def warning(self, message, *args):
         print("Warning:", message.format(*args))
 
 class _File:
@@ -348,7 +348,7 @@ class _LinkParser(_HTMLParser):
             normalized_url = _urlparse.urljoin(self.file.url, f"#{attrs['id']}")
 
             if normalized_url in self.link_targets:
-                self.file.site.warn("Duplicate link target in '{}'", normalized_url)
+                self.file.site.warning("Duplicate link target in '{}'", normalized_url)
 
             self.link_targets.add(normalized_url)
 
@@ -645,7 +645,7 @@ class TransomCommand:
         if not self.quiet:
             self.print_message(message, *args)
 
-    def warn(self, message, *args):
+    def warning(self, message, *args):
         message = "Warning: {}".format(message)
         self.print_message(message, *args)
 
@@ -720,7 +720,7 @@ class TransomCommand:
         missing_files, extra_files = self.lib.check_files()
 
         if extra_files != 0:
-            self.warn("{} extra files in the output", extra_files)
+            self.warning("{} extra files in the output", extra_files)
 
         if missing_files == 0:
             self.notice("PASSED")
