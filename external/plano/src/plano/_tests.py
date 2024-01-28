@@ -25,6 +25,8 @@ import socket as _socket
 import sys as _sys
 import threading as _threading
 
+from .github import *
+
 try:
     import http.server as _http
 except ImportError: # pragma: nocover
@@ -52,15 +54,15 @@ def archive_operations():
         assert is_file("some-dir.tar.gz"), list_dir()
 
         extract_archive("some-dir.tar.gz", output_dir="some-subdir")
-        assert is_dir("some-subdir/some-dir")
-        assert is_file("some-subdir/some-dir/some-file")
+        assert is_dir("some-subdir/some-dir"), list_dir("some-subdir")
+        assert is_file("some-subdir/some-dir/some-file"), list_dir("some-subdir/some-dir")
 
         rename_archive("some-dir.tar.gz", "something-else")
-        assert is_file("something-else.tar.gz")
+        assert is_file("something-else.tar.gz"), list_dir()
 
         extract_archive("something-else.tar.gz")
-        assert is_dir("something-else")
-        assert is_file("something-else/some-file")
+        assert is_dir("something-else"), list_dir()
+        assert is_file("something-else/some-file"), list_dir("something-else")
 
 @test
 def command_operations():
@@ -94,6 +96,7 @@ def command_operations():
                 print("Hello")
 
     SomeCommand().main([])
+    SomeCommand().main(["--verbose"])
     SomeCommand().main(["--interrupt"])
 
     with expect_system_exit():
@@ -231,6 +234,8 @@ def env_operations():
         with open(out, "w") as f:
             print_env(file=f)
 
+    print_stack()
+
 @test
 def file_operations():
     with working_dir():
@@ -310,9 +315,23 @@ def file_operations():
         assert result == 10, result
 
 @test
+def github_operations():
+    result = convert_github_markdown("# Hello, Fritz")
+    assert "Hello, Fritz" in result, result
+
+    with working_dir():
+        update_external_from_github("temp", "ssorj", "plano")
+        assert is_file("temp/Makefile"), list_dir("temp")
+
+@test
 def http_operations():
     class Handler(_http.BaseHTTPRequestHandler):
         def do_GET(self):
+            if not self.path.startswith("/api"):
+                self.send_response(404)
+                self.end_headers()
+                return
+
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b"[1]")
@@ -341,7 +360,8 @@ def http_operations():
             self.server.serve_forever()
 
     host, port = "localhost", get_random_port()
-    url = "http://{}:{}".format(host, port)
+    url = "http://{}:{}/api".format(host, port)
+    missing_url = "http://{}:{}/nono".format(host, port)
 
     try:
         server = _http.HTTPServer((host, port), Handler)
@@ -357,6 +377,9 @@ def http_operations():
         with working_dir():
             result = http_get(url)
             assert result == "[1]", result
+
+            with expect_error():
+                http_get(missing_url)
 
             result = http_get(url, insecure=True)
             assert result == "[1]", result
@@ -525,6 +548,9 @@ def logging_operations():
 
     with expect_error():
         fail("Error!")
+
+    with expect_error():
+        fail("Error! {}", "Let me elaborate")
 
     for level in ("debug", "notice", "warning", "error"):
         with expect_output(contains="Hello") as out:
@@ -930,6 +956,7 @@ def test_operations():
         with working_module_path("src"):
             import chucker
             import chucker.tests
+            import chucker.moretests
 
             print_tests(chucker.tests)
 
@@ -951,6 +978,9 @@ def test_operations():
                 with expect_error():
                     run_tests(chucker.tests, enable="*badbye*", fail_fast=True, verbose=verbose)
 
+                with expect_error():
+                    run_tests([chucker.tests, chucker.moretests], enable="*badbye2*", fail_fast=True, verbose=verbose)
+
                 with expect_exception(KeyboardInterrupt):
                     run_tests(chucker.tests, enable="keyboard-interrupt", verbose=verbose)
 
@@ -970,6 +1000,7 @@ def test_operations():
                 PlanoTestCommand(chucker.tests).main(args)
 
             run_command("--verbose")
+            run_command("--quiet")
             run_command("--list")
 
             with expect_system_exit():
@@ -1185,7 +1216,6 @@ def plano_command():
     with test_project():
         run_command()
         run_command("--help")
-        run_command("--quiet")
 
         with expect_system_exit():
             run_command("no-such-command")
@@ -1197,6 +1227,8 @@ def plano_command():
             run_command("--help", "no-such-command")
 
         run_command("extended-command", "a", "b", "--omega", "z")
+        run_command("extended-command", "a", "b", "--omega", "z", "--verbose")
+        run_command("extended-command", "a", "b", "--omega", "z", "--quiet")
 
         with expect_system_exit():
             run_command("echo")
@@ -1272,6 +1304,8 @@ def plano_command():
         run_command("invisible")
         result = read_json("invisible.json")
         assert result == "nothing"
+
+
 
 def main():
     PlanoTestCommand(_sys.modules[__name__]).main()
