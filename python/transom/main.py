@@ -33,6 +33,7 @@ import subprocess as _subprocess
 import sys as _sys
 import threading as _threading
 import types as _types
+import yaml as _yaml
 
 from html import escape as _escape
 from html.parser import HTMLParser as _HTMLParser
@@ -755,19 +756,14 @@ def _copy_path(from_path, to_path):
         _copy_file(from_path, to_path)
 
 def _extract_metadata(text):
-    attrs = dict()
-
     if text.startswith("---\n"):
         end = text.index("---\n", 4)
-        lines = text[4:end].strip().split("\n")
-
-        for line in lines:
-            key, value = (x.strip() for x in line.split(":", 1))
-            attrs[key] = None if value.lower() in ("none", "null") else value
-
+        yaml = text[4:end]
         text = text[end + 4:]
 
-    return text, attrs
+        return text, _yaml.safe_load(yaml)
+
+    return text, dict()
 
 def _load_template(path, default_text):
     if path is None or not _os.path.isfile(path):
