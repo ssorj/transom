@@ -22,5 +22,5 @@ jobs:
         with:
           python-version: ${{matrix.python-version}}
       - run: python -m pip install pyyaml
-      - run: plano install
+      - run: python plano install
       - run: transom-self-test
