@@ -18,6 +18,7 @@
 #
 
 from plano import *
+from plano.github import *
 from transom import TransomCommand
 
 @command(passthrough=True)
