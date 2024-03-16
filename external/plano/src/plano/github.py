@@ -56,7 +56,7 @@ def convert_github_markdown(markdown):
     content = http_post("https://api.github.com/markdown", json, content_type="application/json")
 
     # Remove the "user-content-" prefix from internal anchors
-    content = replace(content, "id=\"user-content-", "id=\"")
+    content = content.replace("id=\"user-content-", "id=\"")
 
     return _html_template.replace("@content@", content)
 
@@ -65,15 +65,16 @@ def update_external_from_github(dir, owner, repo, ref="main"):
     make_parent_dir(dir)
 
     url = f"https://github.com/{owner}/{repo}/archive/{ref}.tar.gz"
-    name = f"{repo}-{ref}"
 
     with temp_file() as temp:
+        assert exists(temp)
+
         http_get(url, output_file=temp)
 
         with working_dir(quiet=True):
             extract_archive(temp)
 
             extracted_dir = list_dir()[0]
-            assert is_dir(extracted_dir), list_dir()
+            assert is_dir(extracted_dir)
 
-            move(extracted_dir, dir, inside=False)
+            replace(dir, extracted_dir)
