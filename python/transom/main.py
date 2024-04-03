@@ -43,7 +43,7 @@ _default_page_template = "{{page.body}}"
 _default_body_template = "{{page.content}}"
 _index_file_names = "index.md", "index.html.in", "index.html"
 _markdown_title_regex = _re.compile(r"(#|##)(.+)")
-_variable_regex = _re.compile(r"({{.+?}})")
+_variable_regex = _re.compile(r"({{{.+?}}}|{{.+?}})")
 
 # An improvised solution for trouble on Mac OS
 _once = False
@@ -773,7 +773,9 @@ def _load_template(path, default_text):
 
 def _parse_template(text):
     for token in _variable_regex.split(text):
-        if token.startswith("{{") and token.endswith("}}"):
+        if token.startswith("{{{") and token.endswith("}}}"):
+            yield token[1:-1]
+        elif token.startswith("{{") and token.endswith("}}"):
             yield compile(token[2:-2], "<string>", "eval")
         else:
             yield token
