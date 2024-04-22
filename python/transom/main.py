@@ -157,7 +157,6 @@ class Transom:
 
     def serve(self, port=8080):
         watcher = None
-        livereload = None
 
         try:
             watcher = _WatcherThread(self)
@@ -169,20 +168,9 @@ class Transom:
             watcher.start()
 
         try:
-            livereload = _subprocess.Popen(f"livereload {self.output_dir} --wait 100",
-                                           shell=True, stdout=_subprocess.DEVNULL, stderr=_subprocess.DEVNULL)
-        except _subprocess.CalledProcessError as e: # pragma: nocover
-            self.notice("Failed to start the livereload server, so I won't auto-reload the browser")
-            self.notice("Use 'npm install -g livereload' to install the server")
-            self.notice("Subprocess error: {}", e)
-
-        try:
             server = _ServerThread(self, port)
             server.run()
         finally:
-            if livereload is not None:
-                livereload.terminate()
-
             if watcher is not None:
                 watcher.stop()
 
@@ -532,26 +520,6 @@ class _Server(_http.ThreadingHTTPServer):
 class _ServerRequestHandler(_http.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
         super().__init__(request, client_address, server, directory=server.site.output_dir)
-
-    def do_GET(self):
-        path = _os.path.join(self.directory, self.path[1:])
-
-        if _os.path.isdir(path):
-            path = _os.path.join(path, "index.html")
-
-        if path.endswith(".html"):
-            with open(path) as file_:
-                content = file_.read()
-                content = content.replace("</head>", "<script src=\"http://localhost:35729/livereload.js\"></script></head>")
-
-                self.send_response(_http.HTTPStatus.OK)
-                self.send_header("Content-type", "text/html; charset=UTF-8")
-                self.send_header("Content-length", len(content))
-                self.end_headers()
-
-                self.wfile.write(content.encode("utf-8"))
-        else:
-            super().do_GET()
 
     def do_POST(self):
         if self.path == "/STOP":
