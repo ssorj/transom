@@ -140,7 +140,8 @@ class Transom:
 
         self.notice("Found {:,} input {}", len(self._files), _plural("file", len(self._files)))
 
-        for file_ in self._index_files.values():
+        # XXX Consider parallizing this too
+        for file_ in self._files:
             file_._process_input()
 
         proc_count = _os.cpu_count()
