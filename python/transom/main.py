@@ -75,6 +75,8 @@ class Transom:
         self._body_template = None
         self._page_template = None
 
+        self._config_modified = False
+
         self._files = list()
         self._index_files = dict() # parent input dir => _File
 
@@ -89,6 +91,16 @@ class Transom:
             exec(_read_file(_os.path.join(self.config_dir, "config.py")), self._config)
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
+
+    def _get_config_modified(self, output_mtime):
+        for root, dirs, names in _os.walk(self.config_dir):
+            for name in {x for x in names if not self._ignored_file_regex.match(x)}:
+                mtime = _os.path.getmtime(_os.path.join(root, name))
+
+                if mtime > output_mtime:
+                    return True
+
+        return False
 
     def _init_files(self):
         self._files.clear()
@@ -119,6 +131,10 @@ class Transom:
 
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
+
+        if _os.path.exists(self.output_dir):
+            output_mtime = _os.path.getmtime(self.output_dir)
+            self._config_modified = self._get_config_modified(output_mtime)
 
         self._init_files()
 
@@ -360,6 +376,9 @@ class _TemplatePage(_File):
         except KeyError:
             self._body_template = self.site._body_template
 
+    def _is_modified(self):
+        return self.site._config_modified or super()._is_modified()
+
     def _render_content(self):
         if not hasattr(self, "_content"):
             self._process_input()
@@ -485,7 +504,7 @@ class _WatcherThread:
 
         def render_site(event):
             self.site.init()
-            self.site.render(force=True)
+            self.site.render()
 
         watcher.add_watch(self.site.input_dir, mask, render_file, rec=True, auto_add=True)
         watcher.add_watch(self.site.config_dir, mask, render_site, rec=True, auto_add=True)
