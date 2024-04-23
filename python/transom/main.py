@@ -323,6 +323,14 @@ class _File:
         parser = _LinkParser(self, link_sources, link_targets)
         parser.feed(_read_file(self._output_path))
 
+    @property
+    def ancestors(self):
+        file_ = self
+
+        while file_ is not None:
+            yield file_
+            file_ = file_.parent
+
 class _LinkParser(_HTMLParser):
     def __init__(self, file_, link_sources, link_targets):
         super().__init__()
@@ -408,22 +416,14 @@ class _TemplatePage(_File):
 
         return self._convert_content(rendered)
 
+    def path_nav(self, start=None, end=None):
+        files = reversed(list(self.ancestors))
+        links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in files]
+
+        return f"<nav id=\"-path-nav\">{''.join(links)}</nav>"
+
     def _convert_content(self, content):
         return content
-
-    @property
-    def path_nav_links(self):
-        files = [self]
-        file_ = self.parent
-
-        while file_ is not None:
-            files.append(file_)
-            file_ = file_.parent
-
-        return (f"<a href=\"{x.url}\">{x.title}</a>" for x in reversed(files))
-
-    def path_nav(self, start=None, end=None):
-        return f"<nav id=\"-path-nav\">{''.join(list(self.path_nav_links)[start:end])}</nav>"
 
     def _render_template(self, template):
         local_vars = {"page": self}
