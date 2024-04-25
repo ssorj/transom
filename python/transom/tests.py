@@ -112,7 +112,7 @@ def transom_render():
     with test_site():
         remove("config/config.py") # No config.py
 
-        transom_command.main(["render", "--verbose"])
+        transom_command.main(["render", "--verbose", "--init-only"])
 
     with test_site():
         remove("config/body.html") # No body template

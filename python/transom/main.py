@@ -160,6 +160,9 @@ class Transom:
         for proc in procs:
             proc.join()
 
+            if proc.exitcode != 0:
+                raise Exception("A child render process failed")
+
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
 
