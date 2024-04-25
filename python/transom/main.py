@@ -564,12 +564,14 @@ class TransomCommand:
         subparsers = self.parser.add_subparsers(title="subcommands")
 
         common = _argparse.ArgumentParser()
+        common.add_argument("--init-only", action="store_true",
+                            help=_argparse.SUPPRESS)
         common.add_argument("--verbose", action="store_true",
                             help="Print detailed logging to the console")
         common.add_argument("--quiet", action="store_true",
                             help="Print no logging to the console")
-        common.add_argument("--init-only", action="store_true",
-                            help=_argparse.SUPPRESS)
+        common.add_argument("--output", metavar="OUTPUT-DIR",
+                            help="The output directory (default: PROJECT-DIR/output)")
         common.add_argument("project_dir", metavar="PROJECT-DIR", nargs="?", default=".",
                             help="The project root directory (default: current directory)")
 
@@ -615,6 +617,10 @@ class TransomCommand:
 
         if self.args.command_fn != self.init_command:
             self.lib = Transom(self.args.project_dir, verbose=self.verbose, quiet=self.quiet)
+
+            if self.args.output:
+                self.lib.output_dir = self.args.output
+
             self.lib.init()
 
     def main(self, args=None):
