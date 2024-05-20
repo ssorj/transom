@@ -42,7 +42,7 @@ from urllib import parse as _urlparse
 _default_page_template = "{{page.body}}"
 _default_body_template = "{{page.content}}"
 _index_file_names = "index.md", "index.html.in", "index.html"
-_markdown_title_regex = _re.compile(r"(#|##)(.+)")
+_markdown_title_regex = _re.compile(r"(#|##) (.+)")
 _variable_regex = _re.compile(r"({{{.+?}}}|{{.+?}})")
 
 # An improvised solution for trouble on Mac OS

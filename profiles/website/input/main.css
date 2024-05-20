@@ -44,6 +44,10 @@ br {
     margin: 0;
 }
 
+html {
+    overflow-y: scroll;
+}
+
 body {
     font: 13pt/19pt "Source Sans 3", sans-serif;
     font-weight: 400;
@@ -99,10 +103,6 @@ ol,
 ul,
 dd {
     padding-left: 1.2em;
-}
-
-ul {
-    list-style-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdAAAAHQBMYXlgQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAABMSURBVCjPY/j//z8DFtwAxRhyuBTDQAMhDWDF9+/f/wfC2DRhVRwcHPwfhLFpwqrYxcUFjLFpwqkYlyayNJDsJLI8TVawkhVxBJMGABnYvZjQ/qzjAAAAAElFTkSuQmCC");
 }
 
 li,
@@ -247,25 +247,25 @@ footer > div {
     font-size: 0.8em;
 }
 
-#-path-navigation {
+#-path-nav {
     margin: 0;
     padding: 0;
     display: inline;
 }
 
-#-path-navigation > li {
-    display: inline;
-}
-
-#-path-navigation > li:after {
+#-path-nav > a:after {
     content: " \00a0\003e\00a0\00a0 ";
 }
 
-#-path-navigation > li:last-child:after {
+#-path-nav > a:last-child:after {
     content: none;
 }
 
-#-global-navigation {
+#-global-nav {
+    float: right;
+}
+
+#-global-nav {
     float: right;
 }
 
