@@ -356,6 +356,12 @@ class _File:
             yield file_
             file_ = file_.parent
 
+    @property
+    def children(self):
+        for file_ in self.site._files:
+            if file_.parent is self:
+                yield file_
+
 class _LinkParser(_HTMLParser):
     def __init__(self, file_, link_sources, link_targets):
         super().__init__()
