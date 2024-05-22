@@ -216,7 +216,7 @@ section {
     flex: 1 0 0;
 }
 
-header, article, footer {
+header, main, footer {
     margin: 0;
 }
 
@@ -225,7 +225,7 @@ header {
     border-bottom: 1px solid #ddd;
 }
 
-article {
+main {
     padding: 2em;
 }
 
@@ -234,7 +234,7 @@ footer {
     padding: 1em 2em;
 }
 
-header > div, article > div, footer > div {
+header > div, main > div, footer > div {
     max-width: 960px;
     margin: 0 auto;
 }
@@ -317,7 +317,7 @@ footer > div {
         display: none;
     }
 
-    article {
+    main {
         padding: 0;
     }
 }

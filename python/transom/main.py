@@ -39,8 +39,28 @@ from html import escape as _escape
 from html.parser import HTMLParser as _HTMLParser
 from urllib import parse as _urlparse
 
-_default_page_template = "{{page.body}}"
-_default_body_template = "{{page.content}}"
+_default_page_template = """
+<!DOCTYPE html>
+<html>
+  {{page.head}}
+  {{page.body}}
+</html>
+"""
+
+_default_head_template = """
+<head>
+  <title>{{page.title}}</title>
+  <link rel="icon" href="data:;"/>
+  {{page.extra_headers}}
+</head>
+"""
+
+_default_body_template = """
+<body>
+  {{page.content}}
+</body>
+"""
+
 _index_file_names = "index.md", "index.html.in", "index.html"
 _markdown_title_regex = _re.compile(r"(#|##) (.+)")
 _variable_regex = _re.compile(r"({{{.+?}}}|{{.+?}})")
@@ -82,6 +102,7 @@ class Transom:
 
     def init(self):
         self._page_template = _load_template(_os.path.join(self.config_dir, "page.html"), _default_page_template)
+        self._head_template = _load_template(_os.path.join(self.config_dir, "head.html"), _default_head_template)
         self._body_template = _load_template(_os.path.join(self.config_dir, "body.html"), _default_body_template)
 
         self._ignored_file_regex = "({})".format("|".join([_fnmatch.translate(x) for x in self.ignored_file_patterns]))
@@ -370,7 +391,7 @@ class _LinkParser(_HTMLParser):
             self.link_targets.add(normalized_url)
 
 class _TemplatePage(_File):
-    __slots__ = "_content", "_attributes", "_page_template", "_body_template"
+    __slots__ = "_content", "_attributes", "_page_template", "_head_template", "_body_template"
 
     def _process_input(self):
         self._content = _read_file(self._input_path)
@@ -382,6 +403,11 @@ class _TemplatePage(_File):
             self._page_template = _load_template(self._attributes["page_template"], _default_page_template)
         except KeyError:
             self._page_template = self.site._page_template
+
+        try:
+            self._head_template = _load_template(self._attributes["head_template"], _default_head_template)
+        except KeyError:
+            self._head_template = self.site._head_template
 
         try:
             self._body_template = _load_template(self._attributes["body_template"], _default_body_template)
@@ -402,8 +428,8 @@ class _TemplatePage(_File):
                 f.write(elem)
 
     @property
-    def root_class(self):
-        return self._attributes.get("root_class", "")
+    def head(self):
+        return self._render_template(self._head_template)
 
     @property
     def extra_headers(self):
