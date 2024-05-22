@@ -101,9 +101,9 @@ class Transom:
         self._index_files = dict() # parent input dir => _File
 
     def init(self):
-        self._page_template = _load_template(_os.path.join(self.config_dir, "page.html"), _default_page_template)
-        self._head_template = _load_template(_os.path.join(self.config_dir, "head.html"), _default_head_template)
-        self._body_template = _load_template(_os.path.join(self.config_dir, "body.html"), _default_body_template)
+        self._page_template = _load_site_template(_os.path.join(self.config_dir, "page.html"), _default_page_template)
+        self._head_template = _load_site_template(_os.path.join(self.config_dir, "head.html"), _default_head_template)
+        self._body_template = _load_site_template(_os.path.join(self.config_dir, "body.html"), _default_body_template)
 
         self._ignored_file_regex = "({})".format("|".join([_fnmatch.translate(x) for x in self.ignored_file_patterns]))
         self._ignored_file_regex = _re.compile(self._ignored_file_regex)
@@ -406,17 +406,17 @@ class _TemplatePage(_File):
         self.title = self._attributes.get("title", self.title)
 
         try:
-            self._page_template = _load_template(self._attributes["page_template"], _default_page_template)
+            self._page_template = _load_file_template(self._attributes["page_template"], "")
         except KeyError:
             self._page_template = self.site._page_template
 
         try:
-            self._head_template = _load_template(self._attributes["head_template"], _default_head_template)
+            self._head_template = _load_file_template(self._attributes["head_template"], "")
         except KeyError:
             self._head_template = self.site._head_template
 
         try:
-            self._body_template = _load_template(self._attributes["body_template"], _default_body_template)
+            self._body_template = _load_file_template(self._attributes["body_template"], "{{page.content}}")
         except KeyError:
             self._body_template = self.site._body_template
 
@@ -794,8 +794,14 @@ def _extract_metadata(text):
 
     return text, dict()
 
-def _load_template(path, default_text):
-    if path is None or not _os.path.isfile(path):
+def _load_site_template(path, default_text):
+    if path is None or not _os.path.exists(path):
+        return list(_parse_template(default_text))
+
+    return list(_parse_template(_read_file(path)))
+
+def _load_file_template(path, default_text):
+    if path is None:
         return list(_parse_template(default_text))
 
     return list(_parse_template(_read_file(path)))
