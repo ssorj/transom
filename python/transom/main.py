@@ -577,8 +577,12 @@ class _ServerRequestHandler(_http.SimpleHTTPRequestHandler):
         super().__init__(request, client_address, server, directory=server.site.output_dir)
 
     def do_POST(self):
-        if self.path == "/STOP":
+        if self.path == "/RENDER":
+            self.server.site.render()
+        elif self.path == "/STOP":
             self.server.shutdown()
+        else:
+            raise Exception()
 
         self.send_response(_http.HTTPStatus.OK)
         self.end_headers()
