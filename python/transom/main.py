@@ -458,7 +458,7 @@ class TemplatePage(File):
         files = reversed(list(self.ancestors))
         links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in files]
 
-        return f"<nav id=\"-path-nav\">{''.join(links)}</nav>"
+        return f"<nav class=\"path-nav\">{''.join(links)}</nav>"
 
     def _convert_content(self, content):
         return content

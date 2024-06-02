@@ -247,26 +247,18 @@ footer > div {
     font-size: 0.8em;
 }
 
-#-path-nav {
+.path-nav {
     margin: 0;
     padding: 0;
     display: inline;
 }
 
-#-path-nav > a:after {
+.path-nav > a:after {
     content: " \00a0\003e\00a0\00a0 ";
 }
 
-#-path-nav > a:last-child:after {
+.path-nav > a:last-child:after {
     content: none;
-}
-
-#-global-nav {
-    float: right;
-}
-
-#-global-nav {
-    float: right;
 }
 
 @media screen and (max-width: 720px) {
