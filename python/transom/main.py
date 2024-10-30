@@ -531,7 +531,13 @@ class WatcherThread:
             input_path = _os.path.relpath(event.pathname, _os.getcwd())
             _, base_name = _os.path.split(input_path)
 
-            if _os.path.isdir(input_path) or self.site._ignored_file_regex.match(base_name):
+            if _os.path.isdir(input_path):
+                return True
+
+            if not _os.path.exists(input_path):
+                return True
+
+            if self.site._ignored_file_regex.match(base_name):
                 return True
 
             file_ = self.site._init_file(input_path)
