@@ -534,13 +534,14 @@ class WatcherThread:
             if _os.path.isdir(input_path):
                 return True
 
-            if not _os.path.exists(input_path):
-                return True
-
             if self.site._ignored_file_regex.match(base_name):
                 return True
 
-            file_ = self.site._init_file(input_path)
+            try:
+                file_ = self.site._init_file(input_path)
+            except FileNotFoundError:
+                return True
+
             file_._render()
 
             if _os.path.exists(self.site.output_dir):
