@@ -449,7 +449,7 @@ class TemplatePage(File):
 
     @property
     def content(self):
-        parsed = parse_template(self._content)
+        parsed = parse_template(self._content, self.input_path)
         rendered = "".join(self._render_template(parsed))
 
         return self._convert_content(rendered)
@@ -481,7 +481,7 @@ class TemplatePage(File):
         if markdown:
             text = convert_markdown(text)
 
-        return self._render_template(parse_template(text))
+        return self._render_template(parse_template(text, "[none]"))
 
     def include(self, input_path):
         return self.render_text(read_file(input_path), markdown=input_path.endswith(".md"))
@@ -809,22 +809,25 @@ def extract_metadata(text):
 
 def load_site_template(path, default_text):
     if path is None or not _os.path.exists(path):
-        return list(parse_template(default_text))
+        return list(parse_template(default_text, "[default]"))
 
-    return list(parse_template(read_file(path)))
+    return list(parse_template(read_file(path), path))
 
 def load_page_template(path, default_text):
     if path is None:
-        return list(parse_template(default_text))
+        return list(parse_template(default_text, "[default]"))
 
-    return list(parse_template(read_file(path)))
+    return list(parse_template(read_file(path), path))
 
-def parse_template(text):
+def parse_template(text, context):
     for token in _variable_regex.split(text):
         if token.startswith("{{{") and token.endswith("}}}"):
             yield token[1:-1]
         elif token.startswith("{{") and token.endswith("}}"):
-            yield compile(token[2:-2], "<string>", "eval")
+            try:
+                yield compile(token[2:-2], "<string>", "eval")
+            except Exception as e:
+                raise Exception(f"Error parsing template: {context}: {e}")
         else:
             yield token
 
