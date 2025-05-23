@@ -134,7 +134,7 @@ class Transom:
             index_files = {x for x in names if x in _index_file_names}
 
             if len(index_files) > 1:
-                raise Exception(f"Duplicate index files in {root}")
+                raise TransomError(f"Duplicate index files in {root}")
 
             for name in index_files:
                 self._files.append(self._init_file(_os.path.join(root, name)))
@@ -184,7 +184,7 @@ class Transom:
             proc.join()
 
             if proc.exitcode != 0:
-                raise Exception("A child render process failed")
+                raise TransomError("A child render process failed")
 
         if _os.path.exists(self.output_dir):
             _os.utime(self.output_dir)
@@ -213,6 +213,12 @@ class Transom:
         try:
             server = ServerThread(self, port)
             server.run()
+        except OSError as e:
+            # OSError: [Errno 98] Address already in use
+            if e.errno == 98:
+                raise TransomError(f"Port {port} is already in use")
+            else:
+                raise
         finally:
             if watcher is not None:
                 watcher.stop()
@@ -363,6 +369,9 @@ class File:
         for file_ in self.site._files:
             if file_.parent is self:
                 yield file_
+
+class TransomError(Exception):
+    pass
 
 class LinkParser(HTMLParser):
     def __init__(self, file_, link_sources, link_targets):
@@ -681,6 +690,8 @@ class TransomCommand:
 
         try:
             self.args.command_fn()
+        except TransomError as e:
+            self.fail(str(e))
         except KeyboardInterrupt: # pragma: nocover
             pass
 
@@ -827,7 +838,7 @@ def parse_template(text, context):
             try:
                 yield compile(token[2:-2], "<string>", "eval")
             except Exception as e:
-                raise Exception(f"Error parsing template: {context}: {e}")
+                raise TransomError(f"Error parsing template: {context}: {e}")
         else:
             yield token
 
