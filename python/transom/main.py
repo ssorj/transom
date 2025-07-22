@@ -618,7 +618,7 @@ class ServerRequestHandler(_http.SimpleHTTPRequestHandler):
 
     def handle_fetch(self):
         if self.path == "/" and self.server.site.prefix:
-            self.send_response(_http.HTTPStatus.MOVED_PERMANENTLY)
+            self.send_response(_http.HTTPStatus.FOUND)
             self.send_header("Location", self.server.site.prefix + "/")
             self.end_headers()
             return
