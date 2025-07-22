@@ -616,22 +616,27 @@ class ServerRequestHandler(_http.SimpleHTTPRequestHandler):
         self.send_response(_http.HTTPStatus.OK)
         self.end_headers()
 
-    def handle_fetch(self):
+    def intercept_fetch(self):
         if self.path == "/" and self.server.site.prefix:
             self.send_response(_http.HTTPStatus.FOUND)
             self.send_header("Location", self.server.site.prefix + "/")
             self.end_headers()
-            return
+
+            return True # redirected
 
         self.path = self.path.removeprefix(self.server.site.prefix)
 
     def do_HEAD(self):
-        self.handle_fetch()
-        super().do_HEAD()
+        redirected = self.intercept_fetch()
+
+        if not redirected:
+            super().do_HEAD()
 
     def do_GET(self):
-        self.handle_fetch()
-        super().do_GET()
+        redirected = self.intercept_fetch()
+
+        if not redirected:
+            super().do_GET()
 
 class TransomCommand:
     def __init__(self, home=None):
