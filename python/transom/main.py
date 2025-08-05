@@ -394,8 +394,13 @@ class LinkParser(HTMLParser):
 
             split_url = _urlparse.urlsplit(url)
 
+            # Ignore off-site links
             if split_url.scheme or split_url.netloc:
                 continue
+
+            # Treat somepath/ as somepath/index.html
+            if split_url.path.endswith("/"):
+                split_url = split_url._replace(path=f"{split_url.path}index.html")
 
             normalized_url = _urlparse.urljoin(self.file.url, _urlparse.urlunsplit(split_url))
 
