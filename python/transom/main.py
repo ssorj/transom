@@ -39,7 +39,7 @@ from html import escape as _escape
 from html.parser import HTMLParser
 from urllib import parse as _urlparse
 
-__all__ = ["Transom", "TransomCommand"]
+__all__ = ["TransomSite", "TransomCommand"]
 
 _default_page_template = """
 <!DOCTYPE html>
@@ -73,7 +73,7 @@ if not _once:
     _multiprocessing.set_start_method("fork")
     _once = True
 
-class Transom:
+class TransomSite:
     def __init__(self, project_dir, verbose=False, quiet=False):
         self.project_dir = _os.path.normpath(project_dir)
         self.config_dir = _os.path.normpath(_os.path.join(self.project_dir, "config"))
@@ -114,7 +114,7 @@ class Transom:
         self._ignored_file_regex = _re.compile(self._ignored_file_regex)
 
         try:
-            exec(read_file(_os.path.join(self.config_dir, "config.py")), self._config)
+            exec(read_file(_os.path.join(self.config_dir, "transom.py")), self._config)
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
 
@@ -729,7 +729,7 @@ class TransomCommand:
         self.verbose = self.args.verbose
 
         if self.args.command_fn != self.init_command:
-            self.lib = Transom(self.args.project_dir, verbose=self.verbose, quiet=self.quiet)
+            self.lib = TransomSite(self.args.project_dir, verbose=self.verbose, quiet=self.quiet)
 
             if self.args.output:
                 self.lib.output_dir = self.args.output
