@@ -6,10 +6,10 @@ Transom renders static websites from Markdown and Python
 
 ## Overview
 
-Transom is a fairly run-of-the-mill static site generator written in
-Python.  It converts Markdown input files into HTML output files.
+Transom is a static site generator written in Python.  It converts
+Markdown input files into HTML output files.
 
-But that does oversimplify things a bit.  Transom actually converts
+But that oversimplifies things a bit.  Transom actually converts
 Markdown input files and simple HTML files and Python code into
 somewhat fancier HTML output files.  For me, I like that it automates
 a lot of the work of creating a real website, *and* it does it with a
@@ -50,7 +50,7 @@ starter site is really basic.  It just lays down an index page
 $ cd <your-new-project-dir>
 
 $ transom init
-transom: Creating 'config/config.py'
+transom: Creating 'config/transom.py'
 transom: Creating 'config/head.html'
 transom: Creating 'config/body.html'
 transom: Creating 'input/index.md'
@@ -115,12 +115,12 @@ expressions inside `{{ }}` placeholders.  These expressions are
 designed to execute Python code using Python's `eval` function.
 
 You can call functions or access variables you've defined in
-`config.py`.  You also have access to the Transom `site` and `page`
+`transom.py`.  You also have access to the Transom `site` and `page`
 objects, which have APIs for site and page metadata.
 
 You can use `{{{ }}}` to produce literal `{{ }}` output.
 
-`config/config.py`:
+`config/transom.py`:
 
 ~~~ python
 def get_page_info(page):
@@ -135,7 +135,7 @@ def get_page_info(page):
 
 ## Site configuration
 
-`config/config.py`
+`config/transom.py`
 
 **site.prefix** - A string prefix used in templates and for generated
 links.  It is inserted before the file path.  This is important when
@@ -154,6 +154,10 @@ and `#*`.
 link URLs from link checking.  The default is the empty list.
 
 <!-- ## Page API -->
+
+<!-- {{page.include("path/to/x.html")}} -->
+<!-- {{page.path_nav()}} -->
+<!-- Access to site -->
 
 <!-- ## HTML generation functions -->
 

@@ -27,6 +27,7 @@ import math as _math
 import mistune as _mistune
 import multiprocessing as _multiprocessing
 import os as _os
+import pathlib as _pathlib
 import re as _re
 import shutil as _shutil
 import subprocess as _subprocess
@@ -36,7 +37,7 @@ import types as _types
 import yaml as _yaml
 
 from html import escape as _escape
-from html.parser import HTMLParser
+from html.parser import HTMLParser as _HtmlParser
 from urllib import parse as _urlparse
 
 __all__ = ["TransomSite", "TransomCommand"]
@@ -95,15 +96,13 @@ class TransomSite:
             "plural": plural,
             "html_table": html_table,
             "html_table_csv": html_table_csv,
+            "convert_markdown": convert_markdown,
         }
-
-        self._body_template = None
-        self._page_template = None
 
         self._modified = False
 
         self._files = list()
-        self._index_files = dict() # parent input dir => _File
+        self._index_files = dict() # parent input dir => File
 
     def init(self):
         self._page_template = load_site_template(_os.path.join(self.config_dir, "page.html"), _default_page_template)
@@ -149,14 +148,18 @@ class TransomSite:
                 self._files.append(self._init_file(_os.path.join(root, name)))
 
     def _init_file(self, input_path):
+        file_extension = "".join(_pathlib.Path(input_path).suffixes)
         output_path = _os.path.join(self.output_dir, input_path[len(self.input_dir) + 1:])
 
-        if input_path.endswith(".md"):
-            return MarkdownPage(self, input_path, f"{output_path[:-3]}.html")
-        elif input_path.endswith(".html.in"):
-            return TemplatePage(self, input_path, output_path[:-3])
-        else:
-            return File(self, input_path, output_path)
+        match file_extension:
+            case ".md":
+                return MarkdownPage(self, input_path, f"{output_path[:-3]}.html")
+            case ".html.in":
+                return HtmlPage(self, input_path, output_path[:-3])
+            case ".css" | ".js" | ".html":
+                return TemplateFile(self, input_path, output_path)
+            case _:
+                return File(self, input_path, output_path)
 
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
@@ -180,7 +183,7 @@ class TransomSite:
             start = i * batch_size
             end = start + batch_size
 
-            procs.append(RenderProcess(self._files[start:end], force))
+            procs.append(RenderProcess(self, self._files[start:end], force))
 
         for proc in procs:
             proc.start()
@@ -304,8 +307,6 @@ class File:
         self.output_path = output_path
         self._output_mtime = None
 
-        self._rendered = False
-
         self.url = self.site.prefix + self.output_path[len(self.site.output_dir):]
         self.title = ""
         self.parent = None
@@ -327,19 +328,6 @@ class File:
     def __repr__(self):
         return f"{self.__class__.__name__}({self.input_path}, {self.output_path})"
 
-    def _process_input(self): # pragma: nocover
-        pass
-
-    def _render(self, force=False):
-        if not force and not self._is_modified():
-            return
-
-        self.site.debug("Rendering {}", self)
-
-        self._render_content()
-
-        self._rendered = True
-
     def _is_modified(self):
         if self._output_mtime is None:
             try:
@@ -349,7 +337,10 @@ class File:
 
         return self._input_mtime > self._output_mtime
 
-    def _render_content(self):
+    def _process_input(self): # pragma: nocover
+        pass
+
+    def _render_output(self):
         copy_file(self.input_path, self.output_path)
 
     def _collect_link_data(self, link_sources, link_targets):
@@ -378,7 +369,7 @@ class File:
 class TransomError(Exception):
     pass
 
-class LinkParser(HTMLParser):
+class LinkParser(_HtmlParser):
     def __init__(self, file_, link_sources, link_targets):
         super().__init__()
 
@@ -417,12 +408,41 @@ class LinkParser(HTMLParser):
 
             self.link_targets.add(normalized_url)
 
-class TemplatePage(File):
-    __slots__ = "_content", "metadata", "_page_template", "_head_template", "_body_template"
+class TemplateFile(File):
+    __slots__ = "_content", "metadata"
+
+    def _is_modified(self):
+        return self.site._modified or super()._is_modified()
 
     def _process_input(self):
         self._content = read_file(self.input_path)
         self._content, self.metadata = extract_metadata(self._content)
+
+    def _render_output(self):
+        _os.makedirs(_os.path.dirname(self.output_path), exist_ok=True)
+
+        template = parse_template(self._content, self.input_path)
+        output = render_template(template, self.site._config, {"file": self}, self.input_path)
+
+        with open(self.output_path, "w") as f:
+            for elem in output:
+                f.write(elem)
+
+    def include(self, input_path):
+        text = read_file(input_path)
+        template = parse_template(text, input_path)
+        locals_ = {"file": self}
+
+        if isinstance(self, HtmlPage):
+            locals_["page"] = self
+
+        return render_template(template, self.site._config, locals_, input_path)
+
+class HtmlPage(TemplateFile):
+    __slots__ = "_page_template", "_head_template", "_body_template"
+
+    def _process_input(self):
+        super()._process_input()
 
         self.title = self.metadata.get("title", self.title)
 
@@ -441,22 +461,18 @@ class TemplatePage(File):
         except KeyError:
             self._body_template = self.site._body_template
 
-    def _is_modified(self):
-        return self.site._modified or super()._is_modified()
-
-    def _render_content(self):
-        if not hasattr(self, "_content"):
-            self._process_input()
-
+    def _render_output(self):
         _os.makedirs(_os.path.dirname(self.output_path), exist_ok=True)
 
+        output = render_template(self._page_template, self.site._config, {"page": self}, self.input_path)
+
         with open(self.output_path, "w") as f:
-            for elem in self._render_template(self._page_template):
+            for elem in output:
                 f.write(elem)
 
     @property
     def head(self):
-        return self._render_template(self._head_template)
+        return render_template(self._head_template, self.site._config, {"page": self}, self.input_path)
 
     @property
     def extra_headers(self):
@@ -464,14 +480,12 @@ class TemplatePage(File):
 
     @property
     def body(self):
-        return self._render_template(self._body_template)
+        return render_template(self._body_template, self.site._config, {"page": self}, self.input_path)
 
     @property
     def content(self):
-        parsed = parse_template(self._content, self.input_path)
-        rendered = "".join(self._render_template(parsed))
-
-        return self._convert_content(rendered)
+        template = parse_template(self._content, self.input_path)
+        return render_template(template, self.site._config, {"page": self}, self.input_path)
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
@@ -483,47 +497,16 @@ class TemplatePage(File):
 
         return f"<nav class=\"path-nav\">{''.join(links)}</nav>"
 
-    def directory_nav(page):
+    def directory_nav(self):
         def sort_fn(x):
             return x.title
 
-        children = sorted(page.children, key=sort_fn)
+        children = sorted(self.children, key=sort_fn)
         links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in children]
 
         return f"<nav class=\"directory-nav\">{''.join(links)}</nav>"
 
-    def _convert_content(self, content):
-        return content
-
-    def _render_template(self, template):
-        local_vars = {"page": self}
-
-        for elem in template:
-            if type(elem) is _types.CodeType:
-                try:
-                    result = eval(elem, self.site._config, local_vars)
-                except TransomError:
-                    raise
-                except Exception as e:
-                    raise TransomError(f"{self.input_path}: {e}")
-
-                if type(result) is _types.GeneratorType:
-                    yield from result
-                else:
-                    yield result
-            else:
-                yield elem
-
-    def render_text(self, text, markdown=False):
-        if markdown:
-            text = convert_markdown(text)
-
-        return self._render_template(parse_template(text, "[none]"))
-
-    def include(self, input_path):
-        return self.render_text(read_file(input_path), markdown=input_path.endswith(".md"))
-
-class MarkdownPage(TemplatePage):
+class MarkdownPage(HtmlPage):
     __slots__ = ()
 
     def _process_input(self):
@@ -533,13 +516,18 @@ class MarkdownPage(TemplatePage):
             match = _markdown_title_regex.search(self._content)
             self.title = match.group(2).strip() if match else ""
 
-    def _convert_content(self, content):
-        return convert_markdown(content)
+    @property
+    def content(self):
+        template = parse_template(self._content, self.input_path)
+        output = render_template(template, self.site._config, {"page": self}, self.input_path)
+
+        return convert_markdown("".join(output))
 
 class RenderProcess(_multiprocessing.Process):
-    def __init__(self, files, force):
+    def __init__(self, site, files, force):
         super().__init__()
 
+        self.site = site
         self.files = files
         self.force = force
         self.rendered_count = _multiprocessing.Value('L', 0)
@@ -549,9 +537,11 @@ class RenderProcess(_multiprocessing.Process):
             rendered_count = 0
 
             for file_ in self.files:
-                file_._render(force=self.force)
+                if self.force or file_._is_modified():
+                    self.site.debug("Rendering {}", file_)
 
-                if file_._rendered:
+                    file_._render_output()
+
                     rendered_count += 1
 
             self.rendered_count.value = rendered_count
@@ -583,7 +573,13 @@ class WatcherThread:
             except FileNotFoundError:
                 return True
 
-            file_._render()
+            self.site.debug("Processing {}", file_)
+
+            file_._process_input()
+
+            self.site.debug("Rendering {}", file_)
+
+            file_._render_output()
 
             if _os.path.exists(self.site.output_dir):
                 _os.utime(self.site.output_dir)
@@ -897,6 +893,23 @@ def parse_template(text, context):
                 raise TransomError(f"Error parsing template: {context}: {e}")
         else:
             yield token
+
+def render_template(template, globals_, locals_, context):
+    for elem in template:
+        if type(elem) is _types.CodeType:
+            try:
+                result = eval(elem, globals_, locals_)
+            except TransomError:
+                raise
+            except Exception as e:
+                raise TransomError(f"{context}: {e}")
+
+            if type(result) is _types.GeneratorType:
+                yield from result
+            else:
+                yield result
+        else:
+            yield elem
 
 _heading_id_regex_1 = _re.compile(r"[^a-zA-Z0-9_ ]+")
 _heading_id_regex_2 = _re.compile(r"[_ ]")
