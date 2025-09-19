@@ -1,0 +1,41 @@
+@layer components {
+    :where(nav.transom-page-path) {
+        display: inline;
+        flex-direction: row;
+    }
+
+    :where(nav.transom-page-path > a + a)::before {
+        content: " \00a0\003e\00a0\00a0 ";
+        color: inherit;
+    }
+
+    :where(nav.transom-page-toc) {
+        display: flex;
+        flex-direction: column;
+        gap: 0.66rem;
+    }
+
+    :where(nav.transom-page-toc) > a {
+        text-wrap: balance;
+    }
+
+    :where(dl.transom-properties) {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0 1rem;
+    }
+
+    :where(dl.transom-properties > dt) {
+        grid-column: 1;
+        font-weight: var(--bold-font-weight, bold);
+    }
+
+    :where(dl.transom-properties > dt)::after {
+        content: ":";
+    }
+
+    :where(dl.transom-properties > dd) {
+        grid-column: 2;
+        padding: 0;
+    }
+}

@@ -1,0 +1,25 @@
+<body class="transom-page">
+  <header>
+    <div>
+      <a href="{{site.prefix}}/index.html">★</a>
+    </div>
+    <div>
+
+{{path_nav()}}
+
+    </div>
+    <div>
+      <a href="{{site.prefix}}/index.html">★</a>
+    </div>
+  </header>
+  <main>
+
+@content@
+
+  </main>
+
+{{render_template("config/aside.html")}}
+
+{{convert_markdown(render_template("config/footer.md"))}}
+
+</body>

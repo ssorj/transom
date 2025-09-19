@@ -21,7 +21,7 @@ from bullseye import *
 from plano.github import *
 
 project.name = "transom"
-project.data_dirs = ["profiles", "test-site"]
+project.data_dirs = ["profiles", "sites/test"]
 project.test_modules = ["transom.tests"]
 
 @command(parent=build)
@@ -32,17 +32,31 @@ def build(*args, **kwargs):
         run("transom --help", quiet=True, stash=True)
 
         with working_dir(quiet=True):
-            touch("config/config.py", quiet=True)
+            make_dir("input", quiet=True)
             run("transom render --init-only", quiet=True)
 
 @command(parent=clean)
 def clean(*args, **kwargs):
     parent(*args, **kwargs)
 
-    remove("test-site/output")
-    remove("qpid-site/output")
+    remove("sites/test/output")
+    remove("sites/demo/output")
+    remove("sites/qpid/output")
     remove("htmlcov")
     remove(".coverage")
+    remove("README.html")
+
+@command
+def render_readme():
+    """
+    Render README.html from README.md
+    """
+    markdown = read("README.md")
+    html = convert_github_markdown(markdown)
+
+    write("README.html", html)
+
+    print(f"file:{get_real_path('README.html')}")
 
 @command
 def update_bullseye():
@@ -63,4 +77,4 @@ def update_mistune():
     """
     Update the embedded Mistune repo
     """
-    update_external_from_github("external/mistune", "lepture", "mistune", ref="v3.1.3")
+    update_external_from_github("external/mistune", "lepture", "mistune", ref="v3.1.4")

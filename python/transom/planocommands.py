@@ -21,6 +21,10 @@ from plano import *
 from plano.github import *
 from transom import TransomCommand
 
+class project_env(working_env):
+    def __init__(self):
+        super(project_env, self).__init__(PYTHONPATH="python")
+
 @command(passthrough=True)
 def render(passthrough_args=[]):
     """
@@ -29,8 +33,6 @@ def render(passthrough_args=[]):
     with project_env():
         TransomCommand().main(["render"] + passthrough_args)
 
-# https://stackoverflow.com/questions/22475849/node-js-what-is-enospc-error-and-how-to-solve
-# $ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
 @command(passthrough=True)
 def serve(passthrough_args=[]):
     """
@@ -39,37 +41,14 @@ def serve(passthrough_args=[]):
     with project_env():
         TransomCommand().main(["serve"] + passthrough_args)
 
-@command(passthrough=True)
-def check_links(passthrough_args=[]):
-    """
-    Check for broken links
-    """
-    render()
-
-    with project_env():
-        TransomCommand().main(["check-links"] + passthrough_args)
-
-@command(passthrough=True)
-def check_files(passthrough_args=[]):
-    """
-    Check for missing or extra files
-    """
-    render()
-
-    with project_env():
-        TransomCommand().main(["check-files"] + passthrough_args)
-
 @command
 def clean():
     remove(find(".", "__pycache__"))
+    remove("output")
 
 @command
-def update_transom():
+def update_transom(): # pragma: nocover
     """
     Update the embedded Transom repo
     """
     update_external_from_github("external/transom", "ssorj", "transom")
-
-class project_env(working_env):
-    def __init__(self):
-        super(project_env, self).__init__(PYTHONPATH="python")

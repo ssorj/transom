@@ -1,0 +1,87 @@
+@layer layout {
+    :where(:root) {
+        --page-width: 1100px;
+        --prose-element-gap: 1.33rem;
+    }
+
+    :where(html:has(body.transom-page)) {
+        scroll-padding-top: 6rem;
+    }
+
+    :where(body.transom-page) {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        grid-template-columns:
+            minmax(2em, 1fr)
+            calc(var(--page-width) * 0.7)
+            calc(var(--page-width) * 0.3)
+            minmax(2em, 1fr);
+        grid-template-areas:
+            "header header header header"
+            ". main aside ."
+            "footer footer footer footer";
+    }
+
+    :where(body.transom-page :is(header, footer)) {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 1;
+        background-color: var(--base-color, white);
+    }
+
+    :where(body.transom-page header) {
+        grid-area: header;
+        align-self: start; /* Important for sticky positioning */
+        position: sticky;
+        top: 0;
+        padding: 1rem;
+        border-bottom: var(--border-width, 0.05rem) solid var(--light-foreground-color, gray);
+    }
+
+    :where(body.transom-page footer) {
+        grid-area: footer;
+        padding: 2rem 1rem;
+        border-top: var(--border-width, 0.05rem) solid var(--light-foreground-color, gray);
+    }
+
+    :where(body.transom-page :is(header, footer) a) {
+        color: var(--dark-foreground-color, black);
+        text-decoration: inherit;
+    }
+
+    :where(body.transom-page :is(header, footer) > div:nth-child(1)) {
+        flex: 0 1 calc((100% - (var(--page-width))) / 2);
+    }
+
+    :where(body.transom-page :is(header, footer) > div:nth-child(2)) {
+        flex: 0 1 var(--page-width);
+        padding: 0 1rem;
+    }
+
+    :where(body.transom-page :is(header, footer) > div:nth-child(3)) {
+        flex: 0 1 calc((100% - (var(--page-width))) / 2);
+        display: flex;
+        justify-content: right;
+    }
+
+    :where(body.transom-page main) {
+        grid-area: main;
+        padding: 2rem 1rem;
+    }
+
+    :where(body.transom-page aside) {
+        grid-area: aside;
+        align-self: start; /* Important for sticky positioning */
+        position: sticky;
+        top: 6rem;
+        margin: 0 0 0 1rem;
+        padding: 0 1rem 0 2rem;
+        border-left: var(--border-width, 0.05rem) solid var(--light-foreground-color, gray);
+    }
+
+    /* Spacing between prose elements */
+    :where(body.transom-page :is(main, article, section, aside, form, fieldset, figure, li) > * + *) {
+        margin-top: var(--prose-element-gap);
+    }
+}

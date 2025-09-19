@@ -1,31 +1,16 @@
-<body>
+<body class="transom-page">
   <header>
-    <a href="{{site.prefix}}/index.html">
-      <span class="material-symbols-outlined">pages</span>
-    </a>
-    <div>
-
-{{page.path_nav()}}
-
-      <nav>
-        <a href="{{site.prefix}}/index.html">
-          <span class="material-symbols-outlined">account_circle</span>
-        </a>
-      </nav>
-    </div>
+    <div><a href="{{site.prefix}}/index.html">★</a></div>
+    <div>{{path_nav()}}</div>
+    <div><a href="{{site.prefix}}/index.html">★</a></div>
   </header>
   <main>
-
-{{page.content}}
-
+    @content@
   </main>
-  <aside>
-  </aside>
+  <aside>{{toc_nav()}}</aside>
   <footer>
-    <div>
-
-{{page.path_nav()}}
-
-    </div>
+    <div></div>
+    <div>{{path_nav()}}</div>
+    <div></div>
   </footer>
 </body>

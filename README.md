@@ -1,68 +1,104 @@
 # Transom
 
-[![main](https://github.com/ssorj/transom/workflows/main/badge.svg)](https://github.com/ssorj/transom/actions?query=workflow%3Amain)
+Transom renders static websites from Markdown and Python.
 
-Transom renders static websites from Markdown and Python
+<!-- XXX Markdown conversion happens after templates are resolved, so
+you can generate markdown in functions -->
 
 ## Overview
 
 Transom is a static site generator written in Python.  It converts
 Markdown input files into HTML output files.
 
-But that oversimplifies things a bit.  Transom actually converts
-Markdown input files and simple HTML files and Python code into
-somewhat fancier HTML output files.  For me, I like that it automates
-a lot of the work of creating a real website, *and* it does it with a
-simple transformation model that leverages things I already know well:
+- Input files come from `input/`.  Corresponding output files go to
+  `output/`.
 
-* Markdown converts to HTML in a conventional way.
+- `.md`, `.html`, `.css`, `.csv`, `.js`, `.json`, `.svg`, and `.txt`
+  input files are treated as templates, with `{{ }}` curly braces for
+  template placeholders.  All other files are copied as is.
 
-* Python code works like standard Python code, with some extra model
-  data and functions for the pages I'm working with.
+- `.md` input files are converted to `.html` output files.  Transom
+  uses [Mistune][mistune] for conversion.
 
-* Everything, including input HTML, is wrapped in site templates.
+- `.md` files are wrapped in templates defined in `config/page.html`
+  and `config/body.html`.
 
-The full power of Python is available in the generation phase.  That
-allows me to efficiently express and reuse display logic.
+- Template placeholders contain Python code, executed using `eval()`.
+  The Python environment is defined in `config/site.py`.
 
-Transom is pleasantly quick on modern machines.  I use it to generate
-the Apache Qpid website, which is large (about 2 gigs) and has many
-files (more than 30,000).  Transom can render everything in less than
-a second.
+- The Python environment includes a `site` object for configuring the
+  site.  It also includes a `page` object and utility functions for
+  generating output.
+
+[mistune]: https://github.com/lepture/mistune
 
 ## Installation
 
-Install the dependencies and then use `./plano install`:
-
 ~~~
-pip install pyyaml
 ./plano install
 ~~~
 
-## Using the transom command
+## Transom commands
+
+#### transom init
 
 To generate a starter website project, use `transom init`.  The
-starter site is really basic.  It just lays down an index page
-(`input/index.md`) a CSS file (`input/main.css`) and a JavaScript file
-(`input/main.js`) plus the supporting Transom config files.
+starter site is very basic.  It lays down an index page
+(`input/index.md`) a CSS file (`input/site.css`) and a JavaScript file
+(`input/site.js`) plus the supporting Transom config files.
 
-~~~ sh
-$ cd <your-new-project-dir>
+~~~ console
+$ cd <your-project-dir>
 
 $ transom init
+transom: Creating 'config/body.html'
+transom: Creating 'config/page.html'
 transom: Creating 'config/site.py'
 transom: Creating 'config/transom.css'
-transom: Creating 'config/head.html'
-transom: Creating 'config/body.html'
+transom: Creating 'config/transom.js'
 transom: Creating 'input/index.md'
 transom: Creating 'input/site.css'
 transom: Creating 'input/site.js'
 ~~~
 
+#### transom init --github
+
+If you want to deploy your site from a GitHub repo, use the `--github`
+option to include additional files in the starter project:
+
+~~~ console
+$ cd <your-project-dir>
+
+$ transom init --github
+transom: Creating 'config/body.html'
+transom: Creating 'config/page.html'
+transom: Creating 'config/site.py'
+transom: Creating 'config/transom.css'
+transom: Creating 'config/transom.js'
+transom: Creating 'input/index.md'
+transom: Creating 'input/site.css'
+transom: Creating 'input/site.js'
+transom: Creating '.github/workflows/main.yaml'
+transom: Creating '.gitignore'
+transom: Creating '.plano.py'
+transom: Creating 'plano'
+transom: Creating 'python/transom'
+transom: Creating 'python/mistune'
+transom: Creating 'python/plano'
+~~~
+
+The resulting site code is self-contained.  You don't need any
+dependencies beyond the Python standard library.  Use the `./plano`
+command to perform site operations.
+
+<!-- How to set up GitHub Pages to use this -->
+
+#### transom render (./plano render)
+
 The `transom render` command uses the config and input files to
 generate the rendered output.
 
-~~~ sh
+~~~ console
 $ transom render
 Rendering files from 'input' to 'output'
 Found 3 input files
@@ -70,9 +106,9 @@ Rendered 3 output files
 ~~~
 
 Now you have the HTML website under `<your-project-dir>/output`.  You
-can send that whereever you need it to be for publishing purposes.
-Since I often use GitHub Pages for publishing, I set my output dir to
-`docs` and then configure the GitHub project to serve those files.
+can send that whereever you need it for publishing purposes.
+
+#### transom serve (./plano serve)
 
 For local development, you will likely want to use the `transom serve`
 command.  This renders the site to the output dir and stands up a
@@ -80,7 +116,7 @@ local webserver so you can see what you have.  Transom watches for any
 updates to the config or input files and re-renders the output as
 needed.
 
-~~~ sh
+~~~ console
 $ transom serve
 Rendering files from 'input' to 'output'
 Found 3 input files
@@ -89,16 +125,9 @@ Watching for input file changes
 Serving at http://localhost:8080
 ~~~
 
-<!-- Site checks for files and links -->
-<!-- ## Implementation notes -->
-<!-- Multiprocessing -->
-<!-- Mistune (having tried others before) -->
-<!-- ## Template syntax (really Python code syntax) -->
-<!-- ## Site config options and how to set them -->
-<!-- ## Page and Site APIs -->
+<!-- XXX Site checks for files and links -->
+
 <!-- ## Page metadata -->
-<!-- ## HTML generation functions -->
-<!-- Conveniences -->
 <!-- ## Using Plano project commands -->
 <!-- ## Project commands -->
 <!-- Once you have set up the project, you can use the `./plano` command in -->
@@ -107,26 +136,37 @@ Serving at http://localhost:8080
 
 <!-- ## Site configuration -->
 
-<!-- ## Page configuration -->
+<!-- ## Page configuration (YAML header) -->
 
-## Templates
+<!-- (./plano serve) -->
+<!-- Explain plano, the command runner - think Make but Python-centric -->
+
+<!-- ## The rendering process -->
+
+## Page templates
+
+<!-- XXX which files -->
+
+<!-- XXX This is missing discussion of the page header -->
+
+<!-- XXX The function return values can be strings or string generators (yield "somestring"). -->
 
 Transom templates allow you to generate output by embedding Python
 expressions inside `{{ }}` placeholders.  These expressions are
-designed to execute Python code using Python's `eval` function.
+executed using Python's `eval()` function.
 
 You can call functions or access variables you've defined in
-`config/site.py`.  You also have access to the Transom `site`, `file`,
-and `page` objects, which have APIs for accessing metadata and
-performing object-specific operations.
+`config/site.py`.  You also have access to the Transom `site` and
+`page` objects, which have APIs for accessing metadata and performing
+object-specific operations.
 
-You can use `{{{ }}}` to produce literal `{{ }}` output.
+You can use `{{{` and `}}}` to produce literal `{{` and `}}` output.
 
 `config/site.py`:
 
 ~~~ python
 def get_page_info(page):
-    return page.url, page.title, page.parent, page.site
+    return page.url, page.title, page.parent
 ~~~
 
 `input/index.md`:
@@ -135,63 +175,108 @@ def get_page_info(page):
 <pre>{{get_page_info(page)}}</pre>
 ~~~
 
-## Site configuration
+`output/index.html`
 
-`config/site.py`
+~~~ html
+<pre>('/index.html', 'Transom', None, TransomSite('/home/fritz/example-site'))</pre>
+~~~
 
-**site.prefix** - A string prefix used in templates and for generated
-links.  It is inserted before the file path.  This is important when
-the published site lives under a directory prefix, as is the case for
-GitHub Pages.  The default is "", the empty string.
+<!-- ## Site configuration -->
 
-**site.extra_input_dirs** - A list of directories to watch for
-changes.  If any file changes in these directories, the whole site is
-re-rendered.  The default is a list with one item, `config`.
+<!-- `config/site.py` -->
 
-**site.ignored_file_patterns** - A list of shell globs for excluding
-input files from processing.  The default is `.git`, `.svn`, `.#*`,
-and `#*`.
+<!-- XXX Table with the other files under config/. -->
 
-**site.ignored_link_patterns** - A list of shell globs for excluding
-link URLs from link checking.  The default is the empty list.
+<!-- XXX All site properties and functions are available in page context as well -->
 
-<!-- ## Page API -->
+<!-- XXX paths are relative to the current dir when transom is run, which is the project_dir -->
 
-<!-- {{page.include("path/to/x.html")}} -->
-<!-- {{page.path_nav()}} -->
-<!-- Access to site -->
+## Site properties
 
-<!-- ## HTML generation functions -->
+<!-- XXX These are all mutable when site.py is executed -->
 
-## Setting up Transom for a website repo
+`site.prefix` - A string prefix used in generated links.  It is
+inserted before the file path.  This is important when the published
+site lives under a directory prefix, as is the case for GitHub Pages.
+The default is `""`, meaning no prefix.
 
-Change directory to the root of your project:
+`site.ignored_file_patterns` - A list of shell globs for excluding
+input and config from processing.  The default is `[".git",
+".#*","#*"]`.
 
-    cd <project-dir>/
+`site.page_template` - The default top-level template object for HTML
+pages.  The page template includes `{{page.body}}`.  The default is
+loaded from `config/page.html`.
 
-Add the Transom code as a subdirectory:
+`site.body_template` - The default template object for the body
+element of HTML pages.  The body element includes `{{page.content}}`.
+The default is loaded from `config/body.html`.
 
-    mkdir -p external
-    curl -sfL https://github.com/ssorj/transom/archive/main.tar.gz | tar -C external -xz
-    mv external/transom-main external/transom
+## Page properties
 
-Symlink the Transom and Plano libraries into your `python` directory:
+<!-- title, extra_headers, page_template, and body_template are
+mutable when the page header is executed -->
 
-    mkdir -p python
-    ln -s ../external/transom/python/transom python/transom
-    ln -s ../external/transom/python/mistune python/mistune
-    ln -s ../external/transom/python/plano python/plano
+`page.url` -
 
-Copy the `plano` command into the root of your project:
+`page.title` -
 
-    cp external/transom/plano plano
+`page.parent` -
 
-Copy the standard config files:
+`page.body` - The body element of the page.  It is rendered from
+`page.body_template`.
 
-    cp external/transom/profiles/website/.plano.py .plano.py
-    cp external/transom/profiles/website/.gitignore .gitignore
+`page.content` - The primary page content.  It is rendered from
+`page.content_template`, which corresponds to `input/<file>.md`.
 
-Copy the standard workflow file:
+`page.extra_headers` - A list of extra HTML headers to add to the HTML
+head element.  The default is `[]`, the empty list.
 
-    mkdir -p .github/workflows
-    cp external/transom/profiles/website/.github/workflows/main.yaml .github/workflows/main.yaml
+`page.page_template` - The top-level template object for the page.
+The page template includes `{{page.body}}`.  The default is
+`site.page_template`.
+
+`page.body_template` - The template object for the body element of the
+page.  The body element includes `{{page.content}}`.  The default is
+`site.body_template`.
+
+`page.content_template` - The template object for the main content of the
+page.  It is loaded from the page input path, `input/<file>.md`.
+
+## Functions
+
+#### File operations
+
+`load_template(path)` - Load a template object from `path`.  Use this
+when setting template properties.
+
+`include(path)` - Include the file at `path`.
+
+`render(path)` - Include the file at `path` and render it as a
+template.  If `path` ends with `.md`, it is converted to HTML.
+
+#### Page navigation functions
+
+`path_nav(start=0, end=None, min=1)` - XXX
+
+`toc_nav()` - XXX inspects the page content and generates a table
+of contents from its headings.  This must be placed outside the page
+content, in a separate navigation element, such as an aside.
+
+#### HTML generation functions
+
+`html_escape(xxx)` - XXX
+
+`html_table(data, headings=None, cell_fn=<default>, **attrs)` -
+Generate an HTML table.
+
+`html_table_csv(path, **attrs)`- Generate an HTML table from a CSV
+file.
+
+#### Text generation functions
+
+`lipsum(count=50, end=".")` - Generate filler text.
+
+`plural(noun, count=0, plural=None)` - Generate the plural form of a
+word based on `count`.  Set the plural form explicitly with `plural`
+if it's not a simple matter of adding `s` or `es`.

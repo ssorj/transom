@@ -1,21 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter&family=Roboto+Mono&family=Material+Symbols+Outlined');
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700");
 
-{{file.include("config/transom.css")}}
-
-body {
-    font-family: "Inter", sans-serif;
-}
-
-code, pre {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 0.9rem;
-    background-color: var(--code-background-color);
-}
-
-pre {
-    padding: 1rem;
-}
-
-.material-symbols-outlined {
-    line-height: inherit !important;
-}
+{{include("config/transom/base.css")}}
+{{include("config/transom/components.css")}}
+{{include("config/transom/theme.css")}}
+{{include("config/transom/layout.css")}}
