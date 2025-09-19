@@ -1,12 +1,16 @@
 <body>
   <header>
-    <a href="{{site.prefix}}/index.html">
-      <span class="material-symbols-outlined">pages</span>
-    </a>
+    <div>
+      <a href="{{site.prefix}}/index.html">
+        <span class="material-symbols-outlined">pages</span>
+      </a>
+    </div>
     <div>
 
 {{page.path_nav()}}
 
+    </div>
+    <div>
       <nav>
         <a href="{{site.prefix}}/index.html">
           <span class="material-symbols-outlined">account_circle</span>
@@ -22,10 +26,12 @@
   <aside>
   </aside>
   <footer>
+    <div></div>
     <div>
 
 {{page.path_nav()}}
 
     </div>
+    <div></div>
   </footer>
 </body>
