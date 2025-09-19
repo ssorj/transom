@@ -64,10 +64,12 @@ def transom_init():
 
         check_dir("config")
         check_dir("input")
-        check_file("config/transom.py")
+        check_file("config/site.py")
+        check_file("config/transom.css")
+        check_file("config/transom.js")
         check_file("input/index.md")
-        check_file("input/main.css")
-        check_file("input/main.js")
+        check_file("input/site.css")
+        check_file("input/site.js")
         check_file(".gitignore")
         check_file(".plano.py")
         check_dir("python/mistune")
@@ -92,8 +94,8 @@ def transom_render():
         check_file("output/index.html")
         check_file("output/test-1.html")
         check_file("output/test-2.html")
-        check_file("output/main.css")
-        check_file("output/main.js")
+        check_file("output/site.css")
+        check_file("output/site.js")
         check_file("output/steamboat.png")
 
         result = read("output/index.html")
@@ -110,7 +112,7 @@ def transom_render():
             transom_command.main(["render", "--verbose"])
 
     with test_site():
-        remove("config/transom.py") # No config.py
+        remove("config/site.py") # No site.py
 
         transom_command.main(["render", "--verbose", "--init-only"])
 
@@ -135,7 +137,8 @@ def transom_serve():
 
         http_get("http://localhost:9191/")
         http_get("http://localhost:9191/index.html")
-        http_get("http://localhost:9191/main.css")
+        http_get("http://localhost:9191/site.css")
+        http_get("http://localhost:9191/site.js")
 
         write("input/another.md", "# Another") # A new file
         write("input/#ignore.md", "# Ignore")  # A new ignored file

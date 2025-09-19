@@ -1,8 +1,6 @@
 # Transom
 
-[![main](https://github.com/ssorj/transom/workflows/main/badge.svg)](https://github.com/ssorj/transom/actions?query=workflow%3Amain)
-
-Transom renders static websites from Markdown and Python
+Transom renders static websites from Markdown and Python.
 
 ## Overview
 
@@ -112,15 +110,13 @@ Serving at http://localhost:8080
 ## Templates
 
 Transom templates allow you to generate output by embedding Python
-expressions inside `{{ }}` placeholders.  These expressions are
+expressions inside `{{{ }}}` placeholders.  These expressions are
 designed to execute Python code using Python's `eval` function.
 
 You can call functions or access variables you've defined in
 `config/site.py`.  You also have access to the Transom `site`, `file`,
 and `page` objects, which have APIs for accessing metadata and
 performing object-specific operations.
-
-You can use `{{{ }}}` to produce literal `{{ }}` output.
 
 `config/site.py`:
 
@@ -132,7 +128,7 @@ def get_page_info(page):
 `input/index.md`:
 
 ~~~ html
-<pre>{{get_page_info(page)}}</pre>
+<pre>{{{get_page_info(page)}}}</pre>
 ~~~
 
 ## Site configuration
@@ -154,14 +150,6 @@ and `#*`.
 
 **site.ignored_link_patterns** - A list of shell globs for excluding
 link URLs from link checking.  The default is the empty list.
-
-<!-- ## Page API -->
-
-<!-- {{page.include("path/to/x.html")}} -->
-<!-- {{page.path_nav()}} -->
-<!-- Access to site -->
-
-<!-- ## HTML generation functions -->
 
 ## Setting up Transom for a website repo
 

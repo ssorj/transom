@@ -45,8 +45,11 @@ __all__ = ["TransomSite", "TransomCommand"]
 _default_page_template = """
 <!DOCTYPE html>
 <html>
-  {{page.head}}
-  {{page.body}}
+
+{{page.head}}
+
+{{page.body}}
+
 </html>
 """
 
@@ -54,13 +57,17 @@ _default_head_template = """
 <head>
   <title>{{page.title}}</title>
   <link rel="icon" href="data:;"/>
-  {{page.extra_headers}}
+
+{{page.extra_headers}}
+
 </head>
 """
 
 _default_body_template = """
 <body>
-  {{page.content}}
+
+{{page.content}}
+
 </body>
 """
 
@@ -113,7 +120,7 @@ class TransomSite:
         self._ignored_file_regex = _re.compile(self._ignored_file_regex)
 
         try:
-            exec(read_file(_os.path.join(self.config_dir, "transom.py")), self._config)
+            exec(read_file(_os.path.join(self.config_dir, "site.py")), self._config)
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
 
