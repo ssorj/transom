@@ -2,7 +2,7 @@
   <header>
     <div>
       <a href="{{site.prefix}}/index.html">
-        <span class="material-symbols-outlined">pages</span>
+        {{page.include("config/site.svg")}}
       </a>
     </div>
     <div>
@@ -10,13 +10,7 @@
 {{page.path_nav()}}
 
     </div>
-    <div>
-      <nav>
-        <a href="{{site.prefix}}/index.html">
-          <span class="material-symbols-outlined">account_circle</span>
-        </a>
-      </nav>
-    </div>
+    <div></div>
   </header>
   <main>
 
@@ -24,6 +18,9 @@
 
   </main>
   <aside>
+
+{{page.toc_nav()}}
+
   </aside>
   <footer>
     <div></div>

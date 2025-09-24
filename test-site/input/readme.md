@@ -1,4 +1,4 @@
-# Transom
+# Readme
 
 Transom renders static websites from Markdown and Python.
 

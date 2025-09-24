@@ -38,18 +38,9 @@
 
     :where(body) {
         min-height: 100vh;
-        line-height: 1.5;
-        color: var(--text-color, black);
+        line-height: 1.66;
+        color: var(--text-color, hsl(0, 0%, 20%));
         background-color: var(--body-background-color, white);
-    }
-
-    :where(canvas, img, picture, svg, video) {
-        display: block;
-        max-width: 100%;
-    }
-
-    :where(input, button, textarea, select) {
-        font: inherit;
     }
 
     /* Use flex for prose containers */
@@ -59,28 +50,110 @@
         gap: 1rem;
     }
 
+    /* Prevent long words from distorting layouts */
+    :where(p, h1, h2, h3, h4, h5, h6) {
+        overflow-wrap: break-word;
+    }
+
+    :where(p) {
+        text-wrap: pretty;
+    }
+
+    :where(h1, h2, h3, h4, h5, h6) {
+        text-wrap: balance;
+        line-height: 1.3;
+    }
+
+    :where(h1) {
+        font-size: 1.45rem;
+    }
+
+    :where(h2) {
+        font-size: 1.2rem;
+    }
+
+    :where(h3) {
+        font-size: 1rem;
+    }
+
+    :where(h4) {
+        font-size: 0.9rem;
+    }
+
+    :where(a), :where(a:visited) {
+        color: var(--link-color, royalblue);
+        text-decoration: inherit;
+    }
+
+    :where(img, canvas, picture, svg, video) {
+        display: block;
+        max-width: 100%;
+    }
+
+    :where(input, button, textarea, select) {
+        font: inherit;
+    }
+
     :where(hr) {
         border: 0;
         border-top: 0.1rem solid var(--line-color, lightgray);
     }
+
+    :where(code, pre) {
+        background-color: var(--code-background-color, whitesmoke);
+    }
+
+    :where(code) {
+        padding: 0 0.1rem;
+    }
+
+    :where(pre) {
+        padding: 0.9rem 1rem;
+        overflow-y: auto;
+    }
+
+    :where(pre > code) {
+        padding: 0;
+    }
+
+    :where(ul, ol, dd) {
+        padding-left: 1rem;
+    }
 }
 
 @layer components {
-    :where(.path-nav) {
+    :where(nav.page-path) {
         display: inline;
         flex-direction: row;
     }
 
-    :where(.path-nav > a:not(:last-child):after) {
+    :where(nav.page-path > a:not(:last-child))::after {
         content: " \00a0\003e\00a0\00a0 ";
+    }
+
+    :where(nav.page-toc) {
+        gap: 1rem;
+    }
+
+    :where(nav.page-toc) > a {
+        color: inherit;
+        text-wrap: balance;
     }
 }
 
 @layer layout {
+    :where(html) {
+        scroll-padding-top: 6rem;
+    }
+
     :where(body) {
         display: grid;
         grid-template-rows: auto 1fr auto;
-        grid-template-columns: minmax(2em, 1fr) calc(var(--page-width, 1100px) * 0.7) calc(var(--page-width, 1100px) * 0.3) minmax(2em, 1fr);
+        grid-template-columns:
+            minmax(2em, 1fr)
+            calc(var(--page-width, 1100px) * 0.7)
+            calc(var(--page-width, 1100px) * 0.3)
+            minmax(2em, 1fr);
         grid-template-areas:
             "header header header header"
             ". main aside ."
@@ -95,28 +168,38 @@
         z-index: 1;
         display: flex;
         align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
         border-bottom: 0.1rem solid var(--line-color, lightgray);
-        padding: 1rem 1rem 0.9rem 1rem;
         background-color: var(--body-background-color, white);
     }
 
     :where(footer) {
         grid-area: footer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        border-top: 0.1rem solid var(--line-color, lightgray);
+        background-color: var(--body-background-color, white);
+    }
+
+    :where(:is(header, footer) a) {
+        color: inherit;
+        text-decoration: inherit;
     }
 
     :where(:is(header, footer) > div:nth-child(1)) {
-        flex: 1;
+        flex: 0 1 calc((100% - (var(--page-width, 1100px))) / 2);
     }
 
     :where(:is(header, footer) > div:nth-child(2)) {
-        align-items: center;
-        flex: 1;
-        max-width: var(--page-width, 1100px);
+        flex: 0 1 var(--page-width, 1100px);
         padding: 0 1rem;
     }
 
     :where(:is(header, footer) > div:nth-child(3)) {
-        flex: 1;
+        flex: 0 1 calc((100% - (var(--page-width, 1100px))) / 2);
     }
 
     :where(main) {
@@ -126,26 +209,11 @@
 
     :where(aside) {
         grid-area: aside;
-        display: flex;
-        flex-direction: column;
         align-self: start; /* Important for sticky positioning */
         position: sticky;
-        top: 7.5em;
-        margin-left: 1rem;
-        padding-right: 1rem;
-        padding-left: 2rem;
+        top: 6rem;
+        padding: 0 2rem 0 1rem;
         border-left: 0.1rem solid var(--line-color, lightgray);
+        margin-left: 1rem;
     }
-
-    /* :where(footer) { */
-    /*     grid-area: footer; */
-    /*     display: flex; */
-    /*     justify-content: center; */
-    /*     border-top: 0.1rem solid var(--line-color, lightgray); */
-    /* } */
-
-    /* :where(footer > div) { */
-    /*     padding: 1rem; */
-    /*     width: var(--page-width, 1100px); */
-    /* } */
 }

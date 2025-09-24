@@ -1,10 +1,10 @@
 ---
-title: Doorjamb
+title: Test 3
 test_attribute: |
   abc
 ---
 
-<h1 id="doorjamb">Doorjamb</h1>
+<h1>Test 3</h1>
 
 <p><a href="readme.html">README</a></p>
 

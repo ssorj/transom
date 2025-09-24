@@ -302,8 +302,7 @@ class TransomSite:
         print("Warning:", message.format(*args))
 
 class File:
-    __slots__ = "site", "input_path", "_input_mtime", "output_path", "_output_mtime", "_rendered", \
-        "url", "title", "parent"
+    __slots__ = "site", "input_path", "_input_mtime", "output_path", "_output_mtime", "url", "title", "parent"
 
     def __init__(self, site, input_path, output_path):
         self.site = site
@@ -415,6 +414,41 @@ class LinkParser(_HtmlParser):
 
             self.link_targets.add(normalized_url)
 
+class HeadingParser(_HtmlParser):
+    def __init__(self):
+        super().__init__()
+
+        self.headings = list()
+
+        self.open_element_tag = None
+        self.open_element_id = None
+        self.open_element_text = list()
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in ("h1", "h2", "h3"):
+            return
+
+        self.open_element_tag = tag
+
+        attrs = dict(attrs)
+
+        if "id" in attrs:
+            self.open_element_id = attrs["id"]
+        else:
+            self.open_element_id = None
+
+    def handle_data(self, data):
+        if self.open_element_tag:
+            self.open_element_text.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == self.open_element_tag:
+            self.headings.append((self.open_element_tag, self.open_element_id, "".join(self.open_element_text)))
+
+            self.open_element_tag = None
+            self.open_element_id = None
+            self.open_element_text = list()
+
 class TemplateFile(File):
     __slots__ = "_content", "metadata"
 
@@ -502,16 +536,24 @@ class HtmlPage(TemplateFile):
         if len(links) < min:
             return ""
 
-        return f"<nav class=\"path-nav\">{''.join(links)}</nav>"
+        return f"<nav class=\"page-path\">{''.join(links)}</nav>"
 
     def directory_nav(self):
         def sort_fn(x):
             return x.title
 
         children = sorted(self.children, key=sort_fn)
-        links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in children]
+        links = [f"<a href=\"{x.url}\">{x.title if x.title else x.url.removeprefix('/')}</a>" for x in children]
 
-        return f"<nav class=\"directory-nav\">{''.join(links)}</nav>"
+        return f"<nav class=\"page-directory\">{''.join(links)}</nav>"
+
+    def toc_nav(self):
+        parser = HeadingParser()
+        parser.feed(str(self.content))
+
+        links = [f"<a href=\"#{x[1]}\">{x[2]}</a>" for x in parser.headings]
+
+        return f"<nav class=\"page-toc\">{''.join(links)}</nav>"
 
 class MarkdownPage(HtmlPage):
     __slots__ = ()
