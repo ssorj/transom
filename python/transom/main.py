@@ -17,8 +17,8 @@
 # under the License.
 #
 
-import argparse as _argparse
-import collections as _collections
+import argparse
+import collections as collections
 import collections.abc as _abc
 import csv as _csv
 import fnmatch as _fnmatch
@@ -273,7 +273,7 @@ class TransomSite:
     def check_links(self):
         self._init_files()
 
-        link_sources = _collections.defaultdict(set) # link => files
+        link_sources = collections.defaultdict(set) # link => files
         link_targets = set()
 
         for file_ in self._files:
@@ -729,9 +729,9 @@ class TransomCommand:
         self.home = home
         self.name = "transom"
 
-        self.parser = _argparse.ArgumentParser()
+        self.parser = argparse.ArgumentParser()
         self.parser.description = "Generate static websites from Markdown and Python"
-        self.parser.formatter_class = _argparse.RawDescriptionHelpFormatter
+        self.parser.formatter_class = argparse.RawDescriptionHelpFormatter
 
         self.args = None
         self.quiet = False
@@ -739,9 +739,9 @@ class TransomCommand:
 
         subparsers = self.parser.add_subparsers(title="subcommands")
 
-        common = _argparse.ArgumentParser()
+        common = argparse.ArgumentParser()
         common.add_argument("--init-only", action="store_true",
-                            help=_argparse.SUPPRESS)
+                            help=argparse.SUPPRESS)
         common.add_argument("--verbose", action="store_true",
                             help="Print detailed logging to the console")
         common.add_argument("--quiet", action="store_true",
