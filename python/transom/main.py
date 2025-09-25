@@ -157,18 +157,19 @@ class TransomSite:
                 self._files.append(self._init_file(_os.path.join(root, name)))
 
     def _init_file(self, input_path):
-        file_extension = "".join(_pathlib.Path(input_path).suffixes)
-        output_path = _os.path.join(self.output_dir, input_path[len(self.input_dir) + 1:])
+        path = _pathlib.Path(input_path)
+        file_extension = "".join(path.suffixes)
+        output_path = self.output_dir / path.relative_to(self.input_dir)
 
         match file_extension:
             case ".md":
-                return MarkdownPage(self, input_path, f"{output_path[:-3]}.html")
+                return MarkdownPage(self, input_path, str(output_path.with_suffix(".html")))
             case ".html.in":
-                return HtmlPage(self, input_path, output_path[:-3])
+                return HtmlPage(self, input_path, str(output_path).removesuffix(".in"))
             case ".css" | ".js" | ".html":
-                return TemplateFile(self, input_path, output_path)
+                return TemplateFile(self, input_path, str(output_path))
             case _:
-                return File(self, input_path, output_path)
+                return File(self, input_path, str(output_path))
 
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
@@ -464,18 +465,21 @@ class TemplateFile(File):
         self.title = self.metadata.get("title")
 
         if self.title is None:
-            file_extension = "".join(_pathlib.Path(self.input_path).suffixes)
+            path = _pathlib.Path(self.input_path)
+            file_extension = "".join(path.suffixes)
 
             match file_extension:
                 case ".md":
                     m = _markdown_title_regex.search(text)
                     self.title = m.group(1) if m else ""
                 case ".html.in":
-                    m = _markdown_body_title_regex.search(text)
+                    m = _html_body_title_regex.search(text)
                     self.title = m.group(1) if m else ""
                 case ".html":
                     m = _html_page_title_regex.search(text)
                     self.title = m.group(1) if m else ""
+                case _:
+                    self.title = path.name
 
         self._template = parse_template(text, self.input_path)
 
@@ -572,7 +576,7 @@ class HtmlPage(TemplateFile):
         return f"<nav class=\"page-toc\">{''.join(links)}</nav>"
 
 class MarkdownPage(HtmlPage):
-    __slots__ = ("_converted_content",)
+    __slots__ = "_converted_content",
 
     def _process_input(self):
         super()._process_input()
