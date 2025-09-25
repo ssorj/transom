@@ -72,7 +72,9 @@ _default_body_template = """
 """
 
 _index_file_names = "index.md", "index.html.in", "index.html"
-_markdown_title_regex = _re.compile(r"(#|##) (.+)")
+_html_page_title_regex = _re.compile(r"<title\b[^>]*>(.*?)</title>", _re.IGNORECASE | _re.DOTALL)
+_html_body_title_regex = _re.compile(r"<(:?h1|h2)\b[^>]*>(.*?)</(:?h1|h2)>", _re.IGNORECASE | _re.DOTALL)
+_markdown_title_regex = _re.compile(r"^(?:#|##)\s+(.*)")
 _variable_regex = _re.compile(r"({{{.+?}}}|{{.+?}})")
 
 # An improvised solution for trouble on Mac OS
@@ -314,7 +316,7 @@ class File:
         self._output_mtime = None
 
         self.url = self.site.prefix + self.output_path[len(self.site.output_dir):]
-        self.title = ""
+        self.title = None
         self.parent = None
 
         dir_, name = _os.path.split(self.input_path)
@@ -450,20 +452,37 @@ class HeadingParser(_HtmlParser):
             self.open_element_text = list()
 
 class TemplateFile(File):
-    __slots__ = "_content", "metadata"
+    __slots__ = "_template", "metadata"
 
     def _is_modified(self):
         return self.site._modified or super()._is_modified()
 
     def _process_input(self):
-        self._content = read_file(self.input_path)
-        self._content, self.metadata = extract_metadata(self._content)
+        text = read_file(self.input_path)
+        text, self.metadata = extract_metadata(text)
+
+        self.title = self.metadata.get("title")
+
+        if self.title is None:
+            file_extension = "".join(_pathlib.Path(self.input_path).suffixes)
+
+            match file_extension:
+                case ".md":
+                    m = _markdown_title_regex.search(text)
+                    self.title = m.group(1) if m else ""
+                case ".html.in":
+                    m = _markdown_body_title_regex.search(text)
+                    self.title = m.group(1) if m else ""
+                case ".html":
+                    m = _html_page_title_regex.search(text)
+                    self.title = m.group(1) if m else ""
+
+        self._template = parse_template(text, self.input_path)
 
     def _render_output(self):
         _os.makedirs(_os.path.dirname(self.output_path), exist_ok=True)
 
-        template = parse_template(self._content, self.input_path)
-        output = render_template(template, self.site._config, {"file": self}, self.input_path)
+        output = render_template(self._template, self.site._config, {"file": self}, self.input_path)
 
         with open(self.output_path, "w") as f:
             for elem in output:
@@ -484,8 +503,6 @@ class HtmlPage(TemplateFile):
 
     def _process_input(self):
         super()._process_input()
-
-        self.title = self.metadata.get("title", self.title)
 
         try:
             self._page_template = load_page_template(self.metadata["page_template"], "")
@@ -525,8 +542,7 @@ class HtmlPage(TemplateFile):
 
     @property
     def content(self):
-        template = parse_template(self._content, self.input_path)
-        return render_template(template, self.site._config, {"page": self}, self.input_path)
+        return render_template(self._template, self.site._config, {"page": self}, self.input_path)
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
@@ -540,7 +556,7 @@ class HtmlPage(TemplateFile):
 
     def directory_nav(self):
         def sort_fn(x):
-            return x.title
+            return x.title if x.title else ""
 
         children = sorted(self.children, key=sort_fn)
         links = [f"<a href=\"{x.url}\">{x.title if x.title else x.url.removeprefix('/')}</a>" for x in children]
@@ -556,21 +572,19 @@ class HtmlPage(TemplateFile):
         return f"<nav class=\"page-toc\">{''.join(links)}</nav>"
 
 class MarkdownPage(HtmlPage):
-    __slots__ = ()
+    __slots__ = ("_converted_content",)
 
     def _process_input(self):
         super()._process_input()
 
-        if not self.title:
-            match = _markdown_title_regex.search(self._content)
-            self.title = match.group(2).strip() if match else ""
+        self._converted_content = None
 
     @property
     def content(self):
-        template = parse_template(self._content, self.input_path)
-        output = render_template(template, self.site._config, {"page": self}, self.input_path)
+        if self._converted_content is None:
+            self._converted_content = convert_markdown("".join(super().content))
 
-        return convert_markdown("".join(output))
+        return self._converted_content
 
 class RenderProcess(_multiprocessing.Process):
     def __init__(self, site, files, force):
@@ -921,27 +935,33 @@ def extract_metadata(text):
 
 def load_site_template(path, default_text):
     if path is None or not _os.path.exists(path):
-        return list(parse_template(default_text, "[default]"))
+        return parse_template(default_text, "[default]")
 
-    return list(parse_template(read_file(path), path))
+    return parse_template(read_file(path), path)
 
 def load_page_template(path, default_text):
     if path is None:
-        return list(parse_template(default_text, "[default]"))
+        return parse_template(default_text, "[default]")
 
-    return list(parse_template(read_file(path), path))
+    return parse_template(read_file(path), path)
 
 def parse_template(text, context):
+    template = list()
+
     for token in _variable_regex.split(text):
         if token.startswith("{{{") and token.endswith("}}}"):
-            yield token[1:-1]
+            item = token[1:-1]
         elif token.startswith("{{") and token.endswith("}}"):
             try:
-                yield compile(token[2:-2], "<string>", "eval")
+                item = compile(token[2:-2], "<string>", "eval")
             except Exception as e:
                 raise TransomError(f"Error parsing template: {context}: {e}")
         else:
-            yield token
+            item = token
+
+        template.append(item)
+
+    return template
 
 def render_template(template, globals_, locals_, context):
     for elem in template:
