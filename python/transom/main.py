@@ -83,6 +83,9 @@ if not _once:
     _multiprocessing.set_start_method("fork")
     _once = True
 
+class TransomError(Exception):
+    pass
+
 class TransomSite:
     def __init__(self, project_dir, verbose=False, quiet=False):
         self.project_dir = _os.path.normpath(project_dir)
@@ -538,9 +541,6 @@ class RenderProcess(_multiprocessing.Process):
         except TransomError as e:
             print(f"Error: {e}")
             _sys.exit(1)
-
-class TransomError(Exception):
-    pass
 
 class LinkParser(_HtmlParser):
     def __init__(self, file_, link_sources, link_targets):
