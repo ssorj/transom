@@ -375,83 +375,6 @@ class File:
             if file_.parent is self:
                 yield file_
 
-class TransomError(Exception):
-    pass
-
-class LinkParser(_HtmlParser):
-    def __init__(self, file_, link_sources, link_targets):
-        super().__init__()
-
-        self.file = file_
-        self.link_sources = link_sources
-        self.link_targets = link_targets
-
-    def handle_starttag(self, tag, attrs):
-        attrs = dict(attrs)
-
-        for name in ("href", "src", "action"):
-            try:
-                url = attrs[name]
-            except KeyError:
-                continue
-
-            split_url = _urlparse.urlsplit(url)
-
-            # Ignore off-site links
-            if split_url.scheme or split_url.netloc:
-                continue
-
-            # Treat somepath/ as somepath/index.html
-            if split_url.path.endswith("/"):
-                split_url = split_url._replace(path=f"{split_url.path}index.html")
-
-            normalized_url = _urlparse.urljoin(self.file.url, _urlparse.urlunsplit(split_url))
-
-            self.link_sources[normalized_url].add(self.file)
-
-        if "id" in attrs:
-            normalized_url = _urlparse.urljoin(self.file.url, f"#{attrs['id']}")
-
-            if normalized_url in self.link_targets:
-                self.file.site.warning("Duplicate link target in '{}'", normalized_url)
-
-            self.link_targets.add(normalized_url)
-
-class HeadingParser(_HtmlParser):
-    def __init__(self):
-        super().__init__()
-
-        self.headings = list()
-
-        self.open_element_tag = None
-        self.open_element_id = None
-        self.open_element_text = list()
-
-    def handle_starttag(self, tag, attrs):
-        if tag not in ("h1", "h2", "h3"):
-            return
-
-        self.open_element_tag = tag
-
-        attrs = dict(attrs)
-
-        if "id" in attrs:
-            self.open_element_id = attrs["id"]
-        else:
-            self.open_element_id = None
-
-    def handle_data(self, data):
-        if self.open_element_tag:
-            self.open_element_text.append(data)
-
-    def handle_endtag(self, tag):
-        if tag == self.open_element_tag:
-            self.headings.append((self.open_element_tag, self.open_element_id, "".join(self.open_element_text)))
-
-            self.open_element_tag = None
-            self.open_element_id = None
-            self.open_element_text = list()
-
 class TemplateFile(File):
     __slots__ = "_template", "metadata"
 
@@ -558,6 +481,14 @@ class HtmlPage(TemplateFile):
 
         return f"<nav class=\"page-path\">{''.join(links)}</nav>"
 
+    def toc_nav(self):
+        parser = HeadingParser()
+        parser.feed("".join(self.content))
+
+        links = [f"<a href=\"#{x[1]}\">{x[2]}</a>" for x in parser.headings]
+
+        return f"<nav class=\"page-toc\">{''.join(links)}</nav>"
+
     def directory_nav(self):
         def sort_fn(x):
             return x.title if x.title else ""
@@ -566,14 +497,6 @@ class HtmlPage(TemplateFile):
         links = [f"<a href=\"{x.url}\">{x.title if x.title else x.url.removeprefix('/')}</a>" for x in children]
 
         return f"<nav class=\"page-directory\">{''.join(links)}</nav>"
-
-    def toc_nav(self):
-        parser = HeadingParser()
-        parser.feed("".join(self.content))
-
-        links = [f"<a href=\"#{x[1]}\">{x[2]}</a>" for x in parser.headings]
-
-        return f"<nav class=\"page-toc\">{''.join(links)}</nav>"
 
 class MarkdownPage(HtmlPage):
     __slots__ = "_converted_content",
@@ -615,6 +538,83 @@ class RenderProcess(_multiprocessing.Process):
         except TransomError as e:
             print(f"Error: {e}")
             _sys.exit(1)
+
+class TransomError(Exception):
+    pass
+
+class LinkParser(_HtmlParser):
+    def __init__(self, file_, link_sources, link_targets):
+        super().__init__()
+
+        self.file = file_
+        self.link_sources = link_sources
+        self.link_targets = link_targets
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+
+        for name in ("href", "src", "action"):
+            try:
+                url = attrs[name]
+            except KeyError:
+                continue
+
+            split_url = _urlparse.urlsplit(url)
+
+            # Ignore off-site links
+            if split_url.scheme or split_url.netloc:
+                continue
+
+            # Treat somepath/ as somepath/index.html
+            if split_url.path.endswith("/"):
+                split_url = split_url._replace(path=f"{split_url.path}index.html")
+
+            normalized_url = _urlparse.urljoin(self.file.url, _urlparse.urlunsplit(split_url))
+
+            self.link_sources[normalized_url].add(self.file)
+
+        if "id" in attrs:
+            normalized_url = _urlparse.urljoin(self.file.url, f"#{attrs['id']}")
+
+            if normalized_url in self.link_targets:
+                self.file.site.warning("Duplicate link target in '{}'", normalized_url)
+
+            self.link_targets.add(normalized_url)
+
+class HeadingParser(_HtmlParser):
+    def __init__(self):
+        super().__init__()
+
+        self.headings = list()
+
+        self.open_element_tag = None
+        self.open_element_id = None
+        self.open_element_text = list()
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in ("h1", "h2", "h3"):
+            return
+
+        self.open_element_tag = tag
+
+        attrs = dict(attrs)
+
+        if "id" in attrs:
+            self.open_element_id = attrs["id"]
+        else:
+            self.open_element_id = None
+
+    def handle_data(self, data):
+        if self.open_element_tag:
+            self.open_element_text.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == self.open_element_tag:
+            self.headings.append((self.open_element_tag, self.open_element_id, "".join(self.open_element_text)))
+
+            self.open_element_tag = None
+            self.open_element_id = None
+            self.open_element_text = list()
 
 class WatcherThread:
     def __init__(self, site):
