@@ -569,7 +569,7 @@ class HtmlPage(TemplateFile):
 
     def toc_nav(self):
         parser = HeadingParser()
-        parser.feed(str(self.content))
+        parser.feed("".join(self.content))
 
         links = [f"<a href=\"#{x[1]}\">{x[2]}</a>" for x in parser.headings]
 
