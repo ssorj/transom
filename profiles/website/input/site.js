@@ -1,1 +1,1 @@
-{{file.include("config/transom.js")}}
+{{page.include("config/transom.js")}}

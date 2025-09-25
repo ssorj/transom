@@ -167,9 +167,9 @@ class TransomSite:
             case ".html.in":
                 return HtmlPage(self, input_path, str(output_path).removesuffix(".in"))
             case ".css" | ".js" | ".html":
-                return TemplateFile(self, input_path, str(output_path))
+                return TemplatePage(self, input_path, str(output_path))
             case _:
-                return File(self, input_path, str(output_path))
+                return StaticFile(self, input_path, str(output_path))
 
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
@@ -375,7 +375,10 @@ class File:
             if file_.parent is self:
                 yield file_
 
-class TemplateFile(File):
+class StaticFile(File):
+    pass
+
+class TemplatePage(File):
     __slots__ = "_template", "metadata"
 
     def _is_modified(self):
@@ -409,7 +412,7 @@ class TemplateFile(File):
     def _render_output(self):
         _os.makedirs(_os.path.dirname(self.output_path), exist_ok=True)
 
-        output = render_template(self._template, self.site._config, {"file": self}, self.input_path)
+        output = render_template(self._template, self.site._config, {"page": self}, self.input_path)
 
         with open(self.output_path, "w") as f:
             for elem in output:
@@ -418,14 +421,11 @@ class TemplateFile(File):
     def include(self, input_path):
         text = read_file(input_path)
         template = parse_template(text, input_path)
-        locals_ = {"file": self}
-
-        if isinstance(self, HtmlPage):
-            locals_["page"] = self
+        locals_ = {"page": self}
 
         return render_template(template, self.site._config, locals_, input_path)
 
-class HtmlPage(TemplateFile):
+class HtmlPage(TemplatePage):
     __slots__ = "_page_template", "_head_template", "_body_template"
 
     def _process_input(self):
