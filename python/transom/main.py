@@ -488,7 +488,8 @@ class HtmlPage(TemplatePage):
         parser = HeadingParser()
         parser.feed("".join(self.content))
 
-        links = [f"<a href=\"#{x[1]}\">{x[2]}</a>" for x in parser.headings if x[1] is not None]
+        links = [f"<a href=\"#{x[1]}\">{x[2]}</a>" for x in parser.headings
+                 if x[0] in ("h1", "h2") and x[1] is not None]
 
         return f"<nav class=\"page-toc\">{''.join(links)}</nav>"
 

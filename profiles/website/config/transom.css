@@ -139,6 +139,10 @@
         color: inherit;
         text-wrap: balance;
     }
+
+    :where(nav.page-toc) > a.selected {
+        font-weight: 700;
+    }
 }
 
 @layer layout {

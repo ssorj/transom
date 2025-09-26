@@ -25,3 +25,39 @@ Element.prototype.$ = function () {
 Element.prototype.$$ = function () {
     return this.querySelectorAll.apply(this, arguments);
 };
+
+window.addEventListener("load", () => {
+    const tocLinks = $("nav.page-toc");
+
+    if (!tocLinks) {
+        return;
+    }
+
+    const updateHeadingSelection = () => {
+        const currHash = window.location.hash;
+
+        for (const elem of tocLinks.$$(".selected")) {
+            elem.classList.remove("selected");
+        }
+
+        if (currHash) {
+            for (const link of tocLinks.$$("a")) {
+                const linkHash = new URL(link.href).hash;
+
+                if (linkHash === currHash) {
+                    link.classList.add("selected");
+                    break;
+                }
+            }
+
+            $(currHash).parentElement.parentElement.classList.add("selected");
+        } else {
+            // Select the top heading by default
+            tocLinks.$("a").classList.add("selected");
+        }
+    }
+
+    updateHeadingSelection();
+
+    window.addEventListener("hashchange", updateHeadingSelection);
+});

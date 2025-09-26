@@ -42,9 +42,9 @@ pip install pyyaml
 ## Using the transom command
 
 To generate a starter website project, use `transom init`.  The
-starter site is really basic.  It just lays down an index page
-(`input/index.md`) a CSS file (`input/main.css`) and a JavaScript file
-(`input/main.js`) plus the supporting Transom config files.
+starter site is really basic.  It lays down an index page
+(`input/index.md`) a CSS file (`input/site.css`) and a JavaScript file
+(`input/site.js`) plus the supporting Transom config files.
 
 ~~~ sh
 $ cd <your-new-project-dir>
@@ -52,6 +52,7 @@ $ cd <your-new-project-dir>
 $ transom init
 transom: Creating 'config/site.py'
 transom: Creating 'config/transom.css'
+transom: Creating 'config/transom.js'
 transom: Creating 'config/head.html'
 transom: Creating 'config/body.html'
 transom: Creating 'input/index.md'
@@ -70,9 +71,7 @@ Rendered 3 output files
 ~~~
 
 Now you have the HTML website under `<your-project-dir>/output`.  You
-can send that whereever you need it to be for publishing purposes.
-Since I often use GitHub Pages for publishing, I set my output dir to
-`docs` and then configure the GitHub project to serve those files.
+can send that whereever you need it for publishing purposes.
 
 For local development, you will likely want to use the `transom serve`
 command.  This renders the site to the output dir and stands up a
@@ -109,6 +108,10 @@ Serving at http://localhost:8080
 
 <!-- ## Page configuration -->
 
+## The rendering process
+
+XXX
+
 ## Templates
 
 Transom templates allow you to generate output by embedding Python
@@ -116,9 +119,9 @@ expressions inside `{{ }}` placeholders.  These expressions are
 designed to execute Python code using Python's `eval` function.
 
 You can call functions or access variables you've defined in
-`config/site.py`.  You also have access to the Transom `site`, `file`,
-and `page` objects, which have APIs for accessing metadata and
-performing object-specific operations.
+`config/site.py`.  You also have access to the Transom `site` and
+`page` objects, which have APIs for accessing metadata and performing
+object-specific operations.
 
 You can use `{{{ }}}` to produce literal `{{ }}` output.
 
@@ -139,7 +142,11 @@ def get_page_info(page):
 
 `config/site.py`
 
-**site.prefix** - A string prefix used in templates and for generated
+XXX Table with the other files under config/.
+
+## The Site API
+
+`**site.prefix**` - A string prefix used in templates and for generated
 links.  It is inserted before the file path.  This is important when
 the published site lives under a directory prefix, as is the case for
 GitHub Pages.  The default is "", the empty string.
@@ -155,43 +162,83 @@ and `#*`.
 **site.ignored_link_patterns** - A list of shell globs for excluding
 link URLs from link checking.  The default is the empty list.
 
-<!-- ## Page API -->
+## The Page API
 
-<!-- {{page.include("path/to/x.html")}} -->
-<!-- {{page.path_nav()}} -->
-<!-- Access to site -->
+**page.site**
 
-<!-- ## HTML generation functions -->
+**page.include(path)**
+
+#### HTML page parts
+
+**page.head** - The head element of the page
+
+**page.extra_headers**
+
+**page.body** - The body element of the page
+
+**page.content**
+
+#### Navigation elements
+
+**page.path_nav(start=0, end=None, min=1)**
+
+**page.toc_nav()**
+
+**page.directory_nav()**
+
+## Text and HTML generation functions
+
+**lipsum(count=50, end=".")**
+
+**plural(noun, count=0, plural=None)**
+
+**html_table()**
+
+**html_table_csv()**
+
+**convert_markdown(text)**
 
 ## Setting up Transom for a website repo
 
 Change directory to the root of your project:
 
-    cd <project-dir>/
+~~~
+cd <project-dir>/
+~~~
 
 Add the Transom code as a subdirectory:
 
-    mkdir -p external
-    curl -sfL https://github.com/ssorj/transom/archive/main.tar.gz | tar -C external -xz
-    mv external/transom-main external/transom
+~~~
+mkdir -p external
+curl -sfL https://github.com/ssorj/transom/archive/main.tar.gz | tar -C external -xz
+mv external/transom-main external/transom
+~~~
 
 Symlink the Transom and Plano libraries into your `python` directory:
 
-    mkdir -p python
-    ln -s ../external/transom/python/transom python/transom
-    ln -s ../external/transom/python/mistune python/mistune
-    ln -s ../external/transom/python/plano python/plano
+~~~
+mkdir -p python
+ln -s ../external/transom/python/transom python/transom
+ln -s ../external/transom/python/mistune python/mistune
+ln -s ../external/transom/python/plano python/plano
+~~~
 
 Copy the `plano` command into the root of your project:
 
-    cp external/transom/plano plano
+~~~
+cp external/transom/plano plano
+~~~
 
 Copy the standard config files:
 
-    cp external/transom/profiles/website/.plano.py .plano.py
-    cp external/transom/profiles/website/.gitignore .gitignore
+~~~
+cp external/transom/profiles/website/.plano.py .plano.py
+cp external/transom/profiles/website/.gitignore .gitignore
+~~~
 
 Copy the standard workflow file:
 
-    mkdir -p .github/workflows
-    cp external/transom/profiles/website/.github/workflows/main.yaml .github/workflows/main.yaml
+~~~
+mkdir -p .github/workflows
+cp external/transom/profiles/website/.github/workflows/main.yaml .github/workflows/main.yaml
+~~~
