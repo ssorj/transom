@@ -141,7 +141,7 @@
     }
 
     :where(nav.page-toc) > a.selected {
-        font-weight: 700;
+        text-decoration: underline;
     }
 }
 
