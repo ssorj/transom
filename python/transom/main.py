@@ -22,19 +22,18 @@ import collections as collections
 import collections.abc as abc
 import csv as csv
 import fnmatch as fnmatch
-import http.server as _http
-import math as _math
-import mistune as _mistune
-import multiprocessing as _multiprocessing
-import os as _os
-import pathlib as _pathlib
-import re as _re
-import shutil as _shutil
-import subprocess as _subprocess
-import sys as _sys
-import threading as _threading
-import types as _types
-import yaml as _yaml
+import http.server as httpserver
+import math as math
+import mistune as mistune
+import multiprocessing as multiprocessing
+import os as os
+import pathlib as pathlib
+import re as re
+import shutil as shutil
+import sys as sys
+import threading as threading
+import types as types
+import yaml as yaml
 
 from html import escape as _escape
 from html.parser import HTMLParser as _HtmlParser
@@ -72,15 +71,15 @@ _default_body_template = """
 """
 
 _index_file_names = "index.md", "index.html.in", "index.html"
-_html_page_title_regex = _re.compile(r"<title\b[^>]*>(.*?)</title>", _re.IGNORECASE | _re.DOTALL)
-_html_body_title_regex = _re.compile(r"<(:?h1|h2)\b[^>]*>(.*?)</(:?h1|h2)>", _re.IGNORECASE | _re.DOTALL)
-_markdown_title_regex = _re.compile(r"^(?:#|##)\s+(.*)")
-_variable_regex = _re.compile(r"({{{.+?}}}|{{.+?}})")
+_html_page_titleregex = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_html_body_titleregex = re.compile(r"<(:?h1|h2)\b[^>]*>(.*?)</(:?h1|h2)>", re.IGNORECASE | re.DOTALL)
+_markdown_titleregex = re.compile(r"^(?:#|##)\s+(.*)")
+_variableregex = re.compile(r"({{{.+?}}}|{{.+?}})")
 
 # An improvised solution for trouble on Mac OS
 _once = False
 if not _once:
-    _multiprocessing.set_start_method("fork")
+    multiprocessing.set_start_method("fork")
     _once = True
 
 class TransomError(Exception):
@@ -88,10 +87,10 @@ class TransomError(Exception):
 
 class TransomSite:
     def __init__(self, project_dir, verbose=False, quiet=False):
-        self.project_dir = _os.path.normpath(project_dir)
-        self.config_dir = _os.path.normpath(_os.path.join(self.project_dir, "config"))
-        self.input_dir = _os.path.normpath(_os.path.join(self.project_dir, "input"))
-        self.output_dir = _os.path.normpath(_os.path.join(self.project_dir, "output"))
+        self.project_dir = os.path.normpath(project_dir)
+        self.config_dir = os.path.normpath(os.path.join(self.project_dir, "config"))
+        self.input_dir = os.path.normpath(os.path.join(self.project_dir, "input"))
+        self.output_dir = os.path.normpath(os.path.join(self.project_dir, "output"))
 
         self.verbose = verbose
         self.quiet = quiet
@@ -117,25 +116,25 @@ class TransomSite:
         self._index_files = dict() # parent input dir => File
 
     def init(self):
-        self._page_template = load_site_template(_os.path.join(self.config_dir, "page.html"), _default_page_template)
-        self._head_template = load_site_template(_os.path.join(self.config_dir, "head.html"), _default_head_template)
-        self._body_template = load_site_template(_os.path.join(self.config_dir, "body.html"), _default_body_template)
+        self._page_template = load_site_template(os.path.join(self.config_dir, "page.html"), _default_page_template)
+        self._head_template = load_site_template(os.path.join(self.config_dir, "head.html"), _default_head_template)
+        self._body_template = load_site_template(os.path.join(self.config_dir, "body.html"), _default_body_template)
 
-        self._ignored_file_regex = "({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns]))
-        self._ignored_file_regex = _re.compile(self._ignored_file_regex)
+        self._ignored_fileregex = "({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns]))
+        self._ignored_fileregex = re.compile(self._ignored_fileregex)
 
         try:
-            exec(read_file(_os.path.join(self.config_dir, "site.py")), self._config)
+            exec(read_file(os.path.join(self.config_dir, "site.py")), self._config)
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
 
     def _compute_modified(self):
-        output_mtime = _os.path.getmtime(self.output_dir)
+        output_mtime = os.path.getmtime(self.output_dir)
 
         for input_dir in self.extra_input_dirs:
-            for root, dirs, names in _os.walk(input_dir):
-                for name in {x for x in names if not self._ignored_file_regex.match(x)}:
-                    mtime = _os.path.getmtime(_os.path.join(root, name))
+            for root, dirs, names in os.walk(input_dir):
+                for name in {x for x in names if not self._ignored_fileregex.match(x)}:
+                    mtime = os.path.getmtime(os.path.join(root, name))
 
                     if mtime > output_mtime:
                         return True
@@ -146,21 +145,21 @@ class TransomSite:
         self._files.clear()
         self._index_files.clear()
 
-        for root, dirs, names in _os.walk(self.input_dir):
-            files = {x for x in names if not self._ignored_file_regex.match(x)}
+        for root, dirs, names in os.walk(self.input_dir):
+            files = {x for x in names if not self._ignored_fileregex.match(x)}
             index_files = {x for x in names if x in _index_file_names}
 
             if len(index_files) > 1:
                 raise TransomError(f"Duplicate index files in {root}")
 
             for name in index_files:
-                self._files.append(self._init_file(_os.path.join(root, name)))
+                self._files.append(self._init_file(os.path.join(root, name)))
 
             for name in files - index_files:
-                self._files.append(self._init_file(_os.path.join(root, name)))
+                self._files.append(self._init_file(os.path.join(root, name)))
 
     def _init_file(self, input_path):
-        path = _pathlib.Path(input_path)
+        path = pathlib.Path(input_path)
         file_extension = "".join(path.suffixes)
         output_path = self.output_dir / path.relative_to(self.input_dir)
 
@@ -177,7 +176,7 @@ class TransomSite:
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
 
-        if _os.path.exists(self.output_dir):
+        if os.path.exists(self.output_dir):
             self._modified = self._compute_modified()
 
         self._init_files()
@@ -188,9 +187,9 @@ class TransomSite:
         for file_ in self._files:
             file_._process_input()
 
-        proc_count = _os.cpu_count()
+        proc_count = os.cpu_count()
         procs = list()
-        batch_size = _math.ceil(len(self._files) / proc_count)
+        batch_size = math.ceil(len(self._files) / proc_count)
 
         for i in range(proc_count):
             start = i * batch_size
@@ -207,8 +206,8 @@ class TransomSite:
             if proc.exitcode != 0:
                 raise TransomError("A child render process failed")
 
-        if _os.path.exists(self.output_dir):
-            _os.utime(self.output_dir)
+        if os.path.exists(self.output_dir):
+            os.utime(self.output_dir)
 
         rendered_count = sum([x.rendered_count.value for x in procs])
         unchanged_count = len(self._files) - rendered_count
@@ -250,8 +249,8 @@ class TransomSite:
         expected_paths = {x.output_path for x in self._files}
         found_paths = set()
 
-        for root, dirs, names in _os.walk(self.output_dir):
-            found_paths.update((_os.path.join(root, x) for x in names))
+        for root, dirs, names in os.walk(self.output_dir):
+            found_paths.update((os.path.join(root, x) for x in names))
 
         missing_paths = expected_paths - found_paths
         extra_paths = found_paths - expected_paths
@@ -314,7 +313,7 @@ class File:
         self.site = site
 
         self.input_path = input_path
-        self._input_mtime = _os.path.getmtime(self.input_path)
+        self._input_mtime = os.path.getmtime(self.input_path)
 
         self.output_path = output_path
         self._output_mtime = None
@@ -323,27 +322,27 @@ class File:
         self.title = None
         self.parent = None
 
-        dir_, name = _os.path.split(self.input_path)
+        dir_, name = os.path.split(self.input_path)
 
         if name in _index_file_names:
             self.site._index_files[dir_] = self
-            dir_ = _os.path.dirname(dir_)
+            dir_ = os.path.dirname(dir_)
 
         while dir_ != "":
             try:
                 self.parent = self.site._index_files[dir_]
             except KeyError:
-                dir_ = _os.path.dirname(dir_)
+                dir_ = os.path.dirname(dir_)
             else:
                 break
 
-    def __repr__(self):
+    def _repr__(self):
         return f"{self.__class__.__name__}({self.input_path}, {self.output_path})"
 
     def _is_modified(self):
         if self._output_mtime is None:
             try:
-                self._output_mtime = _os.path.getmtime(self.output_path)
+                self._output_mtime = os.path.getmtime(self.output_path)
             except FileNotFoundError:
                 return True
 
@@ -352,7 +351,7 @@ class File:
     def _process_input(self): # pragma: nocover
         pass
 
-    def _render_output(self):
+    def render_output(self):
         copy_file(self.input_path, self.output_path)
 
     def _collect_link_data(self, link_sources, link_targets):
@@ -394,26 +393,26 @@ class TemplatePage(File):
         self.title = self.metadata.get("title")
 
         if self.title is None:
-            path = _pathlib.Path(self.input_path)
+            path = pathlib.Path(self.input_path)
             file_extension = "".join(path.suffixes)
 
             match file_extension:
                 case ".md":
-                    m = _markdown_title_regex.search(text)
+                    m = _markdown_titleregex.search(text)
                     self.title = m.group(1) if m else ""
                 case ".html.in":
-                    m = _html_body_title_regex.search(text)
+                    m = _html_body_titleregex.search(text)
                     self.title = m.group(1) if m else ""
                 case ".html":
-                    m = _html_page_title_regex.search(text)
+                    m = _html_page_titleregex.search(text)
                     self.title = m.group(1) if m else ""
                 case _:
                     self.title = path.name
 
         self._template = parse_template(text, self.input_path)
 
-    def _render_output(self):
-        _os.makedirs(_os.path.dirname(self.output_path), exist_ok=True)
+    def render_output(self):
+        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
 
         output = render_template(self._template, self.site._config, {"page": self}, self.input_path)
 
@@ -449,8 +448,8 @@ class HtmlPage(TemplatePage):
         except KeyError:
             self._body_template = self.site._body_template
 
-    def _render_output(self):
-        _os.makedirs(_os.path.dirname(self.output_path), exist_ok=True)
+    def render_output(self):
+        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
 
         output = render_template(self._page_template, self.site._config, {"page": self}, self.input_path)
 
@@ -517,14 +516,14 @@ class MarkdownPage(HtmlPage):
 
         return self._converted_content
 
-class RenderProcess(_multiprocessing.Process):
+class RenderProcess(multiprocessing.Process):
     def __init__(self, site, files, force):
         super().__init__()
 
         self.site = site
         self.files = files
         self.force = force
-        self.rendered_count = _multiprocessing.Value('L', 0)
+        self.rendered_count = multiprocessing.Value('L', 0)
 
     def run(self):
         try:
@@ -534,14 +533,14 @@ class RenderProcess(_multiprocessing.Process):
                 if self.force or file_._is_modified():
                     self.site.debug("Rendering {}", file_)
 
-                    file_._render_output()
+                    file_.render_output()
 
                     rendered_count += 1
 
             self.rendered_count.value = rendered_count
         except TransomError as e:
             print(f"Error: {e}")
-            _sys.exit(1)
+            sys.exit(1)
 
 class LinkParser(_HtmlParser):
     def __init__(self, file_, link_sources, link_targets):
@@ -568,7 +567,7 @@ class LinkParser(_HtmlParser):
 
             # Treat somepath/ as somepath/index.html
             if split_url.path.endswith("/"):
-                split_url = split_url._replace(path=f"{split_url.path}index.html")
+                split_url = split_url.replace(path=f"{split_url.path}index.html")
 
             normalized_url = _urlparse.urljoin(self.file.url, _urlparse.urlunsplit(split_url))
 
@@ -627,13 +626,13 @@ class WatcherThread:
         mask = _pyinotify.IN_CREATE | _pyinotify.IN_MODIFY
 
         def render_file(event):
-            input_path = _os.path.relpath(event.pathname, _os.getcwd())
-            _, base_name = _os.path.split(input_path)
+            input_path = os.path.relpath(event.pathname, os.getcwd())
+            _, base_name = os.path.split(input_path)
 
-            if _os.path.isdir(input_path):
+            if os.path.isdir(input_path):
                 return True
 
-            if self.site._ignored_file_regex.match(base_name):
+            if self.site._ignored_fileregex.match(base_name):
                 return True
 
             try:
@@ -647,10 +646,10 @@ class WatcherThread:
 
             self.site.debug("Rendering {}", file_)
 
-            file_._render_output()
+            file_.render_output()
 
-            if _os.path.exists(self.site.output_dir):
-                _os.utime(self.site.output_dir)
+            if os.path.exists(self.site.output_dir):
+                os.utime(self.site.output_dir)
 
         def render_site(event):
             self.site.init()
@@ -670,7 +669,7 @@ class WatcherThread:
     def stop(self):
         self.notifier.stop()
 
-class ServerThread(_threading.Thread):
+class ServerThread(threading.Thread):
     def __init__(self, site, port):
         super().__init__(name="server", daemon=True)
 
@@ -682,13 +681,13 @@ class ServerThread(_threading.Thread):
         self.site.notice("Serving at http://localhost:{}", self.port)
         self.server.serve_forever()
 
-class Server(_http.ThreadingHTTPServer):
+class Server(httpserver.ThreadingHTTPServer):
     def __init__(self, site, port):
         super().__init__(("localhost", port), ServerRequestHandler)
 
         self.site = site
 
-class ServerRequestHandler(_http.SimpleHTTPRequestHandler):
+class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
         super().__init__(request, client_address, server, directory=server.site.output_dir)
 
@@ -700,12 +699,12 @@ class ServerRequestHandler(_http.SimpleHTTPRequestHandler):
         else:
             raise Exception()
 
-        self.send_response(_http.HTTPStatus.OK)
+        self.send_response(httpserver.HTTPStatus.OK)
         self.end_headers()
 
     def intercept_fetch(self):
         if self.path == "/" and self.server.site.prefix:
-            self.send_response(_http.HTTPStatus.FOUND)
+            self.send_response(httpserver.HTTPStatus.FOUND)
             self.send_header("Location", self.server.site.prefix + "/")
             self.end_headers()
 
@@ -787,7 +786,7 @@ class TransomCommand:
 
         if "command_fn" not in self.args:
             self.parser.print_usage()
-            _sys.exit(1)
+            sys.exit(1)
 
         self.quiet = self.args.quiet
         self.verbose = self.args.verbose
@@ -829,22 +828,22 @@ class TransomCommand:
 
     def fail(self, message, *args):
         self.error(message, *args)
-        _sys.exit(1)
+        sys.exit(1)
 
     def print_message(self, message, *args):
         message = message[0].upper() + message[1:]
         message = message.format(*args)
         message = "{}: {}".format(self.name, message)
 
-        _sys.stderr.write("{}\n".format(message))
-        _sys.stderr.flush()
+        sys.stderr.write("{}\n".format(message))
+        sys.stderr.flush()
 
     def init_command(self):
         if self.home is None:
             self.fail("I can't find the default input files")
 
         def copy(from_path, to_path):
-            if _os.path.exists(to_path):
+            if os.path.exists(to_path):
                 self.notice("Skipping '{}'. It already exists.", to_path)
                 return
 
@@ -852,28 +851,28 @@ class TransomCommand:
 
             self.notice("Creating '{}'", to_path)
 
-        profile_dir = _os.path.join(self.home, "profiles", self.args.profile)
+        profile_dir = os.path.join(self.home, "profiles", self.args.profile)
         project_dir = self.args.project_dir
 
-        assert _os.path.exists(profile_dir), profile_dir
+        assert os.path.exists(profile_dir), profile_dir
 
-        for name in _os.listdir(_os.path.join(profile_dir, "config")):
-            copy(_os.path.join(profile_dir, "config", name),
-                 _os.path.join(project_dir, "config", name))
+        for name in os.listdir(os.path.join(profile_dir, "config")):
+            copy(os.path.join(profile_dir, "config", name),
+                 os.path.join(project_dir, "config", name))
 
-        for name in _os.listdir(_os.path.join(profile_dir, "input")):
-            copy(_os.path.join(profile_dir, "input", name),
-                 _os.path.join(project_dir, "input", name))
+        for name in os.listdir(os.path.join(profile_dir, "input")):
+            copy(os.path.join(profile_dir, "input", name),
+                 os.path.join(project_dir, "input", name))
 
         if self.args.github:
-            python_dir = _os.path.join(self.home, "python")
+            python_dir = os.path.join(self.home, "python")
 
-            copy(_os.path.join(profile_dir, ".github/workflows/main.yaml"),
-                 _os.path.join(project_dir, ".github/workflows/main.yaml"))
-            copy(_os.path.join(profile_dir, ".gitignore"), _os.path.join(project_dir, ".gitignore"))
-            copy(_os.path.join(profile_dir, ".plano.py"), _os.path.join(project_dir, ".plano.py"))
-            copy(_os.path.join(python_dir, "mistune"), _os.path.join(project_dir, "python", "mistune"))
-            copy(_os.path.join(python_dir, "transom"), _os.path.join(project_dir, "python", "transom"))
+            copy(os.path.join(profile_dir, ".github/workflows/main.yaml"),
+                 os.path.join(project_dir, ".github/workflows/main.yaml"))
+            copy(os.path.join(profile_dir, ".gitignore"), os.path.join(project_dir, ".gitignore"))
+            copy(os.path.join(profile_dir, ".plano.py"), os.path.join(project_dir, ".plano.py"))
+            copy(os.path.join(python_dir, "mistune"), os.path.join(project_dir, "python", "mistune"))
+            copy(os.path.join(python_dir, "transom"), os.path.join(project_dir, "python", "transom"))
 
     def render_command(self):
         self.lib.render(force=self.args.force)
@@ -907,23 +906,23 @@ def read_file(path):
 
 def copy_file(from_path, to_path):
     try:
-        _shutil.copyfile(from_path, to_path)
+        shutil.copyfile(from_path, to_path)
     except FileNotFoundError:
-        _os.makedirs(_os.path.dirname(to_path), exist_ok=True)
-        _shutil.copyfile(from_path, to_path)
+        os.makedirs(os.path.dirname(to_path), exist_ok=True)
+        shutil.copyfile(from_path, to_path)
 
 def copy_dir(from_dir, to_dir):
-    for name in _os.listdir(from_dir):
+    for name in os.listdir(from_dir):
         if name == "__pycache__":
             continue
 
-        from_path = _os.path.join(from_dir, name)
-        to_path = _os.path.join(to_dir, name)
+        from_path = os.path.join(from_dir, name)
+        to_path = os.path.join(to_dir, name)
 
         copy_path(from_path, to_path)
 
 def copy_path(from_path, to_path):
-    if _os.path.isdir(from_path):
+    if os.path.isdir(from_path):
         copy_dir(from_path, to_path)
     else:
         copy_file(from_path, to_path)
@@ -931,15 +930,15 @@ def copy_path(from_path, to_path):
 def extract_metadata(text):
     if text.startswith("---\n"):
         end = text.index("---\n", 4)
-        yaml = text[4:end]
+        header = text[4:end]
         text = text[end + 4:]
 
-        return text, _yaml.safe_load(yaml)
+        return text, yaml.safe_load(header)
 
     return text, dict()
 
 def load_site_template(path, default_text):
-    if path is None or not _os.path.exists(path):
+    if path is None or not os.path.exists(path):
         return parse_template(default_text, "[default]")
 
     return parse_template(read_file(path), path)
@@ -953,7 +952,7 @@ def load_page_template(path, default_text):
 def parse_template(text, context):
     template = list()
 
-    for token in _variable_regex.split(text):
+    for token in _variableregex.split(text):
         if token.startswith("{{{") and token.endswith("}}}"):
             item = token[1:-1]
         elif token.startswith("{{") and token.endswith("}}"):
@@ -970,7 +969,7 @@ def parse_template(text, context):
 
 def render_template(template, globals_, locals_, context):
     for elem in template:
-        if type(elem) is _types.CodeType:
+        if type(elem) is types.CodeType:
             try:
                 result = eval(elem, globals_, locals_)
             except TransomError:
@@ -978,27 +977,27 @@ def render_template(template, globals_, locals_, context):
             except Exception as e:
                 raise TransomError(f"{context}: {e}")
 
-            if type(result) is _types.GeneratorType:
+            if type(result) is types.GeneratorType:
                 yield from result
             else:
                 yield result
         else:
             yield elem
 
-_heading_id_regex_1 = _re.compile(r"[^a-zA-Z0-9_ ]+")
-_heading_id_regex_2 = _re.compile(r"[_ ]")
+_heading_idregex_1 = re.compile(r"[^a-zA-Z0-9_ ]+")
+_heading_idregex_2 = re.compile(r"[_ ]")
 
-class HtmlRenderer(_mistune.renderers.html.HTMLRenderer):
+class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
     def heading(self, text, level, **attrs):
-        id = _heading_id_regex_1.sub("", text)
-        id = _heading_id_regex_2.sub("-", id)
+        id = _heading_idregex_1.sub("", text)
+        id = _heading_idregex_2.sub("-", id)
         id = id.lower()
 
         return f"<h{level} id=\"{id}\">{text}</h{level}>\n"
 
-class MarkdownLocal(_threading.local):
+class MarkdownLocal(threading.local):
     def __init__(self):
-        self.value = _mistune.create_markdown(renderer=HtmlRenderer(escape=False), plugins=["table", "strikethrough"])
+        self.value = mistune.create_markdown(renderer=HtmlRenderer(escape=False), plugins=["table", "strikethrough"])
         self.value.block.list_rules += ['table', 'nptable']
 
 _markdown_local = MarkdownLocal()
