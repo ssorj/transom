@@ -18,26 +18,26 @@
 #
 
 import argparse
-import collections as collections
-import collections.abc as abc
-import csv as csv
-import fnmatch as fnmatch
+import csv
+import fnmatch
 import http.server as httpserver
-import math as math
-import mistune as mistune
-import multiprocessing as multiprocessing
-import os as os
-import pathlib as pathlib
-import re as re
-import shutil as shutil
-import sys as sys
-import threading as threading
-import types as types
-import yaml as yaml
+import math
+import mistune
+import multiprocessing
+import os
+import pathlib
+import re
+import sys
+import threading
+import types
+import yaml
 
-from html import escape as _escape
-from html.parser import HTMLParser as _HtmlParser
-from urllib import parse as _urlparse
+from collections import defaultdict
+from collections.abc import Iterable
+from html import escape as html_escape
+from html.parser import HTMLParser
+from shutil import copyfile
+from urllib import parse as urlparse
 
 __all__ = ["TransomSite", "TransomCommand"]
 
@@ -272,7 +272,7 @@ class TransomSite:
     def check_links(self):
         self._init_files()
 
-        link_sources = collections.defaultdict(set) # link => files
+        link_sources = defaultdict(set) # link => files
         link_targets = set()
 
         for file_ in self._files:
@@ -542,7 +542,7 @@ class RenderProcess(multiprocessing.Process):
             print(f"Error: {e}")
             sys.exit(1)
 
-class LinkParser(_HtmlParser):
+class LinkParser(HTMLParser):
     def __init__(self, file_, link_sources, link_targets):
         super().__init__()
 
@@ -559,7 +559,7 @@ class LinkParser(_HtmlParser):
             except KeyError:
                 continue
 
-            split_url = _urlparse.urlsplit(url)
+            split_url = urlparse.urlsplit(url)
 
             # Ignore off-site links
             if split_url.scheme or split_url.netloc:
@@ -569,19 +569,19 @@ class LinkParser(_HtmlParser):
             if split_url.path.endswith("/"):
                 split_url = split_url.replace(path=f"{split_url.path}index.html")
 
-            normalized_url = _urlparse.urljoin(self.file.url, _urlparse.urlunsplit(split_url))
+            normalized_url = urlparse.urljoin(self.file.url, urlparse.urlunsplit(split_url))
 
             self.link_sources[normalized_url].add(self.file)
 
         if "id" in attrs:
-            normalized_url = _urlparse.urljoin(self.file.url, f"#{attrs['id']}")
+            normalized_url = urlparse.urljoin(self.file.url, f"#{attrs['id']}")
 
             if normalized_url in self.link_targets:
                 self.file.site.warning("Duplicate link target in '{}'", normalized_url)
 
             self.link_targets.add(normalized_url)
 
-class HeadingParser(_HtmlParser):
+class HeadingParser(HTMLParser):
     def __init__(self):
         super().__init__()
 
@@ -906,10 +906,10 @@ def read_file(path):
 
 def copy_file(from_path, to_path):
     try:
-        shutil.copyfile(from_path, to_path)
+        copyfile(from_path, to_path)
     except FileNotFoundError:
         os.makedirs(os.path.dirname(to_path), exist_ok=True)
-        shutil.copyfile(from_path, to_path)
+        copyfile(from_path, to_path)
 
 def copy_dir(from_dir, to_dir):
     for name in os.listdir(from_dir):
@@ -1050,7 +1050,7 @@ def html_table_rows(data, headings, cell_fn):
         yield html_elem("tr", (cell_fn(i, x) for i, x in enumerate(row)))
 
 def html_elem(tag, content, **attrs):
-    if isinstance(content, abc.Iterable) and not isinstance(content, str):
+    if isinstance(content, Iterable) and not isinstance(content, str):
         content = "".join(content)
 
     return f"<{tag}{''.join(html_attrs(attrs))}>{content or ''}</{tag}>"
@@ -1061,7 +1061,7 @@ def html_attrs(attrs):
         value = name if value is True else value
 
         if value is not False:
-            yield f" {name}=\"{_escape(value, quote=True)}\""
+            yield f" {name}=\"{html_escape(value, quote=True)}\""
 
 if __name__ == "__main__": # pragma: nocover
     command = TransomCommand()
