@@ -117,7 +117,7 @@
     }
 
     :where(ul, ol, dd) {
-        padding-left: 1rem;
+        padding-left: 1.3rem;
     }
 }
 
@@ -218,6 +218,5 @@
         top: 6rem;
         padding: 0 2rem 0 1rem;
         border-left: 0.1rem solid var(--line-color, lightgray);
-        margin-left: 1rem;
     }
 }
