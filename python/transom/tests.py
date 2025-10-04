@@ -99,8 +99,8 @@ def transom_render():
         check_file("output/steamboat.png")
 
         result = read("output/index.html")
-        assert "<title>Doorjamb</title>" in result, result
-        assert "<h1 id=\"doorjamb\">Doorjamb</h1>" in result, result
+        assert "<title>Transom</title>" in result, result
+        assert "<h1 id=\"transom\">Transom</h1>" in result, result
 
         transom_command.main(["render", "--quiet"])
         transom_command.main(["render", "--force", "--verbose"])

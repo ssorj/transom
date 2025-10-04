@@ -19,9 +19,9 @@
 
 import argparse
 import collections as collections
-import collections.abc as _abc
-import csv as _csv
-import fnmatch as _fnmatch
+import collections.abc as abc
+import csv as csv
+import fnmatch as fnmatch
 import http.server as _http
 import math as _math
 import mistune as _mistune
@@ -121,7 +121,7 @@ class TransomSite:
         self._head_template = load_site_template(_os.path.join(self.config_dir, "head.html"), _default_head_template)
         self._body_template = load_site_template(_os.path.join(self.config_dir, "body.html"), _default_body_template)
 
-        self._ignored_file_regex = "({})".format("|".join([_fnmatch.translate(x) for x in self.ignored_file_patterns]))
+        self._ignored_file_regex = "({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns]))
         self._ignored_file_regex = _re.compile(self._ignored_file_regex)
 
         try:
@@ -280,7 +280,7 @@ class TransomSite:
             file_._collect_link_data(link_sources, link_targets)
 
         def not_ignored(link):
-            return not any((_fnmatch.fnmatchcase(link, x) for x in self.ignored_link_patterns))
+            return not any((fnmatch.fnmatchcase(link, x) for x in self.ignored_link_patterns))
 
         links = filter(not_ignored, link_sources.keys())
         errors = 0
@@ -1035,7 +1035,7 @@ def plural(noun, count=0, plural=None):
 
 def html_table_csv(path, **attrs):
     with open(path, newline="") as f:
-        return html_table(_csv.reader(f), **attrs)
+        return html_table(csv.reader(f), **attrs)
 
 def html_table_cell(column_index, value):
     return html_elem("td", str(value if value is not None else ""))
@@ -1051,7 +1051,7 @@ def html_table_rows(data, headings, cell_fn):
         yield html_elem("tr", (cell_fn(i, x) for i, x in enumerate(row)))
 
 def html_elem(tag, content, **attrs):
-    if isinstance(content, _abc.Iterable) and not isinstance(content, str):
+    if isinstance(content, abc.Iterable) and not isinstance(content, str):
         content = "".join(content)
 
     return f"<{tag}{''.join(html_attrs(attrs))}>{content or ''}</{tag}>"
