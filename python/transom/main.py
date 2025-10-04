@@ -21,9 +21,7 @@ import argparse
 import csv
 import fnmatch
 import http.server as httpserver
-import math
 import mistune
-import multiprocessing
 import os
 import pathlib
 import re
@@ -75,12 +73,6 @@ _html_page_titleregex = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE
 _html_body_titleregex = re.compile(r"<(:?h1|h2)\b[^>]*>(.*?)</(:?h1|h2)>", re.IGNORECASE | re.DOTALL)
 _markdown_titleregex = re.compile(r"^(?:#|##)\s+(.*)")
 _variableregex = re.compile(r"({{{.+?}}}|{{.+?}})")
-
-# An improvised solution for trouble on Mac OS
-_once = False
-if not _once:
-    multiprocessing.set_start_method("fork")
-    _once = True
 
 class TransomError(Exception):
     pass
@@ -187,29 +179,26 @@ class TransomSite:
         for file_ in self._files:
             file_._process_input()
 
-        proc_count = os.cpu_count()
-        procs = list()
-        batch_size = math.ceil(len(self._files) / proc_count)
+        thread_count = os.cpu_count()
+        threads = list()
+        batch_size = (len(self._files) + thread_count - 1) // thread_count
 
-        for i in range(proc_count):
+        for i in range(thread_count):
             start = i * batch_size
             end = start + batch_size
 
-            procs.append(RenderProcess(self, self._files[start:end], force))
+            threads.append(RenderThread(self, self._files[start:end], force))
 
-        for proc in procs:
-            proc.start()
+        for thread in threads:
+            thread.start()
 
-        for proc in procs:
-            proc.join()
-
-            if proc.exitcode != 0:
-                raise TransomError("A child render process failed")
+        for thread in threads:
+            thread.join()
 
         if os.path.exists(self.output_dir):
             os.utime(self.output_dir)
 
-        rendered_count = sum([x.rendered_count.value for x in procs])
+        rendered_count = sum([x.rendered_count for x in threads])
         unchanged_count = len(self._files) - rendered_count
         unchanged_note = ""
 
@@ -516,28 +505,24 @@ class MarkdownPage(HtmlPage):
 
         return self._converted_content
 
-class RenderProcess(multiprocessing.Process):
+class RenderThread(threading.Thread):
     def __init__(self, site, files, force):
         super().__init__()
 
         self.site = site
         self.files = files
         self.force = force
-        self.rendered_count = multiprocessing.Value('L', 0)
+        self.rendered_count = 0
 
     def run(self):
         try:
-            rendered_count = 0
-
             for file_ in self.files:
                 if self.force or file_._is_modified():
                     self.site.debug("Rendering {}", file_)
 
                     file_.render_output()
 
-                    rendered_count += 1
-
-            self.rendered_count.value = rendered_count
+                    self.rendered_count += 1
         except TransomError as e:
             print(f"Error: {e}")
             sys.exit(1)
