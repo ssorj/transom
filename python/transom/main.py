@@ -34,6 +34,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from html import escape as html_escape
 from html.parser import HTMLParser
+from queue import Queue
 from shutil import copyfile
 from urllib import parse as urlparse
 
@@ -175,30 +176,39 @@ class TransomSite:
 
         self.notice("Found {:,} input {}", len(self._files), plural("file", len(self._files)))
 
-        # XXX Consider parallizing this too
-        for file_ in self._files:
-            file_._process_input()
-
         thread_count = os.cpu_count()
-        threads = list()
         batch_size = (len(self._files) + thread_count - 1) // thread_count
+        batches = list() # (thread, files)
+        render_counter = ThreadSafeCounter()
 
         for i in range(thread_count):
+            thread = WorkerThread(self, f"worker-thread-{i + 1}")
+
             start = i * batch_size
             end = start + batch_size
+            files = self._files[start:end]
 
-            threads.append(RenderThread(self, self._files[start:end], force))
+            batches.append((thread, files))
 
-        for thread in threads:
+        for thread, _ in batches:
             thread.start()
 
-        for thread in threads:
+        for thread, files in batches:
+            thread.commands.put((process_input_files, (self, files)))
+
+        for thread, files in batches:
+            thread.commands.put((render_output_files, (self, files, force, render_counter)))
+
+        for thread, files in batches:
+            thread.commands.put((None, None))
+
+        for thread, _ in batches:
             thread.join()
 
         if os.path.exists(self.output_dir):
             os.utime(self.output_dir)
 
-        rendered_count = sum([x.rendered_count for x in threads])
+        rendered_count = render_counter.value()
         unchanged_count = len(self._files) - rendered_count
         unchanged_note = ""
 
@@ -328,7 +338,7 @@ class File:
     def __repr__(self):
         return f"{self.__class__.__name__}({self.input_path}, {self.output_path})"
 
-    def _is_modified(self):
+    def is_modified(self):
         if self._output_mtime is None:
             try:
                 self._output_mtime = os.path.getmtime(self.output_path)
@@ -337,7 +347,7 @@ class File:
 
         return self._input_mtime > self._output_mtime
 
-    def _process_input(self): # pragma: nocover
+    def process_input(self): # pragma: nocover
         pass
 
     def render_output(self):
@@ -372,10 +382,10 @@ class StaticFile(File):
 class TemplatePage(File):
     __slots__ = "_template", "metadata"
 
-    def _is_modified(self):
-        return self.site._modified or super()._is_modified()
+    def is_modified(self):
+        return self.site._modified or super().is_modified()
 
-    def _process_input(self):
+    def process_input(self):
         text = read_file(self.input_path)
         text, self.metadata = extract_metadata(text)
 
@@ -419,8 +429,8 @@ class TemplatePage(File):
 class HtmlPage(TemplatePage):
     __slots__ = "_page_template", "_head_template", "_body_template"
 
-    def _process_input(self):
-        super()._process_input()
+    def process_input(self):
+        super().process_input()
 
         try:
             self._page_template = load_page_template(self.metadata["page_template"], "")
@@ -493,8 +503,8 @@ class HtmlPage(TemplatePage):
 class MarkdownPage(HtmlPage):
     __slots__ = "_converted_content",
 
-    def _process_input(self):
-        super()._process_input()
+    def process_input(self):
+        super().process_input()
 
         self._converted_content = None
 
@@ -505,27 +515,53 @@ class MarkdownPage(HtmlPage):
 
         return self._converted_content
 
-class RenderThread(threading.Thread):
-    def __init__(self, site, files, force):
-        super().__init__()
+class WorkerThread(threading.Thread):
+    def __init__(self, site, name):
+        super().__init__(name=name)
 
         self.site = site
-        self.files = files
-        self.force = force
+        self.commands = Queue()
         self.rendered_count = 0
 
     def run(self):
-        try:
-            for file_ in self.files:
-                if self.force or file_._is_modified():
-                    self.site.debug("Rendering {}", file_)
+        while True:
+            command, args = self.commands.get()
 
-                    file_.render_output()
+            if command is None:
+                break
 
-                    self.rendered_count += 1
-        except TransomError as e:
-            print(f"Error: {e}")
-            sys.exit(1)
+            try:
+                command(*args)
+            except:
+                sys.exit(1)
+            finally:
+                self.commands.task_done()
+
+def process_input_files(site, files):
+    for file in files:
+        file.process_input()
+
+def render_output_files(site, files, force, render_counter):
+    for file in files:
+        if force or file.is_modified():
+            site.debug("Rendering {}", file)
+
+            file.render_output()
+
+            render_counter.increment()
+
+class ThreadSafeCounter:
+    def __init__(self):
+        self.counter = 0
+        self.lock = threading.Lock()
+
+    def increment(self):
+        with self.lock:
+            self.counter += 1
+
+    def value(self):
+        with self.lock:
+            return self.counter
 
 class LinkParser(HTMLParser):
     def __init__(self, file_, link_sources, link_targets):
@@ -627,7 +663,7 @@ class WatcherThread:
 
             self.site.debug("Processing {}", file_)
 
-            file_._process_input()
+            file_.process_input()
 
             self.site.debug("Rendering {}", file_)
 
