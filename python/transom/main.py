@@ -135,7 +135,7 @@ class TransomSite:
 
         return False
 
-    def _init_files(self):
+    def init_files(self):
         self._files.clear()
         self._index_files.clear()
 
@@ -147,12 +147,12 @@ class TransomSite:
                 raise TransomError(f"Duplicate index files in {root}")
 
             for name in index_files:
-                self._files.append(self._init_file(join(root, name)))
+                self._files.append(self.init_file(join(root, name)))
 
             for name in files - index_files:
-                self._files.append(self._init_file(join(root, name)))
+                self._files.append(self.init_file(join(root, name)))
 
-    def _init_file(self, input_path):
+    def init_file(self, input_path):
         path = pathlib.Path(input_path)
         file_extension = "".join(path.suffixes)
         output_path = self.output_dir / path.relative_to(self.input_dir)
@@ -173,40 +173,38 @@ class TransomSite:
         if os.path.exists(self.output_dir):
             self._modified = self._compute_modified()
 
-        self._init_files()
+        self.init_files()
 
         self.notice("Found {:,} input {}", len(self._files), plural("file", len(self._files)))
 
         thread_count = min((8, os.cpu_count()))
         batch_size = (len(self._files) + thread_count - 1) // thread_count
-        batches = list() # (thread, files)
+        threads = list()
         render_counter = ThreadSafeCounter()
 
         for i in range(thread_count):
-            thread = WorkerThread(self, f"worker-thread-{i + 1}")
-
             start = i * batch_size
             end = start + batch_size
             files = self._files[start:end]
 
-            batches.append((thread, files))
+            threads.append(RenderThread(self, f"worker-thread-{i + 1}", files))
 
-        for thread, _ in batches:
+        for thread in threads:
             thread.start()
 
-        for thread, files in batches:
-            thread.commands.put((process_input_files, (self, files)))
+        for thread in threads:
+            thread.commands.put((thread.process_input_files, ()))
 
-        for thread, _ in batches:
+        for thread in threads:
             thread.commands.join()
 
-        for thread, files in batches:
-            thread.commands.put((render_output_files, (self, files, force, render_counter)))
+        for thread in threads:
+            thread.commands.put((thread.render_output_files, (force, render_counter)))
 
-        for thread, files in batches:
+        for thread in threads:
             thread.commands.put((None, None))
 
-        for thread, _ in batches:
+        for thread in threads:
             thread.join()
 
         if os.path.exists(self.output_dir):
@@ -247,7 +245,7 @@ class TransomSite:
                 watcher.stop()
 
     def check_files(self):
-        self._init_files()
+        self.init_files()
 
         expected_paths = {x.output_path for x in self._files}
         found_paths = set()
@@ -273,7 +271,7 @@ class TransomSite:
         return len(missing_paths), len(extra_paths)
 
     def check_links(self):
-        self._init_files()
+        self.init_files()
 
         link_sources = defaultdict(set) # link => files
         link_targets = set()
@@ -438,15 +436,19 @@ class TemplatePage(File):
         return render_template(template, self.site._config, locals_, input_path)
 
 class HtmlPage(TemplatePage):
-    __slots__ = "_page_template", "_head_template", "_body_template"
+    __slots__ = "_page_template", "_head_template", "_body_template", "_content_template"
 
     def process_input(self):
         super().process_input()
 
+        # Shift the input file template down to be a child of the page
+        # template
+        self._content_template = self._template
+
         try:
-            self._page_template = load_page_template(self.metadata["page_template"], "")
+            self._template = load_page_template(self.metadata["page_template"], "")
         except KeyError:
-            self._page_template = self.site._page_template
+            self._template = self.site._page_template
 
         try:
             self._head_template = load_page_template(self.metadata["head_template"], "")
@@ -457,19 +459,6 @@ class HtmlPage(TemplatePage):
             self._body_template = load_page_template(self.metadata["body_template"], "{{page.content}}")
         except KeyError:
             self._body_template = self.site._body_template
-
-    def render_output(self):
-        # XXX - Need this to be the same impl as TemplatePage - _content_template
-
-        self.site.debug("{}: Rendering output of {}", threading.current_thread().name, self)
-
-        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
-
-        output = render_template(self._page_template, self.site._config, {"page": self}, self.input_path)
-
-        with open(self.output_path, "w") as f:
-            for elem in output:
-                f.write(elem)
 
     @property
     def head(self):
@@ -485,7 +474,7 @@ class HtmlPage(TemplatePage):
 
     @property
     def content(self):
-        return render_template(self._template, self.site._config, {"page": self}, self.input_path)
+        return render_template(self._content_template, self.site._config, {"page": self}, self.input_path)
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
@@ -530,13 +519,15 @@ class MarkdownPage(HtmlPage):
 
         return self._converted_content
 
-class WorkerThread(threading.Thread):
-    def __init__(self, site, name):
+class RenderThread(threading.Thread):
+    def __init__(self, site, name, files):
         super().__init__(name=name)
 
         self.site = site
+        self.files = files
         self.commands = Queue()
-        self.rendered_count = 0
+
+        self.site.debug(f"Created {self.name} for {self.files}")
 
     def run(self):
         while True:
@@ -547,20 +538,21 @@ class WorkerThread(threading.Thread):
 
             try:
                 command(*args)
-            except:
+            except Exception as e:
+                print("BLAMMO!", str(e))
                 sys.exit(1)
             finally:
                 self.commands.task_done()
 
-def process_input_files(site, files):
-    for file in files:
-        file.process_input()
+    def process_input_files(self):
+        for file_ in self.files:
+            file_.process_input()
 
-def render_output_files(site, files, force, render_counter):
-    for file in files:
-        if force or file.is_modified():
-            file.render_output()
-            render_counter.increment()
+    def render_output_files(self, force, render_counter):
+        for file_ in self.files:
+            if force or file_.is_modified():
+                file_.render_output()
+                render_counter.increment()
 
 class ThreadSafeCounter:
     def __init__(self):
@@ -669,7 +661,7 @@ class WatcherThread:
                 return True
 
             try:
-                file_ = self.site._init_file(input_path)
+                file_ = self.site.init_file(input_path)
             except FileNotFoundError:
                 return True
 
