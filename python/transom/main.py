@@ -34,6 +34,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from html import escape as html_escape
 from html.parser import HTMLParser
+from os.path import join
 from queue import Queue
 from shutil import copyfile
 from urllib import parse as urlparse
@@ -81,9 +82,9 @@ class TransomError(Exception):
 class TransomSite:
     def __init__(self, project_dir, verbose=False, quiet=False):
         self.project_dir = os.path.normpath(project_dir)
-        self.config_dir = os.path.normpath(os.path.join(self.project_dir, "config"))
-        self.input_dir = os.path.normpath(os.path.join(self.project_dir, "input"))
-        self.output_dir = os.path.normpath(os.path.join(self.project_dir, "output"))
+        self.config_dir = os.path.normpath(join(self.project_dir, "config"))
+        self.input_dir = os.path.normpath(join(self.project_dir, "input"))
+        self.output_dir = os.path.normpath(join(self.project_dir, "output"))
 
         self.verbose = verbose
         self.quiet = quiet
@@ -109,15 +110,15 @@ class TransomSite:
         self._index_files = dict() # parent input dir => File
 
     def init(self):
-        self._page_template = load_site_template(os.path.join(self.config_dir, "page.html"), _default_page_template)
-        self._head_template = load_site_template(os.path.join(self.config_dir, "head.html"), _default_head_template)
-        self._body_template = load_site_template(os.path.join(self.config_dir, "body.html"), _default_body_template)
+        self._page_template = load_site_template(join(self.config_dir, "page.html"), _default_page_template)
+        self._head_template = load_site_template(join(self.config_dir, "head.html"), _default_head_template)
+        self._body_template = load_site_template(join(self.config_dir, "body.html"), _default_body_template)
 
         self._ignored_fileregex = "({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns]))
         self._ignored_fileregex = re.compile(self._ignored_fileregex)
 
         try:
-            exec(read_file(os.path.join(self.config_dir, "site.py")), self._config)
+            exec(read_file(join(self.config_dir, "site.py")), self._config)
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
 
@@ -127,7 +128,7 @@ class TransomSite:
         for input_dir in self.extra_input_dirs:
             for root, dirs, names in os.walk(input_dir):
                 for name in {x for x in names if not self._ignored_fileregex.match(x)}:
-                    mtime = os.path.getmtime(os.path.join(root, name))
+                    mtime = os.path.getmtime(join(root, name))
 
                     if mtime > output_mtime:
                         return True
@@ -146,10 +147,10 @@ class TransomSite:
                 raise TransomError(f"Duplicate index files in {root}")
 
             for name in index_files:
-                self._files.append(self._init_file(os.path.join(root, name)))
+                self._files.append(self._init_file(join(root, name)))
 
             for name in files - index_files:
-                self._files.append(self._init_file(os.path.join(root, name)))
+                self._files.append(self._init_file(join(root, name)))
 
     def _init_file(self, input_path):
         path = pathlib.Path(input_path)
@@ -176,7 +177,7 @@ class TransomSite:
 
         self.notice("Found {:,} input {}", len(self._files), plural("file", len(self._files)))
 
-        thread_count = os.cpu_count()
+        thread_count = min((8, os.cpu_count()))
         batch_size = (len(self._files) + thread_count - 1) // thread_count
         batches = list() # (thread, files)
         render_counter = ThreadSafeCounter()
@@ -195,6 +196,9 @@ class TransomSite:
 
         for thread, files in batches:
             thread.commands.put((process_input_files, (self, files)))
+
+        for thread, _ in batches:
+            thread.commands.join()
 
         for thread, files in batches:
             thread.commands.put((render_output_files, (self, files, force, render_counter)))
@@ -249,7 +253,7 @@ class TransomSite:
         found_paths = set()
 
         for root, dirs, names in os.walk(self.output_dir):
-            found_paths.update((os.path.join(root, x) for x in names))
+            found_paths.update((join(root, x) for x in names))
 
         missing_paths = expected_paths - found_paths
         extra_paths = found_paths - expected_paths
@@ -347,11 +351,11 @@ class File:
 
         return self._input_mtime > self._output_mtime
 
-    def process_input(self): # pragma: nocover
-        pass
+    def process_input(self):
+        self.site.debug("{}: Processing input of {}", threading.current_thread().name, self)
 
     def render_output(self):
-        copy_file(self.input_path, self.output_path)
+        self.site.debug("{}: Rendering output of {}", threading.current_thread().name, self)
 
     def _collect_link_data(self, link_sources, link_targets):
         link_targets.add(self.url)
@@ -377,7 +381,10 @@ class File:
                 yield file_
 
 class StaticFile(File):
-    pass
+    def render_output(self):
+        super().render_output()
+
+        copy_file(self.input_path, self.output_path)
 
 class TemplatePage(File):
     __slots__ = "_template", "metadata"
@@ -386,6 +393,8 @@ class TemplatePage(File):
         return self.site._modified or super().is_modified()
 
     def process_input(self):
+        super().process_input()
+
         text = read_file(self.input_path)
         text, self.metadata = extract_metadata(text)
 
@@ -411,6 +420,8 @@ class TemplatePage(File):
         self._template = parse_template(text, self.input_path)
 
     def render_output(self):
+        super().render_output()
+
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
 
         output = render_template(self._template, self.site._config, {"page": self}, self.input_path)
@@ -448,6 +459,10 @@ class HtmlPage(TemplatePage):
             self._body_template = self.site._body_template
 
     def render_output(self):
+        # XXX - Need this to be the same impl as TemplatePage - _content_template
+
+        self.site.debug("{}: Rendering output of {}", threading.current_thread().name, self)
+
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
 
         output = render_template(self._page_template, self.site._config, {"page": self}, self.input_path)
@@ -544,10 +559,7 @@ def process_input_files(site, files):
 def render_output_files(site, files, force, render_counter):
     for file in files:
         if force or file.is_modified():
-            site.debug("Rendering {}", file)
-
             file.render_output()
-
             render_counter.increment()
 
 class ThreadSafeCounter:
@@ -661,12 +673,7 @@ class WatcherThread:
             except FileNotFoundError:
                 return True
 
-            self.site.debug("Processing {}", file_)
-
             file_.process_input()
-
-            self.site.debug("Rendering {}", file_)
-
             file_.render_output()
 
             if os.path.exists(self.site.output_dir):
@@ -872,28 +879,28 @@ class TransomCommand:
 
             self.notice("Creating '{}'", to_path)
 
-        profile_dir = os.path.join(self.home, "profiles", self.args.profile)
+        profile_dir = join(self.home, "profiles", self.args.profile)
         project_dir = self.args.project_dir
 
         assert os.path.exists(profile_dir), profile_dir
 
-        for name in os.listdir(os.path.join(profile_dir, "config")):
-            copy(os.path.join(profile_dir, "config", name),
-                 os.path.join(project_dir, "config", name))
+        for name in os.listdir(join(profile_dir, "config")):
+            copy(join(profile_dir, "config", name),
+                 join(project_dir, "config", name))
 
-        for name in os.listdir(os.path.join(profile_dir, "input")):
-            copy(os.path.join(profile_dir, "input", name),
-                 os.path.join(project_dir, "input", name))
+        for name in os.listdir(join(profile_dir, "input")):
+            copy(join(profile_dir, "input", name),
+                 join(project_dir, "input", name))
 
         if self.args.github:
-            python_dir = os.path.join(self.home, "python")
+            python_dir = join(self.home, "python")
 
-            copy(os.path.join(profile_dir, ".github/workflows/main.yaml"),
-                 os.path.join(project_dir, ".github/workflows/main.yaml"))
-            copy(os.path.join(profile_dir, ".gitignore"), os.path.join(project_dir, ".gitignore"))
-            copy(os.path.join(profile_dir, ".plano.py"), os.path.join(project_dir, ".plano.py"))
-            copy(os.path.join(python_dir, "mistune"), os.path.join(project_dir, "python", "mistune"))
-            copy(os.path.join(python_dir, "transom"), os.path.join(project_dir, "python", "transom"))
+            copy(join(profile_dir, ".github/workflows/main.yaml"),
+                 join(project_dir, ".github/workflows/main.yaml"))
+            copy(join(profile_dir, ".gitignore"), join(project_dir, ".gitignore"))
+            copy(join(profile_dir, ".plano.py"), join(project_dir, ".plano.py"))
+            copy(join(python_dir, "mistune"), join(project_dir, "python", "mistune"))
+            copy(join(python_dir, "transom"), join(project_dir, "python", "transom"))
 
     def render_command(self):
         self.lib.render(force=self.args.force)
@@ -937,10 +944,7 @@ def copy_dir(from_dir, to_dir):
         if name == "__pycache__":
             continue
 
-        from_path = os.path.join(from_dir, name)
-        to_path = os.path.join(to_dir, name)
-
-        copy_path(from_path, to_path)
+        copy_path(join(from_dir, name), join(to_dir, name))
 
 def copy_path(from_path, to_path):
     if os.path.isdir(from_path):
