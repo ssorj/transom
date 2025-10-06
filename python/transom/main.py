@@ -96,8 +96,8 @@ class TransomSite:
         self.config_dirs = [self.config_dir]
         self.config_modified = False
 
-        self.config = {
-            "site": self,
+        self.template_globals = {
+            "site": Restricted(self, ("prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns")),
             "lipsum": lipsum,
             "plural": plural,
             "html_table": html_table,
@@ -117,7 +117,7 @@ class TransomSite:
             ("({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns])))
 
         try:
-            exec(read_file(join(self.config_dir, "site.py")), self.config)
+            exec(read_file(join(self.config_dir, "site.py")), self.template_globals)
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
 
@@ -387,7 +387,7 @@ class StaticFile(File):
         copy_file(self.input_path, self.output_path)
 
 class TemplatePage(File):
-    __slots__ = "template", "metadata", "title"
+    __slots__ = "template", "template_locals", "metadata", "title"
 
     def is_modified(self):
         return self.site.config_modified or super().is_modified()
@@ -397,6 +397,9 @@ class TemplatePage(File):
 
         text = read_file(self.input_path)
         text, self.metadata = extract_metadata(text)
+
+        self.template = Template(text, self.input_path)
+        self.template_locals = {"page": PageInterface(self)}
 
         self.title = self.metadata.get("title")
 
@@ -417,8 +420,6 @@ class TemplatePage(File):
                 case _:
                     self.title = path.name
 
-        self.template = Template(text, self.input_path)
-
     def render_output(self):
         super().render_output()
 
@@ -431,7 +432,7 @@ class TemplatePage(File):
                 f.write(elem)
 
     def include(self, input_path):
-        return Template(read_file(input_path), input_path).render(self)
+        return Template.load(input_path).render(self)
 
 class HtmlPage(TemplatePage):
     __slots__ = "head_template", "body_template", "content_template"
@@ -444,12 +445,12 @@ class HtmlPage(TemplatePage):
         self.content_template = self.template
 
         try:
-            self.template = Template.load(self.metadata["page_template"], "")
+            self.template = Template.load(self.metadata["page_template"])
         except KeyError:
             self.template = self.site.page_template
 
         try:
-            self.head_template = Template.load(self.metadata["head_template"], "")
+            self.head_template = Template.load(self.metadata["head_template"])
         except KeyError:
             self.head_template = self.site.head_template
 
@@ -540,20 +541,17 @@ class Template:
             self.pieces.append(piece)
 
     @staticmethod
-    def load(path, default_text):
+    def load(path, default_text=""):
         if path is None or not os.path.exists(path):
             return Template(default_text, "[default]")
 
         return Template(read_file(path), path)
 
     def render(self, page):
-        globals_ = page.site.config
-        locals_ = {"page": page}
-
         for piece in self.pieces:
             if type(piece) is types.CodeType:
                 try:
-                    result = eval(piece, globals_, locals_)
+                    result = eval(piece, page.site.template_globals, page.template_locals)
                 except TransomError:
                     raise
                 except Exception as e:
@@ -565,6 +563,40 @@ class Template:
                     yield result
             else:
                 yield piece
+
+class Restricted:
+    __slots__ = "_object", "_allowed"
+
+    def __init__(self, obj, allowed):
+        object.__setattr__(self, "_object", obj)
+        object.__setattr__(self, "_allowed", allowed)
+
+    def __getattribute__(self, name):
+        if name in Restricted.__slots__:
+            return object.__getattribute__(self, name)
+
+        if name in self._allowed:
+            return getattr(self._object, name)
+
+        raise AttributeError(f"Access to attribute '{name}' is prohibited")
+
+    def __setattr__(self, name, value):
+        assert name not in Restricted.__slots__
+
+        if name in self._allowed:
+            setattr(self._object, name, value)
+            return
+
+        raise AttributeError(f"Access to attribute '{name}' is prohibited")
+
+class PageInterface(Restricted):
+    def __init__(self, obj):
+        super().__init__(obj, ("site", "url", "title", "head", "extra_headers", "body", "content", \
+                               "path_nav", "toc_nav", "directory_nav", "include"))
+
+    @property
+    def site(self):
+        return self._object.site.template_globals.site
 
 class RenderThread(threading.Thread):
     def __init__(self, site, name, files, errors):
@@ -586,7 +618,7 @@ class RenderThread(threading.Thread):
                 command(*args)
             except Exception as e:
                 traceback.print_exc()
-                errors.put(e)
+                self.errors.put(e)
             finally:
                 self.commands.task_done()
 
