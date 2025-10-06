@@ -95,6 +95,7 @@ class TransomSite:
 
         self.prefix = ""
         self.extra_input_dirs = [self.config_dir]
+        self.config_modified = False
 
         self.config = {
             "site": self,
@@ -104,8 +105,6 @@ class TransomSite:
             "html_table_csv": html_table_csv,
             "convert_markdown": convert_markdown,
         }
-
-        self.modified = False
 
         self.files = list()
         self.index_files = dict() # parent input dir => File
@@ -123,7 +122,7 @@ class TransomSite:
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
 
-    def _compute_modified(self):
+    def compute_config_modified(self):
         output_mtime = os.path.getmtime(self.output_dir)
 
         for input_dir in self.extra_input_dirs:
@@ -172,7 +171,7 @@ class TransomSite:
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
 
         if os.path.exists(self.output_dir):
-            self.modified = self._compute_modified()
+            self.config_modified = self.compute_config_modified()
 
         self.init_files()
 
@@ -388,7 +387,7 @@ class TemplatePage(File):
     __slots__ = "template", "metadata", "title"
 
     def is_modified(self):
-        return self.site.modified or super().is_modified()
+        return self.site.config_modified or super().is_modified()
 
     def process_input(self):
         super().process_input()
