@@ -430,16 +430,10 @@ class TemplatePage(File):
     def render_output(self):
         super().render_output()
 
+        output = "".join(self.template.render(self))
+
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        output = self.template.render(self)
-
-        with open(self.output_path, "w") as f:
-            for elem in output:
-                f.write(elem)
-
-        # XXX OR:
-        # self.output_path.write_text("".join(list(self.template.render(self))))
+        self.output_path.write_text(output)
 
     def include(self, input_path):
         return Template.load(Path(input_path)).render(self)
@@ -1011,6 +1005,7 @@ class TransomCommand:
         else:
             self.fail("FAILED")
 
+# XXX Move this to Template
 def extract_metadata(text):
     if text.startswith("---\n"):
         end = text.index("---\n", 4)
