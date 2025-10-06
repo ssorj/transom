@@ -96,6 +96,9 @@ class TransomSite:
         self.config_dirs = [self.config_dir]
         self.config_modified = False
 
+        self.files = list()
+        self.index_files = dict() # parent input dir => File
+
         self.template_globals = {
             "site": Restricted(self, ("prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns")),
             "lipsum": lipsum,
@@ -104,9 +107,6 @@ class TransomSite:
             "html_table_csv": html_table_csv,
             "convert_markdown": convert_markdown,
         }
-
-        self.files = list()
-        self.index_files = dict() # parent input dir => File
 
     def init(self):
         self.page_template = Template.load(join(self.config_dir, "page.html"), _default_page_template)
@@ -591,8 +591,8 @@ class Restricted:
 
 class PageInterface(Restricted):
     def __init__(self, obj):
-        super().__init__(obj, ("site", "url", "title", "head", "extra_headers", "body", "content", \
-                               "path_nav", "toc_nav", "directory_nav", "include"))
+        allowed = "site", "url", "title", "head", "extra_headers", "body", "content", "path_nav", "toc_nav", "directory_nav", "include"
+        super().__init__(obj, allowed)
 
     @property
     def site(self):
