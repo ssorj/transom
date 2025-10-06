@@ -36,6 +36,7 @@ from collections.abc import Iterable
 from html import escape as html_escape
 from html.parser import HTMLParser
 from os.path import join
+from pathlib import Path
 from queue import Queue
 from shutil import copyfile
 from urllib import parse as urlparse
@@ -81,10 +82,14 @@ class TransomError(Exception):
 
 class TransomSite:
     def __init__(self, project_dir, verbose=False, quiet=False):
-        self.project_dir = os.path.normpath(project_dir)
-        self.config_dir = os.path.normpath(join(self.project_dir, "config"))
-        self.input_dir = os.path.normpath(join(self.project_dir, "input"))
-        self.output_dir = os.path.normpath(join(self.project_dir, "output"))
+        # self.project_dir = os.path.normpath(project_dir)
+        # self.config_dir = os.path.normpath(join(self.project_dir, "config"))
+        # self.input_dir = os.path.normpath(join(self.project_dir, "input"))
+        # self.output_dir = os.path.normpath(join(self.project_dir, "output"))
+        self.project_dir = Path(project_dir).resolve()
+        self.config_dir = self.project_dir / "config"
+        self.input_dir = self.project_dir / "input"
+        self.output_dir = self.project_dir / "output"
 
         self.verbose = verbose
         self.quiet = quiet
@@ -127,38 +132,47 @@ class TransomSite:
         self.files.clear()
         self.index_files.clear()
 
-        for root, dirs, names in os.walk(self.input_dir):
-            files = {x for x in names if not self.ignored_file_regex.match(x)}
-            index_files = {x for x in names if x in index_file_names}
+        for root, dirs, files in self.input_dir.walk():
+            print(222, root, dirs, files)
+
+            files = {f for f in files if not self.ignored_file_regex.match(f)}
+            index_files = {f for f in files if f in _index_file_names}
+
+            print(333)
 
             if len(index_files) > 1:
                 raise TransomError(f"Duplicate index files in {root}")
 
+            print(444)
+
             for name in index_files:
-                self.files.append(self.init_file(join(root, name)))
+                self.files.append(self.init_file(root / name))
+
+            print(555)
 
             for name in files - index_files:
-                self.files.append(self.init_file(join(root, name)))
+                self.files.append(self.init_file(root / name))
 
     def init_file(self, input_path):
-        path = pathlib.Path(input_path)
-        file_extension = "".join(path.suffixes)
-        output_path = self.output_dir / path.relative_to(self.input_dir)
+        file_extension = "".join(input_path.suffixes)
+        output_path = self.output_dir / input_path.relative_to(self.input_dir)
+
+        print(666, file_extension)
 
         match file_extension:
             case ".md":
-                return MarkdownPage(self, input_path, str(output_path.with_suffix(".html")))
+                return MarkdownPage(self, input_path, output_path.with_suffix(".html"))
             case ".html.in":
-                return HtmlPage(self, input_path, str(output_path).removesuffix(".in"))
+                return HtmlPage(self, input_path, output_path.with_suffix(""))
             case ".css" | ".js" | ".html":
-                return TemplatePage(self, input_path, str(output_path))
+                return TemplatePage(self, input_path, output_path)
             case _:
-                return StaticFile(self, input_path, str(output_path))
+                return StaticFile(self, input_path, output_path)
 
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
 
-        if os.path.exists(self.output_dir):
+        if self.output_dir.exists():
             self.config_modified = self.compute_config_modified()
 
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
