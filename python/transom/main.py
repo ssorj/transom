@@ -304,6 +304,7 @@ class TransomSite:
 
     def debug(self, message, *args):
         if self.verbose:
+            print("{}: ".format(threading.current_thread().name), end="")
             print(message.format(*args))
 
     def notice(self, message, *args):
@@ -356,10 +357,10 @@ class File:
         return self.input_mtime > self.output_mtime
 
     def process_input(self):
-        self.site.debug("{}: Processing input of {}", threading.current_thread().name, self) # XXX
+        self.site.debug("Processing input of {}", self)
 
     def render_output(self):
-        self.site.debug("{}: Rendering output of {}", threading.current_thread().name, self)
+        self.site.debug("Rendering output of {}", self)
 
     def collect_link_data(self, link_sources, link_targets):
         link_targets.add(self.url)
