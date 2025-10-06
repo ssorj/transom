@@ -75,7 +75,6 @@ _index_file_names = "index.md", "index.html.in", "index.html"
 _html_page_title_regex = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 _html_body_title_regex = re.compile(r"<(:?h1|h2)\b[^>]*>(.*?)</(:?h1|h2)>", re.IGNORECASE | re.DOTALL)
 _markdown_title_regex = re.compile(r"^(?:#|##)\s+(.*)")
-_variableregex = re.compile(r"({{{.+?}}}|{{.+?}})")
 
 class TransomError(Exception):
     pass
@@ -110,9 +109,9 @@ class TransomSite:
         self.index_files = dict() # parent input dir => File
 
     def init(self):
-        self.page_template = load_site_template(join(self.config_dir, "page.html"), _default_page_template)
-        self.head_template = load_site_template(join(self.config_dir, "head.html"), _default_head_template)
-        self.body_template = load_site_template(join(self.config_dir, "body.html"), _default_body_template)
+        self.page_template = Template.load(join(self.config_dir, "page.html"), _default_page_template)
+        self.head_template = Template.load(join(self.config_dir, "head.html"), _default_head_template)
+        self.body_template = Template.load(join(self.config_dir, "body.html"), _default_body_template)
 
         self.ignored_file_regex = re.compile \
             ("({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns])))
@@ -122,18 +121,7 @@ class TransomSite:
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
 
-    def compute_config_modified(self):
-        output_mtime = os.path.getmtime(self.output_dir)
-
-        for input_dir in self.extra_input_dirs:
-            for root, dirs, names in os.walk(input_dir):
-                for name in {x for x in names if not self.ignored_file_regex.match(x)}:
-                    mtime = os.path.getmtime(join(root, name))
-
-                    if mtime > output_mtime:
-                        return True
-
-        return False
+        self.init_files()
 
     def init_files(self):
         self.files.clear()
@@ -173,21 +161,20 @@ class TransomSite:
         if os.path.exists(self.output_dir):
             self.config_modified = self.compute_config_modified()
 
-        self.init_files()
-
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
 
         thread_count = min((8, os.cpu_count()))
         batch_size = (len(self.files) + thread_count - 1) // thread_count
         threads = list()
         render_counter = ThreadSafeCounter()
+        errors = Queue()
 
         for i in range(thread_count):
             start = i * batch_size
             end = start + batch_size
             files = self.files[start:end]
 
-            threads.append(RenderThread(self, f"render-thread-{i + 1}", files))
+            threads.append(RenderThread(self, f"render-thread-{i + 1}", files, errors))
 
         for thread in threads:
             thread.start()
@@ -207,6 +194,9 @@ class TransomSite:
         for thread in threads:
             thread.join()
 
+        if not errors.empty():
+            raise TransomError("Rendering failed")
+
         if os.path.exists(self.output_dir):
             os.utime(self.output_dir)
 
@@ -218,6 +208,19 @@ class TransomSite:
             unchanged_note = " ({:,} unchanged)".format(unchanged_count)
 
         self.notice("Rendered {:,} output {}{}", rendered_count, plural("file", rendered_count), unchanged_note)
+
+    def compute_config_modified(self):
+        output_mtime = os.path.getmtime(self.output_dir)
+
+        for input_dir in self.extra_input_dirs:
+            for root, dirs, names in os.walk(input_dir):
+                for name in {x for x in names if not self.ignored_file_regex.match(x)}:
+                    mtime = os.path.getmtime(join(root, name))
+
+                    if mtime > output_mtime:
+                        return True
+
+        return False
 
     def serve(self, port=8080):
         watcher = None
@@ -414,24 +417,21 @@ class TemplatePage(File):
                 case _:
                     self.title = path.name
 
-        self.template = parse_template(text, self.input_path)
+        self.template = Template(text, self.input_path)
 
     def render_output(self):
         super().render_output()
 
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
 
-        output = render_template(self.template, self.site.config, {"page": self}, self.input_path)
+        output = self.template.render(self)
 
         with open(self.output_path, "w") as f:
             for elem in output:
                 f.write(elem)
 
     def include(self, input_path):
-        text = read_file(input_path)
-        template = parse_template(text, input_path)
-
-        return render_template(template, self.site.config, {"page": self}, input_path)
+        return Template(read_file(input_path), input_path).render(self)
 
 class HtmlPage(TemplatePage):
     __slots__ = "head_template", "body_template", "content_template"
@@ -444,23 +444,23 @@ class HtmlPage(TemplatePage):
         self.content_template = self.template
 
         try:
-            self.template = load_page_template(self.metadata["page_template"], "")
+            self.template = Template.load(self.metadata["page_template"], "")
         except KeyError:
             self.template = self.site.page_template
 
         try:
-            self.head_template = load_page_template(self.metadata["head_template"], "")
+            self.head_template = Template.load(self.metadata["head_template"], "")
         except KeyError:
             self.head_template = self.site.head_template
 
         try:
-            self.body_template = load_page_template(self.metadata["body_template"], "{{page.content}}")
+            self.body_template = Template.load(self.metadata["body_template"], "{{page.content}}")
         except KeyError:
             self.body_template = self.site.body_template
 
     @property
     def head(self):
-        return render_template(self.head_template, self.site.config, {"page": self}, self.input_path)
+        return self.head_template.render(self)
 
     @property
     def extra_headers(self):
@@ -468,15 +468,15 @@ class HtmlPage(TemplatePage):
 
     @property
     def body(self):
-        return render_template(self.body_template, self.site.config, {"page": self}, self.input_path)
+        return self.body_template.render(self)
 
     @property
     def content(self):
-        return render_template(self.content_template, self.site.config, {"page": self}, self.input_path)
+        return self.content_template.render(self)
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
-        links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in files]
+        links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in files] # XXX title!
         links = links[start:end]
 
         if len(links) < min:
@@ -518,15 +518,62 @@ class MarkdownPage(HtmlPage):
 
         return self.converted_content
 
+class Template:
+    __slots__ = "pieces", "context"
+    variable_regex = re.compile(r"({{{.+?}}}|{{.+?}})")
+
+    def __init__(self, text, context):
+        self.pieces = list()
+        self.context = context
+
+        for token in Template.variable_regex.split(text):
+            if token.startswith("{{{") and token.endswith("}}}"):
+                piece = token[1:-1]
+            elif token.startswith("{{") and token.endswith("}}"):
+                try:
+                    piece = compile(token[2:-2], "<string>", "eval")
+                except Exception as e:
+                    raise TransomError(f"Error parsing template: {context}: {e}")
+            else:
+                piece = token
+
+            self.pieces.append(piece)
+
+    @staticmethod
+    def load(path, default_text):
+        if path is None or not os.path.exists(path):
+            return Template(default_text, "[default]")
+
+        return Template(read_file(path), path)
+
+    def render(self, page):
+        globals_ = page.site.config
+        locals_ = {"page": page}
+
+        for piece in self.pieces:
+            if type(piece) is types.CodeType:
+                try:
+                    result = eval(piece, globals_, locals_)
+                except TransomError:
+                    raise
+                except Exception as e:
+                    raise TransomError(f"{self.context}: {e}")
+
+                if type(result) is types.GeneratorType:
+                    yield from result
+                else:
+                    yield result
+            else:
+                yield piece
+
 class RenderThread(threading.Thread):
-    def __init__(self, site, name, files):
+    def __init__(self, site, name, files, errors):
         super().__init__(name=name)
 
         self.site = site
         self.files = files
+        self.errors = errors
         self.commands = Queue()
-
-        self.site.debug(f"Created {self.name} for {self.files}")
 
     def run(self):
         while True:
@@ -537,9 +584,9 @@ class RenderThread(threading.Thread):
 
             try:
                 command(*args)
-            except:
+            except Exception as e:
                 traceback.print_exc()
-                sys.exit(1) # XXX
+                errors.put(e)
             finally:
                 self.commands.task_done()
 
@@ -811,22 +858,22 @@ class TransomCommand:
         self.verbose = self.args.verbose
 
         if self.args.command_fn != self.init_command:
-            self.lib = TransomSite(self.args.project_dir, verbose=self.verbose, quiet=self.quiet)
+            self.site = TransomSite(self.args.project_dir, verbose=self.verbose, quiet=self.quiet)
 
             if self.args.output:
-                self.lib.output_dir = self.args.output
+                self.site.output_dir = self.args.output
 
-            self.lib.init()
+            self.site.init()
 
     def main(self, args=None):
-        self.init(args)
-
-        assert self.args is not None
-
-        if self.args.init_only:
-            return
-
         try:
+            self.init(args)
+
+            assert self.args is not None
+
+            if self.args.init_only:
+                return
+
             self.args.command_fn()
         except TransomError as e:
             self.fail(str(e))
@@ -894,14 +941,14 @@ class TransomCommand:
             copy(join(python_dir, "transom"), join(project_dir, "python", "transom"))
 
     def render_command(self):
-        self.lib.render(force=self.args.force)
+        self.site.render(force=self.args.force)
 
     def serve_command(self):
-        self.lib.render(force=self.args.force)
-        self.lib.serve(port=self.args.port)
+        self.site.render(force=self.args.force)
+        self.site.serve(port=self.args.port)
 
     def check_links_command(self):
-        errors = self.lib.check_links()
+        errors = self.site.check_links()
 
         if errors == 0:
             self.notice("PASSED")
@@ -909,7 +956,7 @@ class TransomCommand:
             self.fail("FAILED")
 
     def check_files_command(self):
-        missing_files, extra_files = self.lib.check_files()
+        missing_files, extra_files = self.site.check_files()
 
         if extra_files != 0:
             self.warning("{} extra files in the output", extra_files)
@@ -952,53 +999,6 @@ def extract_metadata(text):
         return text, yaml.safe_load(header)
 
     return text, dict()
-
-def load_site_template(path, default_text):
-    if path is None or not os.path.exists(path):
-        return parse_template(default_text, "[default]")
-
-    return parse_template(read_file(path), path)
-
-def load_page_template(path, default_text):
-    if path is None:
-        return parse_template(default_text, "[default]")
-
-    return parse_template(read_file(path), path)
-
-def parse_template(text, context):
-    template = list()
-
-    for token in _variableregex.split(text):
-        if token.startswith("{{{") and token.endswith("}}}"):
-            item = token[1:-1]
-        elif token.startswith("{{") and token.endswith("}}"):
-            try:
-                item = compile(token[2:-2], "<string>", "eval")
-            except Exception as e:
-                raise TransomError(f"Error parsing template: {context}: {e}")
-        else:
-            item = token
-
-        template.append(item)
-
-    return template
-
-def render_template(template, globals_, locals_, context):
-    for elem in template:
-        if type(elem) is types.CodeType:
-            try:
-                result = eval(elem, globals_, locals_)
-            except TransomError:
-                raise
-            except Exception as e:
-                raise TransomError(f"{context}: {e}")
-
-            if type(result) is types.GeneratorType:
-                yield from result
-            else:
-                yield result
-        else:
-            yield elem
 
 _heading_id_regex_1 = re.compile(r"[^a-zA-Z0-9_ ]+")
 _heading_id_regex_2 = re.compile(r"[_ ]")
