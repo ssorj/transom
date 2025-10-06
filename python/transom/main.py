@@ -27,6 +27,7 @@ import pathlib
 import re
 import sys
 import threading
+import traceback
 import types
 import yaml
 
@@ -71,9 +72,9 @@ _default_body_template = """
 """
 
 _index_file_names = "index.md", "index.html.in", "index.html"
-_html_page_titleregex = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
-_html_body_titleregex = re.compile(r"<(:?h1|h2)\b[^>]*>(.*?)</(:?h1|h2)>", re.IGNORECASE | re.DOTALL)
-_markdown_titleregex = re.compile(r"^(?:#|##)\s+(.*)")
+_html_page_title_regex = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_html_body_title_regex = re.compile(r"<(:?h1|h2)\b[^>]*>(.*?)</(:?h1|h2)>", re.IGNORECASE | re.DOTALL)
+_markdown_title_regex = re.compile(r"^(?:#|##)\s+(.*)")
 _variableregex = re.compile(r"({{{.+?}}}|{{.+?}})")
 
 class TransomError(Exception):
@@ -110,12 +111,12 @@ class TransomSite:
         self.index_files = dict() # parent input dir => File
 
     def init(self):
-        self._page_template = load_site_template(join(self.config_dir, "page.html"), _default_page_template)
-        self._head_template = load_site_template(join(self.config_dir, "head.html"), _default_head_template)
-        self._body_template = load_site_template(join(self.config_dir, "body.html"), _default_body_template)
+        self.page_template = load_site_template(join(self.config_dir, "page.html"), _default_page_template)
+        self.head_template = load_site_template(join(self.config_dir, "head.html"), _default_head_template)
+        self.body_template = load_site_template(join(self.config_dir, "body.html"), _default_body_template)
 
-        self._ignored_fileregex = "({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns]))
-        self._ignored_fileregex = re.compile(self._ignored_fileregex)
+        self.ignored_file_regex = re.compile \
+            ("({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns])))
 
         try:
             exec(read_file(join(self.config_dir, "site.py")), self.config)
@@ -127,7 +128,7 @@ class TransomSite:
 
         for input_dir in self.extra_input_dirs:
             for root, dirs, names in os.walk(input_dir):
-                for name in {x for x in names if not self._ignored_fileregex.match(x)}:
+                for name in {x for x in names if not self.ignored_file_regex.match(x)}:
                     mtime = os.path.getmtime(join(root, name))
 
                     if mtime > output_mtime:
@@ -140,7 +141,7 @@ class TransomSite:
         self.index_files.clear()
 
         for root, dirs, names in os.walk(self.input_dir):
-            files = {x for x in names if not self._ignored_fileregex.match(x)}
+            files = {x for x in names if not self.ignored_file_regex.match(x)}
             index_files = {x for x in names if x in _index_file_names}
 
             if len(index_files) > 1:
@@ -308,7 +309,7 @@ class TransomSite:
         print("Warning:", message.format(*args))
 
 class File:
-    __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title", "parent"
+    __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "parent"
 
     def __init__(self, site, input_path, output_path):
         self.site = site
@@ -319,8 +320,7 @@ class File:
         self.output_path = output_path
         self.output_mtime = None
 
-        self.url = self.site.prefix + self.output_path[len(self.site.output_dir):]
-        self.title = None
+        self.url = self.site.prefix + "/" + str(pathlib.Path(self.output_path).relative_to(self.site.output_dir))
         self.parent = None
 
         dir_, name = os.path.split(self.input_path)
@@ -385,7 +385,7 @@ class StaticFile(File):
         copy_file(self.input_path, self.output_path)
 
 class TemplatePage(File):
-    __slots__ = "_template", "metadata"
+    __slots__ = "template", "metadata", "title"
 
     def is_modified(self):
         return self.site.modified or super().is_modified()
@@ -404,25 +404,25 @@ class TemplatePage(File):
 
             match file_extension:
                 case ".md":
-                    m = _markdown_titleregex.search(text)
+                    m = _markdown_title_regex.search(text)
                     self.title = m.group(1) if m else ""
                 case ".html.in":
-                    m = _html_body_titleregex.search(text)
+                    m = _html_body_title_regex.search(text)
                     self.title = m.group(1) if m else ""
                 case ".html":
-                    m = _html_page_titleregex.search(text)
+                    m = _html_page_title_regex.search(text)
                     self.title = m.group(1) if m else ""
                 case _:
                     self.title = path.name
 
-        self._template = parse_template(text, self.input_path)
+        self.template = parse_template(text, self.input_path)
 
     def render_output(self):
         super().render_output()
 
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
 
-        output = render_template(self._template, self.site.config, {"page": self}, self.input_path)
+        output = render_template(self.template, self.site.config, {"page": self}, self.input_path)
 
         with open(self.output_path, "w") as f:
             for elem in output:
@@ -431,38 +431,37 @@ class TemplatePage(File):
     def include(self, input_path):
         text = read_file(input_path)
         template = parse_template(text, input_path)
-        locals_ = {"page": self}
 
-        return render_template(template, self.site.config, locals_, input_path)
+        return render_template(template, self.site.config, {"page": self}, input_path)
 
 class HtmlPage(TemplatePage):
-    __slots__ = "_page_template", "_head_template", "_body_template", "_content_template"
+    __slots__ = "head_template", "body_template", "content_template"
 
     def process_input(self):
         super().process_input()
 
         # Shift the input file template down to be a child of the page
         # template
-        self._content_template = self._template
+        self.content_template = self.template
 
         try:
-            self._template = load_page_template(self.metadata["page_template"], "")
+            self.template = load_page_template(self.metadata["page_template"], "")
         except KeyError:
-            self._template = self.site._page_template
+            self.template = self.site.page_template
 
         try:
-            self._head_template = load_page_template(self.metadata["head_template"], "")
+            self.head_template = load_page_template(self.metadata["head_template"], "")
         except KeyError:
-            self._head_template = self.site._head_template
+            self.head_template = self.site.head_template
 
         try:
-            self._body_template = load_page_template(self.metadata["body_template"], "{{page.content}}")
+            self.body_template = load_page_template(self.metadata["body_template"], "{{page.content}}")
         except KeyError:
-            self._body_template = self.site._body_template
+            self.body_template = self.site.body_template
 
     @property
     def head(self):
-        return render_template(self._head_template, self.site.config, {"page": self}, self.input_path)
+        return render_template(self.head_template, self.site.config, {"page": self}, self.input_path)
 
     @property
     def extra_headers(self):
@@ -470,11 +469,11 @@ class HtmlPage(TemplatePage):
 
     @property
     def body(self):
-        return render_template(self._body_template, self.site.config, {"page": self}, self.input_path)
+        return render_template(self.body_template, self.site.config, {"page": self}, self.input_path)
 
     @property
     def content(self):
-        return render_template(self._content_template, self.site.config, {"page": self}, self.input_path)
+        return render_template(self.content_template, self.site.config, {"page": self}, self.input_path)
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
@@ -497,27 +496,28 @@ class HtmlPage(TemplatePage):
 
     def directory_nav(self):
         def sort_fn(x):
-            return x.title if x.title else ""
+            return getattr(x, "title", os.path.basename(x.output_path))
 
         children = sorted(self.children, key=sort_fn)
-        links = [f"<a href=\"{x.url}\">{x.title if x.title else x.url.removeprefix('/')}</a>" for x in children]
+        links = ["<a href=\"{}\">{}</a>".format(x.url, getattr(x, 'title', os.path.basename(x.output_path)))
+                 for x in children]
 
         return f"<nav class=\"page-directory\">{''.join(links)}</nav>"
 
 class MarkdownPage(HtmlPage):
-    __slots__ = "_converted_content",
+    __slots__ = "converted_content",
 
     def process_input(self):
         super().process_input()
 
-        self._converted_content = None
+        self.converted_content = None
 
     @property
     def content(self):
-        if self._converted_content is None:
-            self._converted_content = convert_markdown("".join(super().content))
+        if self.converted_content is None:
+            self.converted_content = convert_markdown("".join(super().content))
 
-        return self._converted_content
+        return self.converted_content
 
 class RenderThread(threading.Thread):
     def __init__(self, site, name, files):
@@ -538,9 +538,9 @@ class RenderThread(threading.Thread):
 
             try:
                 command(*args)
-            except Exception as e:
-                print("BLAMMO!", str(e))
-                sys.exit(1)
+            except:
+                traceback.print_exc()
+                sys.exit(1) # XXX
             finally:
                 self.commands.task_done()
 
@@ -657,7 +657,7 @@ class WatcherThread:
             if os.path.isdir(input_path):
                 return True
 
-            if self.site._ignored_fileregex.match(base_name):
+            if self.site.ignored_file_regex.match(base_name):
                 return True
 
             try:
