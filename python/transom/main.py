@@ -25,6 +25,7 @@ import mistune
 import os
 import pathlib
 import re
+import shutil
 import sys
 import threading
 import traceback
@@ -35,10 +36,8 @@ from collections import defaultdict
 from collections.abc import Iterable
 from html import escape as html_escape
 from html.parser import HTMLParser
-from os.path import join
 from pathlib import Path
 from queue import Queue
-from shutil import copyfile
 from urllib import parse as urlparse
 
 __all__ = ["TransomSite", "TransomCommand"]
@@ -110,15 +109,17 @@ class TransomSite:
         }
 
     def init(self):
-        self.page_template = Template.load(join(self.config_dir, "page.html"), _default_page_template)
-        self.head_template = Template.load(join(self.config_dir, "head.html"), _default_head_template)
-        self.body_template = Template.load(join(self.config_dir, "body.html"), _default_body_template)
+        self.page_template = Template.load(self.config_dir / "page.html", _default_page_template)
+        self.head_template = Template.load(self.config_dir / "head.html", _default_head_template)
+        self.body_template = Template.load(self.config_dir / "body.html", _default_body_template)
 
         self.ignored_file_regex = re.compile \
             ("({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns])))
 
+        site_config = self.config_dir / "site.py"
+
         try:
-            exec(read_file(join(self.config_dir, "site.py")), self.template_globals)
+            exec(site_config.read_text(), self.template_globals)
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
 
@@ -210,18 +211,20 @@ class TransomSite:
         self.notice("Rendered {:,} output {}{}", rendered_count, plural("file", rendered_count), unchanged_note)
 
     def compute_config_modified(self):
-        output_mtime = os.path.getmtime(self.output_dir)
+        output_mtime = self.output_dir.stat().st_mtime
 
         for config_dir in self.config_dirs:
-            for root, dirs, names in os.walk(config_dir):
-                for name in (x for x in names if not self.ignored_file_regex.match(x)):
-                    try:
-                        mtime = os.path.getmtime(join(root, name))
-                    except (FileNotFoundError, PermissionError):
-                        continue
+            for path in Path(config_dir).rglob("*"):
+                if self.ignored_file_regex.match(path.name):
+                    continue
 
-                    if mtime > output_mtime:
-                        return True
+                try:
+                    config_mtime = path.stat().st_mtime
+                except (FileNotFoundError, PermissionError):
+                    continue
+
+                if config_mtime > output_mtime:
+                    return True
 
         return False
 
@@ -389,7 +392,7 @@ class StaticFile(File):
     def render_output(self):
         super().render_output()
 
-        copy_file(self.input_path, self.output_path)
+        shutil.copy(self.input_path, self.output_path)
 
 class TemplatePage(File):
     __slots__ = "template", "template_locals", "metadata", "title"
@@ -400,7 +403,7 @@ class TemplatePage(File):
     def process_input(self):
         super().process_input()
 
-        text = read_file(self.input_path)
+        text = self.input_path.read_text()
         text, self.metadata = extract_metadata(text)
 
         self.template = Template(text, self.input_path)
@@ -439,7 +442,7 @@ class TemplatePage(File):
         # self.output_path.write_text("".join(list(self.template.render(self))))
 
     def include(self, input_path):
-        return Template.load(input_path).render(self)
+        return Template.load(Path(input_path)).render(self)
 
 class HtmlPage(TemplatePage):
     __slots__ = "head_template", "body_template", "content_template"
@@ -452,17 +455,17 @@ class HtmlPage(TemplatePage):
         self.content_template = self.template
 
         try:
-            self.template = Template.load(self.metadata["page_template"])
+            self.template = Template.load(Path(self.metadata["page_template"]))
         except KeyError:
             self.template = self.site.page_template
 
         try:
-            self.head_template = Template.load(self.metadata["head_template"])
+            self.head_template = Template.load(Path(self.metadata["head_template"]))
         except KeyError:
             self.head_template = self.site.head_template
 
         try:
-            self.body_template = Template.load(self.metadata["body_template"], "{{page.content}}")
+            self.body_template = Template.load(Path(self.metadata["body_template"]), "{{page.content}}")
         except KeyError:
             self.body_template = self.site.body_template
 
@@ -549,10 +552,10 @@ class Template:
 
     @staticmethod
     def load(path, default_text=""):
-        if path is None or not os.path.exists(path):
+        if path is None or not path.exists():
             return Template(default_text, "[default]")
 
-        return Template(read_file(path), path)
+        return Template(path.read_text(), path)
 
     def render(self, page):
         for piece in self.pieces:
@@ -831,7 +834,7 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
 
 class TransomCommand:
     def __init__(self, home=None):
-        self.home = home
+        self.home = Path(home) if home is not None else None
         self.name = "transom"
 
         self.parser = argparse.ArgumentParser()
@@ -948,36 +951,39 @@ class TransomCommand:
             self.fail("I can't find the default input files")
 
         def copy(from_path, to_path):
-            if os.path.exists(to_path):
+            if to_path.exists():
                 self.notice("Skipping '{}'. It already exists.", to_path)
                 return
 
-            copy_path(from_path, to_path)
+            to_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if from_path.is_dir():
+                shutil.copytree(from_path, to_path)
+            else:
+                shutil.copy(from_path, to_path)
 
             self.notice("Creating '{}'", to_path)
 
-        profile_dir = join(self.home, "profiles", self.args.profile)
-        project_dir = self.args.project_dir
+        profile_dir = self.home / "profiles" / self.args.profile
+        project_dir = Path(self.args.project_dir)
 
-        assert os.path.exists(profile_dir), profile_dir
+        assert profile_dir.exists(), profile_dir
 
-        for name in os.listdir(join(profile_dir, "config")):
-            copy(join(profile_dir, "config", name),
-                 join(project_dir, "config", name))
+        for name in (profile_dir / "config").iterdir():
+            copy(name, project_dir / "config" / name.name)
 
-        for name in os.listdir(join(profile_dir, "input")):
-            copy(join(profile_dir, "input", name),
-                 join(project_dir, "input", name))
+        for name in (profile_dir / "input").iterdir():
+            copy(name, project_dir / "input" / name.name)
 
         if self.args.github:
-            python_dir = join(self.home, "python")
+            python_dir = self.home / "python"
 
-            copy(join(profile_dir, ".github/workflows/main.yaml"),
-                 join(project_dir, ".github/workflows/main.yaml"))
-            copy(join(profile_dir, ".gitignore"), join(project_dir, ".gitignore"))
-            copy(join(profile_dir, ".plano.py"), join(project_dir, ".plano.py"))
-            copy(join(python_dir, "mistune"), join(project_dir, "python", "mistune"))
-            copy(join(python_dir, "transom"), join(project_dir, "python", "transom"))
+            copy(profile_dir / ".github" / "workflows" / "main.yaml",
+                 project_dir / ".github" / "workflows" / "main.yaml")
+            copy(profile_dir / ".gitignore", project_dir / ".gitignore")
+            copy(profile_dir / ".plano.py", project_dir / ".plano.py")
+            copy(python_dir / "mistune", project_dir / "python" / "mistune")
+            copy(python_dir / "transom", project_dir / "python" / "transom")
 
     def render_command(self):
         self.site.render(force=self.args.force)
@@ -1005,30 +1011,6 @@ class TransomCommand:
         else:
             self.fail("FAILED")
 
-def read_file(path):
-    with open(path, "r") as f:
-        return f.read()
-
-def copy_file(from_path, to_path):
-    try:
-        copyfile(from_path, to_path)
-    except FileNotFoundError:
-        os.makedirs(os.path.dirname(to_path), exist_ok=True)
-        copyfile(from_path, to_path)
-
-def copy_dir(from_dir, to_dir):
-    for name in os.listdir(from_dir):
-        if name == "__pycache__":
-            continue
-
-        copy_path(join(from_dir, name), join(to_dir, name))
-
-def copy_path(from_path, to_path):
-    if os.path.isdir(from_path):
-        copy_dir(from_path, to_path)
-    else:
-        copy_file(from_path, to_path)
-
 def extract_metadata(text):
     if text.startswith("---\n"):
         end = text.index("---\n", 4)
@@ -1055,10 +1037,10 @@ class MarkdownLocal(threading.local):
         self.value = mistune.create_markdown(renderer=HtmlRenderer(escape=False), plugins=["table", "strikethrough"])
         self.value.block.list_rules += ['table', 'nptable']
 
-MARKDOWN_LOCAL = MarkdownLocal()
+_markdown_local = MarkdownLocal()
 
 def convert_markdown(text):
-    return MARKDOWN_LOCAL.value(text)
+    return _markdown_local.value(text)
 
 _lipsum_words = [
     "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "vestibulum", "enim", "urna",
