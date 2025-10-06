@@ -82,10 +82,6 @@ class TransomError(Exception):
 
 class TransomSite:
     def __init__(self, project_dir, verbose=False, quiet=False):
-        # self.project_dir = os.path.normpath(project_dir)
-        # self.config_dir = os.path.normpath(join(self.project_dir, "config"))
-        # self.input_dir = os.path.normpath(join(self.project_dir, "input"))
-        # self.output_dir = os.path.normpath(join(self.project_dir, "output"))
         self.project_dir = Path(project_dir).resolve()
         self.config_dir = self.project_dir / "config"
         self.input_dir = self.project_dir / "input"
@@ -98,7 +94,7 @@ class TransomSite:
         self.ignored_link_patterns = []
 
         self.prefix = ""
-        self.config_dirs = [self.config_dir]
+        self.config_dirs = [str(self.config_dir)]
         self.config_modified = False
 
         self.files = list()
@@ -133,22 +129,14 @@ class TransomSite:
         self.index_files.clear()
 
         for root, dirs, files in self.input_dir.walk():
-            print(222, root, dirs, files)
-
             files = {f for f in files if not self.ignored_file_regex.match(f)}
             index_files = {f for f in files if f in _index_file_names}
-
-            print(333)
 
             if len(index_files) > 1:
                 raise TransomError(f"Duplicate index files in {root}")
 
-            print(444)
-
             for name in index_files:
                 self.files.append(self.init_file(root / name))
-
-            print(555)
 
             for name in files - index_files:
                 self.files.append(self.init_file(root / name))
@@ -156,8 +144,6 @@ class TransomSite:
     def init_file(self, input_path):
         file_extension = "".join(input_path.suffixes)
         output_path = self.output_dir / input_path.relative_to(self.input_dir)
-
-        print(666, file_extension)
 
         match file_extension:
             case ".md":
@@ -270,8 +256,8 @@ class TransomSite:
         expected_paths = {x.output_path for x in self.files}
         found_paths = set()
 
-        for root, dirs, names in os.walk(self.output_dir):
-            found_paths.update((join(root, x) for x in names))
+        for root, dirs, files in self.output_dir.walk():
+            found_paths.update((root / x for x in files))
 
         missing_paths = expected_paths - found_paths
         extra_paths = found_paths - expected_paths
@@ -334,7 +320,7 @@ class File:
         self.site = site
 
         self.input_path = input_path
-        self.input_mtime = os.path.getmtime(self.input_path)
+        self.input_mtime = self.input_path.stat().st_mtime
 
         self.output_path = output_path
         self.output_mtime = None
@@ -342,17 +328,18 @@ class File:
         self.url = self.site.prefix + "/" + str(pathlib.Path(self.output_path).relative_to(self.site.output_dir))
         self.parent = None
 
-        dir_, name = os.path.split(self.input_path)
+        dir_ = self.input_path.parent
+        name = self.input_path.name
 
         if name in _index_file_names:
             self.site.index_files[dir_] = self
-            dir_ = os.path.dirname(dir_)
+            dir_ = dir_.parent
 
-        while dir_ != "":
+        while dir_ != Path("/"):
             try:
                 self.parent = self.site.index_files[dir_]
             except KeyError:
-                dir_ = os.path.dirname(dir_)
+                dir_ = dir_.parent
             else:
                 break
 
@@ -362,14 +349,14 @@ class File:
     def is_modified(self):
         if self.output_mtime is None:
             try:
-                self.output_mtime = os.path.getmtime(self.output_path)
+                self.output_mtime = self.output_path.stat().st_mtime
             except FileNotFoundError:
                 return True
 
         return self.input_mtime > self.output_mtime
 
     def process_input(self):
-        self.site.debug("{}: Processing input of {}", threading.current_thread().name, self)
+        self.site.debug("{}: Processing input of {}", threading.current_thread().name, self) # XXX
 
     def render_output(self):
         self.site.debug("{}: Rendering output of {}", threading.current_thread().name, self)
@@ -381,7 +368,7 @@ class File:
             return
 
         parser = LinkParser(self, link_sources, link_targets)
-        parser.feed(read_file(self.output_path))
+        parser.feed(self.output_path.read_text())
 
     @property
     def ancestors(self):
@@ -421,8 +408,7 @@ class TemplatePage(File):
         self.title = self.metadata.get("title")
 
         if self.title is None:
-            path = pathlib.Path(self.input_path)
-            file_extension = "".join(path.suffixes)
+            file_extension = "".join(self.input_path.suffixes)
 
             match file_extension:
                 case ".md":
@@ -435,18 +421,21 @@ class TemplatePage(File):
                     m = _html_page_title_regex.search(text)
                     self.title = m.group(1) if m else ""
                 case _:
-                    self.title = path.name
+                    self.title = self.input_path.name
 
     def render_output(self):
         super().render_output()
 
-        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
         output = self.template.render(self)
 
         with open(self.output_path, "w") as f:
             for elem in output:
                 f.write(elem)
+
+        # XXX OR:
+        # self.output_path.write_text("".join(list(self.template.render(self))))
 
     def include(self, input_path):
         return Template.load(input_path).render(self)
@@ -595,7 +584,7 @@ class Restricted:
         if name in self._allowed:
             return getattr(self._object, name)
 
-        raise AttributeError(f"Access to attribute '{name}' is prohibited")
+        raise AttributeError(f"Accessing '{name}' is not allowed")
 
     def __setattr__(self, name, value):
         assert name not in Restricted.__slots__
@@ -604,7 +593,7 @@ class Restricted:
             setattr(self._object, name, value)
             return
 
-        raise AttributeError(f"Access to attribute '{name}' is prohibited")
+        raise AttributeError(f"Accessing '{name}' is not allowed")
 
 class PageInterface(Restricted):
     def __init__(self, obj):
@@ -746,13 +735,13 @@ class WatcherThread:
         mask = _pyinotify.IN_CREATE | _pyinotify.IN_MODIFY
 
         def render_file(event):
-            input_path = os.path.relpath(event.pathname, os.getcwd())
-            _, base_name = os.path.split(input_path)
+            input_path = Path(event.pathname).relative_to(Path.cwd())
+            base_name = input_path.name
 
-            if os.path.isdir(input_path):
+            if input_path.is_dir():
                 return True
 
-            if self.site.ignored_file_regex.match(base_name):
+            if self.site.ignored_file_regex.match(input_path.name):
                 return True
 
             try:
@@ -763,14 +752,14 @@ class WatcherThread:
             file_.process_input()
             file_.render_output()
 
-            if os.path.exists(self.site.output_dir):
-                os.utime(self.site.output_dir)
+            if self.site.output_dir.exists():
+                self.site.output_dir.touch()
 
         def render_site(event):
             self.site.init()
             self.site.render()
 
-        watcher.add_watch(self.site.input_dir, mask, render_file, rec=True, auto_add=True)
+        watcher.add_watch(str(self.site.input_dir), mask, render_file, rec=True, auto_add=True)
 
         for config_dir in self.site.config_dirs:
             watcher.add_watch(config_dir, mask, render_site, rec=True, auto_add=True)
@@ -1008,7 +997,7 @@ class TransomCommand:
         missing_files, extra_files = self.site.check_files()
 
         if extra_files != 0:
-            self.warning("{} extra files in the output", extra_files)
+            self.warning("{} extra {} in the output", extra_files, plural("file", extra_files))
 
         if missing_files == 0:
             self.notice("PASSED")
