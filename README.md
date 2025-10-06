@@ -151,9 +151,9 @@ links.  It is inserted before the file path.  This is important when
 the published site lives under a directory prefix, as is the case for
 GitHub Pages.  The default is "", the empty string.
 
-**site.extra_input_dirs** - A list of directories to watch for
-changes.  If any file changes in these directories, the whole site is
-re-rendered.  The default is a list with one item, `config`.
+**site.config_dirs** - A list of directories to watch for changes.  If
+any file changes in these directories, the whole site is re-rendered.
+The default is a list with one item, `config`.
 
 **site.ignored_file_patterns** - A list of shell globs for excluding
 input files from processing.  The default is `.git`, `.svn`, `.#*`,
@@ -164,17 +164,18 @@ link URLs from link checking.  The default is the empty list.
 
 ## The Page API
 
-**page.site**
+**page.site** - The site API object.
 
-**page.include(path)**
+**page.include(path)** - Include the file at `path`.  Any variables in
+the input file are evaluated.
 
 #### HTML page parts
 
-**page.head** - The head element of the page
+**page.head** - The head element of the page.
 
 **page.extra_headers**
 
-**page.body** - The body element of the page
+**page.body** - The body element of the page.
 
 **page.content**
 

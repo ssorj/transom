@@ -93,7 +93,7 @@ class TransomSite:
         self.ignored_link_patterns = []
 
         self.prefix = ""
-        self.extra_input_dirs = [self.config_dir]
+        self.config_dirs = [self.config_dir]
         self.config_modified = False
 
         self.config = {
@@ -212,7 +212,7 @@ class TransomSite:
     def compute_config_modified(self):
         output_mtime = os.path.getmtime(self.output_dir)
 
-        for input_dir in self.extra_input_dirs:
+        for input_dir in self.config_dirs:
             for root, dirs, names in os.walk(input_dir):
                 for name in {x for x in names if not self.ignored_file_regex.match(x)}:
                     mtime = os.path.getmtime(join(root, name))
@@ -723,8 +723,8 @@ class WatcherThread:
 
         watcher.add_watch(self.site.input_dir, mask, render_file, rec=True, auto_add=True)
 
-        for input_dir in self.site.extra_input_dirs:
-            watcher.add_watch(input_dir, mask, render_site, rec=True, auto_add=True)
+        for config_dir in self.site.config_dirs:
+            watcher.add_watch(config_dir, mask, render_site, rec=True, auto_add=True)
 
         self.notifier = _pyinotify.ThreadedNotifier(watcher)
 
@@ -1000,26 +1000,26 @@ def extract_metadata(text):
 
     return text, dict()
 
-_heading_id_regex_1 = re.compile(r"[^a-zA-Z0-9_ ]+")
-_heading_id_regex_2 = re.compile(r"[_ ]")
-
 class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
-    def heading(self, text, level, **attrs):
-        id = _heading_id_regex_1.sub("", text)
-        id = _heading_id_regex_2.sub("-", id)
-        id = id.lower()
+    heading_id_regex_1 = re.compile(r"[^a-zA-Z0-9_ ]+")
+    heading_id_regex_2 = re.compile(r"[_ ]")
 
-        return f"<h{level} id=\"{id}\">{text}</h{level}>\n"
+    def heading(self, text, level, **attrs):
+        id_ = HtmlRenderer.heading_id_regex_1.sub("", text)
+        id_ = HtmlRenderer.heading_id_regex_2.sub("-", id_)
+        id_ = id_.lower()
+
+        return f"<h{level} id=\"{id_}\">{text}</h{level}>\n"
 
 class MarkdownLocal(threading.local):
     def __init__(self):
         self.value = mistune.create_markdown(renderer=HtmlRenderer(escape=False), plugins=["table", "strikethrough"])
         self.value.block.list_rules += ['table', 'nptable']
 
-_markdown_local = MarkdownLocal()
+MARKDOWN_LOCAL = MarkdownLocal()
 
 def convert_markdown(text):
-    return _markdown_local.value(text)
+    return MARKDOWN_LOCAL.value(text)
 
 _lipsum_words = [
     "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "vestibulum", "enim", "urna",
