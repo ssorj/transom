@@ -100,7 +100,7 @@ class TransomSite:
         self.index_files = dict() # parent input dir => File
 
         self.template_globals = {
-            "site": Restricted(self, ("prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns")),
+            "site": SiteInterface(self),
             "lipsum": lipsum,
             "plural": plural,
             "html_table": html_table,
@@ -175,7 +175,7 @@ class TransomSite:
             end = start + batch_size
             files = self.files[start:end]
 
-            threads.append(RenderThread(self, f"render-thread-{i + 1}", files, errors))
+            threads.append(RenderThread(self, f"RenderThread{i + 1}", files, errors))
 
         for thread in threads:
             thread.start()
@@ -198,8 +198,8 @@ class TransomSite:
         if not errors.empty():
             raise TransomError("Rendering failed")
 
-        if os.path.exists(self.output_dir):
-            os.utime(self.output_dir)
+        if self.output_dir.exists():
+            self.output_dir.touch()
 
         rendered_count = render_counter.value()
         unchanged_count = len(self.files) - rendered_count
@@ -254,8 +254,6 @@ class TransomSite:
                 watcher.stop()
 
     def check_files(self):
-        self.init_files()
-
         expected_paths = {x.output_path for x in self.files}
         found_paths = set()
 
@@ -280,8 +278,6 @@ class TransomSite:
         return len(missing_paths), len(extra_paths)
 
     def check_links(self):
-        self.init_files()
-
         link_sources = defaultdict(set) # link => files
         link_targets = set()
 
@@ -312,13 +308,15 @@ class TransomSite:
 
     def notice(self, message, *args):
         if not self.quiet:
+            if self.verbose:
+                print("{}: ".format(threading.current_thread().name), end="")
             print(message.format(*args))
 
     def warning(self, message, *args):
         print("Warning:", message.format(*args))
 
 class File:
-    __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "parent"
+    __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title", "parent"
 
     def __init__(self, site, input_path, output_path):
         self.site = site
@@ -330,6 +328,7 @@ class File:
         self.output_mtime = None
 
         self.url = self.site.prefix + "/" + str(pathlib.Path(self.output_path).relative_to(self.site.output_dir))
+        self.title = self.output_path.name
         self.parent = None
 
         dir_ = self.input_path.parent
@@ -392,10 +391,11 @@ class StaticFile(File):
     def render_output(self):
         super().render_output()
 
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(self.input_path, self.output_path)
 
 class TemplatePage(File):
-    __slots__ = "template", "template_locals", "metadata", "title"
+    __slots__ = "metadata", "template", "template_locals"
 
     def is_modified(self):
         return self.site.config_modified or super().is_modified()
@@ -404,7 +404,7 @@ class TemplatePage(File):
         super().process_input()
 
         text = self.input_path.read_text()
-        text, self.metadata = extract_metadata(text)
+        text = self.extract_metadata(text)
 
         self.template = Template(text, self.input_path)
         self.template_locals = {"page": PageInterface(self)}
@@ -426,6 +426,18 @@ class TemplatePage(File):
                     self.title = m.group(1) if m else ""
                 case _:
                     self.title = self.input_path.name
+
+    def extract_metadata(self, text):
+        if text.startswith("---\n"):
+            end = text.index("---\n", 4)
+            header = text[4:end]
+            text = text[end + 4:]
+
+            self.metadata = yaml.safe_load(header)
+        else:
+            self.metadata = dict()
+
+        return text
 
     def render_output(self):
         super().render_output()
@@ -499,12 +511,8 @@ class HtmlPage(TemplatePage):
         return f"<nav class=\"page-toc\">{''.join(links)}</nav>"
 
     def directory_nav(self):
-        def sort_fn(x):
-            return getattr(x, "title", os.path.basename(x.output_path))
-
-        children = sorted(self.children, key=sort_fn)
-        links = ["<a href=\"{}\">{}</a>".format(x.url, getattr(x, 'title', os.path.basename(x.output_path)))
-                 for x in children]
+        children = sorted(self.children, key=lambda x: x.title)
+        links = ["<a href=\"{}\">{}</a>".format(x.url, x.title) for x in children]
 
         return f"<nav class=\"page-directory\">{''.join(links)}</nav>"
 
@@ -531,6 +539,9 @@ class Template:
         self.pieces = list()
         self.context = context
 
+        self.parse_template(text)
+
+    def parse_template(self, text):
         for token in Template.variable_regex.split(text):
             if token.startswith("{{{") and token.endswith("}}}"):
                 piece = token[1:-1]
@@ -593,9 +604,15 @@ class Restricted:
 
         raise AttributeError(f"Accessing '{name}' is not allowed")
 
+class SiteInterface(Restricted):
+    def __init__(self, obj):
+        allowed = "prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns"
+        super().__init__(obj, allowed)
+
 class PageInterface(Restricted):
     def __init__(self, obj):
-        allowed = "site", "url", "title", "head", "extra_headers", "body", "content", "path_nav", "toc_nav", "directory_nav", "include"
+        allowed = "site", "url", "title", "head", "extra_headers", "body", "content", \
+            "path_nav", "toc_nav", "directory_nav", "include"
         super().__init__(obj, allowed)
 
     @property
@@ -1004,17 +1021,6 @@ class TransomCommand:
             self.notice("PASSED")
         else:
             self.fail("FAILED")
-
-# XXX Move this to Template
-def extract_metadata(text):
-    if text.startswith("---\n"):
-        end = text.index("---\n", 4)
-        header = text[4:end]
-        text = text[end + 4:]
-
-        return text, yaml.safe_load(header)
-
-    return text, dict()
 
 class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
     heading_id_regex_1 = re.compile(r"[^a-zA-Z0-9_ ]+")
