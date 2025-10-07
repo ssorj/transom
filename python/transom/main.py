@@ -116,10 +116,8 @@ class TransomSite:
         self.ignored_file_regex = re.compile \
             ("({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns])))
 
-        site_config = self.config_dir / "site.py"
-
         try:
-            exec(site_config.read_text(), self.template_globals)
+            exec((self.config_dir / "site.py").read_text(), self.template_globals)
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
 
@@ -188,8 +186,6 @@ class TransomSite:
 
         for thread in threads:
             thread.commands.put((thread.render_output_files, (force, render_counter)))
-
-        for thread in threads:
             thread.commands.put((None, None))
 
         for thread in threads:
