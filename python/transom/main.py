@@ -73,7 +73,7 @@ _default_body_template = """
 
 _index_file_names = "index.md", "index.html.in", "index.html"
 _html_page_title_regex = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
-_html_body_title_regex = re.compile(r"<(:?h1|h2)\b[^>]*>(.*?)</(:?h1|h2)>", re.IGNORECASE | re.DOTALL)
+_html_body_title_regex = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
 _markdown_title_regex = re.compile(r"^(?:#|##)\s+(.*)")
 
 class TransomError(Exception):
@@ -113,13 +113,13 @@ class TransomSite:
         self.head_template = Template.load(self.config_dir / "head.html", _default_head_template)
         self.body_template = Template.load(self.config_dir / "body.html", _default_body_template)
 
-        self.ignored_file_regex = re.compile \
-            ("({})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns])))
-
         try:
             exec((self.config_dir / "site.py").read_text(), self.template_globals)
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
+
+        self.ignored_file_regex = re.compile \
+            ("(?:{})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns])))
 
         self.init_files()
 
@@ -162,7 +162,7 @@ class TransomSite:
 
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
 
-        thread_count = min((8, os.cpu_count()))
+        thread_count = min((4, os.cpu_count()))
         batch_size = (len(self.files) + thread_count - 1) // thread_count
         threads = list()
         render_counter = ThreadSafeCounter()
@@ -523,7 +523,10 @@ class MarkdownPage(HtmlPage):
     @property
     def content(self):
         if self.converted_content is None:
-            self.converted_content = convert_markdown("".join(super().content))
+            try:
+                self.converted_content = convert_markdown("".join(super().content))
+            except Exception as e:
+                raise TransomError(f"Error converting Markdown: {self.input_path}: {e}")
 
         return self.converted_content
 
@@ -545,7 +548,7 @@ class Template:
                 try:
                     piece = compile(token[2:-2], "<string>", "eval")
                 except Exception as e:
-                    raise TransomError(f"Error parsing template: {context}: {e}")
+                    raise TransomError(f"Error parsing template: {self.context}: {e}")
             else:
                 piece = token
 
@@ -571,7 +574,7 @@ class Template:
                 if type(result) is types.GeneratorType:
                     yield from result
                 else:
-                    yield result
+                    yield str(result)
             else:
                 yield piece
 

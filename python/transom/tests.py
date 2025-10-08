@@ -27,7 +27,7 @@ from xml.etree.ElementTree import XML
 transom_home = get_parent_dir(get_parent_dir(get_parent_dir(__file__)))
 transom_command = TransomCommand(home=transom_home)
 
-test_site_dir = join(transom_home, "test-site")
+test_site_dir = join(transom_home, "sites/test")
 result_file = "output/result.json"
 
 class test_site(working_dir):

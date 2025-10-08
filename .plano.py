@@ -21,7 +21,7 @@ from bullseye import *
 from plano.github import *
 
 project.name = "transom"
-project.data_dirs = ["profiles", "test-site"]
+project.data_dirs = ["profiles", "sites/test"]
 project.test_modules = ["transom.tests"]
 
 @command(parent=build)
@@ -39,8 +39,7 @@ def build(*args, **kwargs):
 def clean(*args, **kwargs):
     parent(*args, **kwargs)
 
-    remove("test-site/output")
-    remove("qpid-site/output")
+    remove("sites/test/output")
     remove("htmlcov")
     remove(".coverage")
 
