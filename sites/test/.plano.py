@@ -48,3 +48,14 @@ def check_files(*args, **kwargs):
 
     data = {"files_checked": True}
     write_json(result_file, data)
+
+@command
+def profile():
+    """
+    Run the renderer under a profiler
+    """
+
+    check_program("py-spy", "pip install py-spy")
+
+    with project_env():
+        run("py-spy record -o /tmp/profile.svg -- ./plano render --force")

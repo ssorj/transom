@@ -23,7 +23,6 @@ import fnmatch
 import http.server as httpserver
 import mistune
 import os
-import pathlib
 import re
 import shutil
 import sys
@@ -162,7 +161,7 @@ class TransomSite:
 
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
 
-        thread_count = min((4, os.cpu_count()))
+        thread_count = os.cpu_count()
         batch_size = (len(self.files) + thread_count - 1) // thread_count
         threads = list()
         render_counter = ThreadSafeCounter()
@@ -323,7 +322,7 @@ class File:
         self.output_path = output_path
         self.output_mtime = None
 
-        self.url = self.site.prefix + "/" + str(pathlib.Path(self.output_path).relative_to(self.site.output_dir))
+        self.url = f"{self.site.prefix}/{self.output_path.relative_to(self.site.output_dir)}"
         self.title = self.output_path.name
         self.parent = None
 
