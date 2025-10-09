@@ -35,6 +35,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from html import escape as html_escape
 from html.parser import HTMLParser
+from os.path import relpath as relative_path # This is a lot faster that Path.relative_to
 from pathlib import Path
 from queue import Queue
 from urllib import parse as urlparse
@@ -141,7 +142,7 @@ class TransomSite:
 
     def init_file(self, input_path):
         file_extension = "".join(input_path.suffixes)
-        output_path = self.output_dir / input_path.relative_to(self.input_dir)
+        output_path = self.output_dir / relative_path(input_path, self.input_dir)
 
         match file_extension:
             case ".md":
@@ -322,7 +323,7 @@ class File:
         self.output_path = output_path
         self.output_mtime = None
 
-        self.url = f"{self.site.prefix}/{self.output_path.relative_to(self.site.output_dir)}"
+        self.url = f"{self.site.prefix}/{relative_path(self.output_path, self.site.output_dir)}"
         self.title = self.output_path.name
         self.parent = None
 
@@ -488,7 +489,7 @@ class HtmlPage(TemplatePage):
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
-        links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in files] # XXX title!
+        links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in files]
         links = links[start:end]
 
         if len(links) < min:
@@ -748,7 +749,7 @@ class WatcherThread:
         mask = _pyinotify.IN_CREATE | _pyinotify.IN_MODIFY
 
         def render_file(event):
-            input_path = Path(event.pathname).relative_to(Path.cwd())
+            input_path = Path(relative_path(event.pathname, Path.cwd()))
             base_name = input_path.name
 
             if input_path.is_dir():
