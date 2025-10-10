@@ -35,14 +35,14 @@ from collections import defaultdict
 from collections.abc import Iterable
 from html import escape as html_escape
 from html.parser import HTMLParser
-from os.path import relpath as relative_path # This is a lot faster that Path.relative_to
+from os.path import relpath as relative_path # This is a lot faster than Path.relative_to in Python 3.12
 from pathlib import Path
 from queue import Queue
 from urllib import parse as urlparse
 
 __all__ = ["TransomSite", "TransomCommand"]
 
-_default_page_template = """
+_DEFAULT_PAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 
@@ -53,7 +53,7 @@ _default_page_template = """
 </html>
 """
 
-_default_head_template = """
+_DEFAULT_HEAD_TEMPLATE = """
 <head>
   <title>{{page.title}}</title>
   <link rel="icon" href="data:;"/>
@@ -63,7 +63,7 @@ _default_head_template = """
 </head>
 """
 
-_default_body_template = """
+_DEFAULT_BODY_TEMPLATE = """
 <body>
 
 {{page.content}}
@@ -71,10 +71,10 @@ _default_body_template = """
 </body>
 """
 
-_index_file_names = "index.md", "index.html.in", "index.html"
-_html_page_title_regex = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
-_html_body_title_regex = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
-_markdown_title_regex = re.compile(r"^(?:#|##)\s+(.*)")
+_INDEX_FILE_NAMES = "index.md", "index.html.in", "index.html"
+_HTML_PAGE_TITLE_REGEX = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_HTML_BODY_TITLE_REGEX = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
+_MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
 
 class TransomError(Exception):
     pass
@@ -109,9 +109,9 @@ class TransomSite:
         }
 
     def init(self):
-        self.page_template = Template.load(self.config_dir / "page.html", _default_page_template)
-        self.head_template = Template.load(self.config_dir / "head.html", _default_head_template)
-        self.body_template = Template.load(self.config_dir / "body.html", _default_body_template)
+        self.page_template = Template.load(self.config_dir / "page.html", _DEFAULT_PAGE_TEMPLATE)
+        self.head_template = Template.load(self.config_dir / "head.html", _DEFAULT_HEAD_TEMPLATE)
+        self.body_template = Template.load(self.config_dir / "body.html", _DEFAULT_BODY_TEMPLATE)
 
         try:
             exec((self.config_dir / "site.py").read_text(), self.template_globals)
@@ -129,7 +129,7 @@ class TransomSite:
 
         for root, dirs, files in self.input_dir.walk():
             files = {f for f in files if not self.ignored_file_regex.match(f)}
-            index_files = {f for f in files if f in _index_file_names}
+            index_files = {f for f in files if f in _INDEX_FILE_NAMES}
 
             if len(index_files) > 1:
                 raise TransomError(f"Duplicate index files in {root}")
@@ -330,7 +330,7 @@ class File:
         dir_ = self.input_path.parent
         name = self.input_path.name
 
-        if name in _index_file_names:
+        if name in _INDEX_FILE_NAMES:
             self.site.index_files[dir_] = self
             dir_ = dir_.parent
 
@@ -412,13 +412,13 @@ class TemplatePage(File):
 
             match file_extension:
                 case ".md":
-                    m = _markdown_title_regex.search(text)
+                    m = _MARKDOWN_TITLE_REGEX.search(text)
                     self.title = m.group(1) if m else ""
                 case ".html.in":
-                    m = _html_body_title_regex.search(text)
+                    m = _HTML_BODY_TITLE_REGEX.search(text)
                     self.title = m.group(1) if m else ""
                 case ".html":
-                    m = _html_page_title_regex.search(text)
+                    m = _HTML_PAGE_TITLE_REGEX.search(text)
                     self.title = m.group(1) if m else ""
                 case _:
                     self.title = self.input_path.name
@@ -1037,12 +1037,12 @@ class MarkdownLocal(threading.local):
         self.value = mistune.create_markdown(renderer=HtmlRenderer(escape=False), plugins=["table", "strikethrough"])
         self.value.block.list_rules += ['table', 'nptable']
 
-_markdown_local = MarkdownLocal()
+_MARKDOWN_LOCAL = MarkdownLocal()
 
 def convert_markdown(text):
-    return _markdown_local.value(text)
+    return _MARKDOWN_LOCAL.value(text)
 
-_lipsum_words = [
+_LIPSUM_WORDS = [
     "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "vestibulum", "enim", "urna",
     "ornare", "pellentesque", "felis", "eget", "maximus", "lacinia", "lorem", "nulla", "auctor", "massa", "vitae",
     "ultricies", "varius", "curabitur", "consectetur", "lacus", "sapien", "a", "lacinia", "urna", "tempus", "quis",
@@ -1051,7 +1051,7 @@ _lipsum_words = [
 ]
 
 def lipsum(count=50, end="."):
-    return (" ".join((_lipsum_words[i % len(_lipsum_words)] for i in range(count))) + end).capitalize()
+    return (" ".join((_LIPSUM_WORDS[i % len(_LIPSUM_WORDS)] for i in range(count))) + end).capitalize()
 
 def plural(noun, count=0, plural=None):
     if noun in (None, ""):
