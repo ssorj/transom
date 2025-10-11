@@ -389,9 +389,9 @@ class StaticFile(File):
 
 class TemplatePage(File):
     __slots__ = "metadata", "template", "template_locals"
+    MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
     HTML_PAGE_TITLE_REGEX = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
     HTML_BODY_TITLE_REGEX = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
-    MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
 
     def is_modified(self):
         return self.site.config_modified or super().is_modified()
