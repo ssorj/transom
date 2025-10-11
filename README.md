@@ -15,13 +15,14 @@ Markdown input files into HTML output files.
 - `.md`, `.html.in`, `.html`, `.js`, and `.css` files are treated as
   templates, with `{{ }}` curly braces for template placeholders.
 
-- Template placeholders are Python code, resolved using `eval()`.
-  Site variables are defined in `config/site.py`.
+- Template placeholders are Python code, executed using `eval()`.
+  Site attributes are defined in `config/site.py`.
 
-- The Python environment includes `site` and `page` objects and
-  utility functions for configuring the site and generating HTML.
+- The site attributes include `site` and `page` objects and utility
+  functions, for configuring the site and generating HTML.
 
-- `.md` and `.html.in` files are wrapped in site templates.
+- `.md` and `.html.in` files are wrapped in site templates defined in
+  `config/head.html` and `config/body.html`.
 
 [mistune]: https://github.com/lepture/mistune
 
@@ -41,7 +42,7 @@ starter site is really basic.  It lays down an index page
 (`input/index.md`) a CSS file (`input/site.css`) and a JavaScript file
 (`input/site.js`) plus the supporting Transom config files.
 
-~~~ sh
+~~~ console
 $ cd <your-new-project-dir>
 
 $ transom init
@@ -58,7 +59,7 @@ transom: Creating 'input/site.js'
 The `transom render` command uses the config and input files to
 generate the rendered output.
 
-~~~ sh
+~~~ console
 $ transom render
 Rendering files from 'input' to 'output'
 Found 3 input files
@@ -74,7 +75,7 @@ local webserver so you can see what you have.  Transom watches for any
 updates to the config or input files and re-renders the output as
 needed.
 
-~~~ sh
+~~~ console
 $ transom serve
 Rendering files from 'input' to 'output'
 Found 3 input files
@@ -215,7 +216,7 @@ mv external/transom-main external/transom
 
 Symlink the Transom and Plano libraries into your `python` directory:
 
-~~~
+~~~ sh
 mkdir -p python
 ln -s ../external/transom/python/transom python/transom
 ln -s ../external/transom/python/plano python/plano
@@ -223,20 +224,20 @@ ln -s ../external/transom/python/plano python/plano
 
 Copy the `plano` command into the root of your project:
 
-~~~
+~~~ sh
 cp external/transom/plano plano
 ~~~
 
 Copy the standard config files:
 
-~~~
+~~~ sh
 cp external/transom/profiles/website/.plano.py .plano.py
 cp external/transom/profiles/website/.gitignore .gitignore
 ~~~
 
 Copy the standard workflow file:
 
-~~~
+~~~ sh
 mkdir -p .github/workflows
 cp external/transom/profiles/website/.github/workflows/main.yaml .github/workflows/main.yaml
 ~~~
