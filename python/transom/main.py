@@ -1031,13 +1031,13 @@ MarkdownLocal.INSTANCE = MarkdownLocal()
 def convert_markdown(text):
     return MarkdownLocal.INSTANCE.value(text)
 
-LIPSUM_WORDS = [
+LIPSUM_WORDS = (
     "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "vestibulum", "enim", "urna",
     "ornare", "pellentesque", "felis", "eget", "maximus", "lacinia", "lorem", "nulla", "auctor", "massa", "vitae",
     "ultricies", "varius", "curabitur", "consectetur", "lacus", "sapien", "a", "lacinia", "urna", "tempus", "quis",
     "vestibulum", "vitae", "augue", "non", "augue", "lobortis", "semper", "nullam", "fringilla", "odio", "quis",
     "ligula", "consequat", "condimentum", "integer", "tempus", "sem",
-]
+)
 
 def lipsum(count=50, end="."):
     return (" ".join((LIPSUM_WORDS[i % len(LIPSUM_WORDS)] for i in range(count))) + end).capitalize()
