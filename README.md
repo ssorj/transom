@@ -2,25 +2,28 @@
 
 [![main](https://github.com/ssorj/transom/workflows/main/badge.svg)](https://github.com/ssorj/transom/actions?query=workflow%3Amain)
 
-Transom renders static websites from Markdown and Python
+Transom renders static websites from Markdown and Python.
 
 ## Overview
 
 Transom is a static site generator written in Python.  It converts
 Markdown input files into HTML output files.
 
-Transom uses Python's `eval` to resolve templates.  It has a simple
-transformation model:
+- Markdown converts to HTML in a conventional way.  Transom uses
+  [Mistune][mistune] for conversion.
 
-- Markdown converts to HTML in a conventional way.
+- `.md`, `.html.in`, `.html`, `.js`, and `.css` files are treated as
+  templates, with `{{ }}` curly braces for template placeholders.
 
-- Python code works like standard Python code, with some extra model
-  data and functions for the pages I'm working with.
+- Template placeholders are Python code, resolved using `eval()`.
+  Site variables are defined in `config/site.py`.
 
-- Everything, including input HTML, is wrapped in site templates.
+- The Python environment includes `site` and `page` objects and
+  utility functions for configuring the site and generating HTML.
 
-The full power of Python is available in the generation phase.  That
-allows me to efficiently express and reuse display logic.
+- `.md` and `.html.in` files are wrapped in site templates.
+
+[mistune]: https://github.com/lepture/mistune
 
 ## Installation
 
@@ -138,60 +141,61 @@ XXX Table with the other files under config/.
 
 ## The Site API
 
-`**site.prefix**` - A string prefix used in templates and for generated
+`site.prefix` - A string prefix used in templates and for generated
 links.  It is inserted before the file path.  This is important when
 the published site lives under a directory prefix, as is the case for
-GitHub Pages.  The default is "", the empty string.
+GitHub Pages.  The default is `""`, the empty string.
 
-**site.config_dirs** - A list of directories to watch for changes.  If
+`site.config_dirs` - A list of directories to watch for changes.  If
 any file changes in these directories, the whole site is re-rendered.
-The default is a list with one item, `config`.
+The default is `["config"]`.
 
-**site.ignored_file_patterns** - A list of shell globs for excluding
-input files from processing.  The default is `[".git", ".svn", ".#*","#*."]`.
+`site.ignored_file_patterns` - A list of shell globs for excluding
+input files from processing.  The default is `[".git", ".svn", ".#*","#*"]`.
 
-**site.ignored_link_patterns** - A list of shell globs for excluding
+`site.ignored_link_patterns` - A list of shell globs for excluding
 link URLs from link checking.  The default is `[]`, the empty list.
 
 ## The Page API
 
-`**page.site**` - The site API object.
+`page.site` - The site API object.
 
-`**page.include(path)**` - Include the file at `path`.  Any variables in
+`page.include(path)` - Include the file at `path`.  Any variables in
 the input file are evaluated.
 
 #### HTML page parts
 
-`**page.head**` - The head element of the page, from
-`config/head.html`.
+`page.head` - The head element of the page.  It is a template read
+from `config/head.html`.
 
-`**page.extra_headers**` - A list of extra HTML headers to add to the
+`page.extra_headers` - A list of extra HTML headers to add to the
 HTML head element.  The default is `[]`, the empty list.
 
-**page.body** - The body element of the page, from `config/body.html`.
+`page.body` - The body element of the page.  It is a template read
+from `config/body.html`.
 
-**page.content** - The primary page content, from `input/<file>`.md or
-input/`<file>.html.in`.
+`page.content` - The primary page content, read from `input/<file>.md`
+or `input/<file>.html.in`.
 
 #### Navigation elements
 
-`**page.path_nav(start=0, end=None, min=1)**`
+`page.path_nav(start=0, end=None, min=1)`
 
-`**page.toc_nav()**`
+`page.toc_nav()`
 
-`**page.directory_nav()**`
+`page.directory_nav()`
 
 ## Text and HTML generation functions
 
-`**lipsum(count=50, end=".")**`
+`lipsum(count=50, end=".")`
 
-`**plural(noun, count=0, plural=None)**`
+`plural(noun, count=0, plural=None)`
 
-`**html_table(data, headings=None, cell_fn=<default>, **attrs)**`
+`html_table(data, headings=None, cell_fn=<default>, **attrs)`
 
-`**html_table_csv(path, **attrs)**`
+`html_table_csv(path, **attrs)`
 
-`**convert_markdown(text)**`
+`convert_markdown(text)`
 
 ## Setting up Transom for a website repo
 
