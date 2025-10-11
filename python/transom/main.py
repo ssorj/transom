@@ -311,6 +311,7 @@ class TransomSite:
 class File:
     __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title", "parent"
     INDEX_FILE_NAMES = "index.md", "index.html.in", "index.html"
+    ROOT_PATHS = Path("/"), Path(".")
 
     def __init__(self, site, input_path, output_path):
         self.site = site
@@ -332,7 +333,7 @@ class File:
             self.site.index_files[dir_] = self
             dir_ = dir_.parent
 
-        while dir_ != Path("/"):
+        while dir_ not in File.ROOT_PATHS:
             try:
                 self.parent = self.site.index_files[dir_]
             except KeyError:
