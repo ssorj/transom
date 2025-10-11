@@ -233,8 +233,9 @@ class TransomSite:
             watcher.start()
 
         try:
-            server = ServerThread(self, port)
-            server.run()
+            with Server(self, port) as server:
+                self.notice("Serving at http://localhost:{}", port)
+                server.serve_forever()
         except OSError as e:
             # OSError: [Errno 98] Address already in use
             if e.errno == 98:
@@ -786,18 +787,6 @@ class WatcherThread:
 
     def stop(self):
         self.notifier.stop()
-
-class ServerThread(threading.Thread):
-    def __init__(self, site, port):
-        super().__init__(name="server", daemon=True)
-
-        self.site = site
-        self.port = port
-        self.server = Server(site, port)
-
-    def run(self):
-        self.site.notice("Serving at http://localhost:{}", self.port)
-        self.server.serve_forever()
 
 class Server(httpserver.ThreadingHTTPServer):
     def __init__(self, site, port):
