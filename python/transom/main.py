@@ -21,13 +21,13 @@ import argparse
 import csv
 import fnmatch
 import http.server as httpserver
-import mistune
 import os
 import re
 import shutil
 import sys
 import threading
 import traceback
+import transom.mistune as mistune
 import types
 import yaml
 
@@ -982,7 +982,6 @@ class TransomCommand:
                  project_dir / ".github" / "workflows" / "main.yaml")
             copy(profile_dir / ".gitignore", project_dir / ".gitignore")
             copy(profile_dir / ".plano.py", project_dir / ".plano.py")
-            copy(python_dir / "mistune", project_dir / "python" / "mistune")
             copy(python_dir / "transom", project_dir / "python" / "transom")
 
     def render_command(self):
@@ -1066,6 +1065,7 @@ def html_table_cell(column_index, value):
     return html_elem("td", str(value if value is not None else ""))
 
 def html_table(data, headings=None, cell_fn=html_table_cell, **attrs):
+    # XXX Use thead
     return html_elem("table", html_elem("tbody", html_table_rows(data, headings, cell_fn)), **attrs)
 
 def html_table_rows(data, headings, cell_fn):

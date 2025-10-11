@@ -9,26 +9,18 @@ Transom renders static websites from Markdown and Python
 Transom is a static site generator written in Python.  It converts
 Markdown input files into HTML output files.
 
-But that oversimplifies things a bit.  Transom actually converts
-Markdown input files and simple HTML files and Python code into
-somewhat fancier HTML output files.  For me, I like that it automates
-a lot of the work of creating a real website, *and* it does it with a
-simple transformation model that leverages things I already know well:
+Transom uses Python's `eval` to resolve templates.  It has a simple
+transformation model:
 
-* Markdown converts to HTML in a conventional way.
+- Markdown converts to HTML in a conventional way.
 
-* Python code works like standard Python code, with some extra model
+- Python code works like standard Python code, with some extra model
   data and functions for the pages I'm working with.
 
-* Everything, including input HTML, is wrapped in site templates.
+- Everything, including input HTML, is wrapped in site templates.
 
 The full power of Python is available in the generation phase.  That
 allows me to efficiently express and reuse display logic.
-
-Transom is pleasantly quick on modern machines.  I use it to generate
-the Apache Qpid website, which is large (about 2 gigs) and has many
-files (more than 30,000).  Transom can render everything in less than
-a second.
 
 ## Installation
 
@@ -156,48 +148,50 @@ any file changes in these directories, the whole site is re-rendered.
 The default is a list with one item, `config`.
 
 **site.ignored_file_patterns** - A list of shell globs for excluding
-input files from processing.  The default is `.git`, `.svn`, `.#*`,
-and `#*`.
+input files from processing.  The default is `[".git", ".svn", ".#*","#*."]`.
 
 **site.ignored_link_patterns** - A list of shell globs for excluding
-link URLs from link checking.  The default is the empty list.
+link URLs from link checking.  The default is `[]`, the empty list.
 
 ## The Page API
 
-**page.site** - The site API object.
+`**page.site**` - The site API object.
 
-**page.include(path)** - Include the file at `path`.  Any variables in
+`**page.include(path)**` - Include the file at `path`.  Any variables in
 the input file are evaluated.
 
 #### HTML page parts
 
-**page.head** - The head element of the page.
+`**page.head**` - The head element of the page, from
+`config/head.html`.
 
-**page.extra_headers**
+`**page.extra_headers**` - A list of extra HTML headers to add to the
+HTML head element.  The default is `[]`, the empty list.
 
-**page.body** - The body element of the page.
+**page.body** - The body element of the page, from `config/body.html`.
 
-**page.content**
+**page.content** - The primary page content, from `input/<file>`.md or
+input/`<file>.html.in`.
 
 #### Navigation elements
 
-**page.path_nav(start=0, end=None, min=1)**
+`**page.path_nav(start=0, end=None, min=1)**`
 
-**page.toc_nav()**
+`**page.toc_nav()**`
 
-**page.directory_nav()**
+`**page.directory_nav()**`
 
 ## Text and HTML generation functions
 
-**lipsum(count=50, end=".")**
+`**lipsum(count=50, end=".")**`
 
-**plural(noun, count=0, plural=None)**
+`**plural(noun, count=0, plural=None)**`
 
-**html_table()**
+`**html_table(data, headings=None, cell_fn=<default>, **attrs)**`
 
-**html_table_csv()**
+`**html_table_csv(path, **attrs)**`
 
-**convert_markdown(text)**
+`**convert_markdown(text)**`
 
 ## Setting up Transom for a website repo
 
@@ -220,7 +214,6 @@ Symlink the Transom and Plano libraries into your `python` directory:
 ~~~
 mkdir -p python
 ln -s ../external/transom/python/transom python/transom
-ln -s ../external/transom/python/mistune python/mistune
 ln -s ../external/transom/python/plano python/plano
 ~~~
 

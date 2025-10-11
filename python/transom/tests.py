@@ -72,7 +72,6 @@ def transom_init():
         check_file("input/site.js")
         check_file(".gitignore")
         check_file(".plano.py")
-        check_dir("python/mistune")
         check_dir("python/transom")
 
         transom_command.main(["init"]) # Re-init
