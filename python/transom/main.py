@@ -1026,12 +1026,12 @@ class MarkdownLocal(threading.local):
         self.value = mistune.create_markdown(renderer=HtmlRenderer(escape=False), plugins=["table", "strikethrough"])
         self.value.block.list_rules += ['table', 'nptable']
 
-_MARKDOWN_LOCAL = MarkdownLocal()
+MarkdownLocal.INSTANCE = MarkdownLocal()
 
 def convert_markdown(text):
-    return _MARKDOWN_LOCAL.value(text)
+    return MarkdownLocal.INSTANCE.value(text)
 
-_LIPSUM_WORDS = [
+LIPSUM_WORDS = [
     "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "vestibulum", "enim", "urna",
     "ornare", "pellentesque", "felis", "eget", "maximus", "lacinia", "lorem", "nulla", "auctor", "massa", "vitae",
     "ultricies", "varius", "curabitur", "consectetur", "lacus", "sapien", "a", "lacinia", "urna", "tempus", "quis",
@@ -1040,7 +1040,7 @@ _LIPSUM_WORDS = [
 ]
 
 def lipsum(count=50, end="."):
-    return (" ".join((_LIPSUM_WORDS[i % len(_LIPSUM_WORDS)] for i in range(count))) + end).capitalize()
+    return (" ".join((LIPSUM_WORDS[i % len(LIPSUM_WORDS)] for i in range(count))) + end).capitalize()
 
 def plural(noun, count=0, plural=None):
     if noun in (None, ""):
