@@ -9,19 +9,23 @@ Transom renders static websites from Markdown and Python.
 Transom is a static site generator written in Python.  It converts
 Markdown input files into HTML output files.
 
-- Markdown converts to HTML in a conventional way.  Transom uses
-  [Mistune][mistune] for conversion.
+- Input files come from `input/`.  Corresponding output files go to
+  `output/`.
 
-- `.md`, `.html.in`, `.html`, `.js`, and `.css` files are treated as
-  templates, with `{{ }}` curly braces for template placeholders.
+- `.md` input files are converted to `.html` output files.  Transom
+  uses [Mistune][mistune] for conversion.
 
-- Template placeholders are Python code, executed using `eval()`.
-  Site attributes are defined in `config/site.py`.
+- `.md`, `.html.in`, `.html`, `.js`, and `.css` input files are
+  treated as templates, with `{{ }}` curly braces for template
+  placeholders.  All other files are copied as is.
 
-- The site attributes include `site` and `page` objects and utility
-  functions, for configuring the site and generating output.
+- Template placeholders are Python code, executed using `eval()`.  The
+  Python environment is defined in `config/site.py`.
 
-- `.md` and `.html.in` files are wrapped in site templates defined in
+- The Python environment includes `site` and `page` objects and
+  utility functions, for configuring the site and generating output.
+
+- `.md` and `.html.in` files are wrapped in page templates defined in
   `config/head.html` and `config/body.html`.
 
 [mistune]: https://github.com/lepture/mistune
