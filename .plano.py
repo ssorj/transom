@@ -62,4 +62,4 @@ def update_mistune():
     """
     Update the embedded Mistune repo
     """
-    update_external_from_github("external/mistune", "lepture", "mistune", ref="v3.1.3")
+    update_external_from_github("external/mistune", "lepture", "mistune", ref="v3.1.4")
