@@ -19,7 +19,7 @@ Markdown input files into HTML output files.
   Site attributes are defined in `config/site.py`.
 
 - The site attributes include `site` and `page` objects and utility
-  functions, for configuring the site and generating HTML.
+  functions, for configuring the site and generating output.
 
 - `.md` and `.html.in` files are wrapped in site templates defined in
   `config/head.html` and `config/body.html`.
