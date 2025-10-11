@@ -35,14 +35,15 @@ from collections import defaultdict
 from collections.abc import Iterable
 from html import escape as html_escape
 from html.parser import HTMLParser
-from os.path import relpath as relative_path # This is a lot faster than Path.relative_to in Python 3.12
+# os.path.relpath is a lot faster than Path.relative_to in Python 3.12
+from os.path import relpath as relative_path
 from pathlib import Path
 from queue import Queue
 from urllib import parse as urlparse
 
 __all__ = ["TransomSite", "TransomCommand"]
 
-_DEFAULT_PAGE_TEMPLATE = """
+DEFAULT_PAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 
@@ -53,7 +54,7 @@ _DEFAULT_PAGE_TEMPLATE = """
 </html>
 """
 
-_DEFAULT_HEAD_TEMPLATE = """
+DEFAULT_HEAD_TEMPLATE = """
 <head>
   <title>{{page.title}}</title>
   <link rel="icon" href="data:;"/>
@@ -63,18 +64,13 @@ _DEFAULT_HEAD_TEMPLATE = """
 </head>
 """
 
-_DEFAULT_BODY_TEMPLATE = """
+DEFAULT_BODY_TEMPLATE = """
 <body>
 
 {{page.content}}
 
 </body>
 """
-
-_INDEX_FILE_NAMES = "index.md", "index.html.in", "index.html"
-_HTML_PAGE_TITLE_REGEX = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
-_HTML_BODY_TITLE_REGEX = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
-_MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
 
 class TransomError(Exception):
     pass
@@ -109,9 +105,9 @@ class TransomSite:
         }
 
     def init(self):
-        self.page_template = Template.load(self.config_dir / "page.html", _DEFAULT_PAGE_TEMPLATE)
-        self.head_template = Template.load(self.config_dir / "head.html", _DEFAULT_HEAD_TEMPLATE)
-        self.body_template = Template.load(self.config_dir / "body.html", _DEFAULT_BODY_TEMPLATE)
+        self.page_template = Template.load(self.config_dir / "page.html", DEFAULT_PAGE_TEMPLATE)
+        self.head_template = Template.load(self.config_dir / "head.html", DEFAULT_HEAD_TEMPLATE)
+        self.body_template = Template.load(self.config_dir / "body.html", DEFAULT_BODY_TEMPLATE)
 
         try:
             exec((self.config_dir / "site.py").read_text(), self.template_globals)
@@ -129,7 +125,7 @@ class TransomSite:
 
         for root, dirs, files in self.input_dir.walk():
             files = {f for f in files if not self.ignored_file_regex.match(f)}
-            index_files = {f for f in files if f in _INDEX_FILE_NAMES}
+            index_files = {f for f in files if f in File.INDEX_FILE_NAMES}
 
             if len(index_files) > 1:
                 raise TransomError(f"Duplicate index files in {root}")
@@ -313,6 +309,7 @@ class TransomSite:
 
 class File:
     __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title", "parent"
+    INDEX_FILE_NAMES = "index.md", "index.html.in", "index.html"
 
     def __init__(self, site, input_path, output_path):
         self.site = site
@@ -330,7 +327,7 @@ class File:
         dir_ = self.input_path.parent
         name = self.input_path.name
 
-        if name in _INDEX_FILE_NAMES:
+        if name in File.INDEX_FILE_NAMES:
             self.site.index_files[dir_] = self
             dir_ = dir_.parent
 
@@ -392,6 +389,9 @@ class StaticFile(File):
 
 class TemplatePage(File):
     __slots__ = "metadata", "template", "template_locals"
+    HTML_PAGE_TITLE_REGEX = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+    HTML_BODY_TITLE_REGEX = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
+    MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
 
     def is_modified(self):
         return self.site.config_modified or super().is_modified()
@@ -412,13 +412,13 @@ class TemplatePage(File):
 
             match file_extension:
                 case ".md":
-                    m = _MARKDOWN_TITLE_REGEX.search(text)
+                    m = TemplatePage.MARKDOWN_TITLE_REGEX.search(text)
                     self.title = m.group(1) if m else ""
                 case ".html.in":
-                    m = _HTML_BODY_TITLE_REGEX.search(text)
+                    m = TemplatePage.HTML_BODY_TITLE_REGEX.search(text)
                     self.title = m.group(1) if m else ""
                 case ".html":
-                    m = _HTML_PAGE_TITLE_REGEX.search(text)
+                    m = TemplatePage.HTML_PAGE_TITLE_REGEX.search(text)
                     self.title = m.group(1) if m else ""
                 case _:
                     self.title = self.input_path.name
@@ -532,7 +532,7 @@ class MarkdownPage(HtmlPage):
 
 class Template:
     __slots__ = "pieces", "context"
-    variable_regex = re.compile(r"({{{.+?}}}|{{.+?}})")
+    VARIABLE_REGEX = re.compile(r"({{{.+?}}}|{{.+?}})")
 
     def __init__(self, text, context):
         self.pieces = list()
@@ -541,7 +541,7 @@ class Template:
         self.parse_template(text)
 
     def parse_template(self, text):
-        for token in Template.variable_regex.split(text):
+        for token in Template.VARIABLE_REGEX.split(text):
             if token.startswith("{{{") and token.endswith("}}}"):
                 piece = token[1:-1]
             elif token.startswith("{{") and token.endswith("}}"):
