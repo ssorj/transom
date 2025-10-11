@@ -44,7 +44,7 @@ def import_plugin(name: PluginRef) -> Plugin:
     else:
         module_path, func_name = name.rsplit(".", 1)
 
-    module = import_module(module_path)
+    module = import_module("transom." + module_path)
     plugin = cast(Plugin, getattr(module, func_name))
     _cached_modules[name] = plugin
     return plugin
