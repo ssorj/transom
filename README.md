@@ -33,10 +33,7 @@ Markdown input files into HTML output files.
 
 ## Installation
 
-Install the dependencies and then use `./plano install`:
-
 ~~~
-pip install pyyaml
 ./plano install
 ~~~
 
@@ -60,6 +57,15 @@ transom: Creating 'input/index.md'
 transom: Creating 'input/site.css'
 transom: Creating 'input/site.js'
 ~~~
+
+If you want deploy your site from a GitHub repo, use the `--github`
+option to include additional files in the start project:
+
+~~~ console
+XXX
+~~~
+
+XXX self-contained
 
 The `transom render` command uses the config and input files to
 generate the rendered output.
@@ -89,16 +95,9 @@ Watching for input file changes
 Serving at http://localhost:8080
 ~~~
 
-<!-- Site checks for files and links -->
-<!-- ## Implementation notes -->
-<!-- Multiprocessing -->
-<!-- Mistune (having tried others before) -->
-<!-- ## Template syntax (really Python code syntax) -->
-<!-- ## Site config options and how to set them -->
-<!-- ## Page and Site APIs -->
+<!-- XXX Site checks for files and links -->
+
 <!-- ## Page metadata -->
-<!-- ## HTML generation functions -->
-<!-- Conveniences -->
 <!-- ## Using Plano project commands -->
 <!-- ## Project commands -->
 <!-- Once you have set up the project, you can use the `./plano` command in -->

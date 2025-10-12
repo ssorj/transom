@@ -38,6 +38,7 @@ from html.parser import HTMLParser
 # os.path.relpath is a lot faster than Path.relative_to in Python 3.12
 from os.path import relpath as relative_path
 from pathlib import Path
+from poyo import parse_string as parse_yaml
 from queue import Queue
 from urllib import parse as urlparse
 
@@ -431,7 +432,7 @@ class TemplatePage(File):
             header = text[4:end]
             text = text[end + 4:]
 
-            self.metadata = yaml.safe_load(header)
+            self.metadata = parse_yaml(header)
         else:
             self.metadata = dict()
 
@@ -986,6 +987,7 @@ class TransomCommand:
             copy(python_dir / "transom", project_dir / "python" / "transom")
             copy(python_dir / "mistune", project_dir / "python" / "mistune")
             copy(python_dir / "plano", project_dir / "python" / "plano")
+            copy(python_dir / "poyo", project_dir / "python" / "poyo")
 
     def render_command(self):
         self.site.render(force=self.args.force)
