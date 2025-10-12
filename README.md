@@ -19,11 +19,12 @@ Markdown input files into HTML output files.
   treated as templates, with `{{ }}` curly braces for template
   placeholders.  All other files are copied as is.
 
-- Template placeholders are Python code, executed using `eval()`.  The
-  Python environment is defined in `config/site.py`.
+- Template placeholders contain Python code, executed using `eval()`.
+  The Python environment is defined in `config/site.py`.
 
-- The Python environment includes `site` and `page` objects and
-  utility functions, for configuring the site and generating output.
+- The Python environment includes a `site` object for configuring the
+  site.  It also includes a `page` object and utility functions for
+  generating output.
 
 - `.md` and `.html.in` files are wrapped in page templates defined in
   `config/head.html` and `config/body.html`.
