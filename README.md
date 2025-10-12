@@ -37,7 +37,7 @@ Markdown input files into HTML output files.
 ./plano install
 ~~~
 
-## Using the transom command
+## Transom commands
 
 #### transom init
 
@@ -143,11 +143,11 @@ Serving at http://localhost:8080
 
 <!-- ## The rendering process -->
 
-## Templates
+## Page templates
 
 Transom templates allow you to generate output by embedding Python
 expressions inside `{{ }}` placeholders.  These expressions are
-designed to execute Python code using Python's `eval` function.
+executed using Python's `eval` function.
 
 You can call functions or access variables you've defined in
 `config/site.py`.  You also have access to the Transom `site` and
@@ -169,11 +169,17 @@ def get_page_info(page):
 <pre>{{get_page_info(page)}}</pre>
 ~~~
 
-## Site configuration
+`output/index.html`
 
-`config/site.py`
+~~~ html
+<pre>('/index.html', 'Transom', None, <transom.main.TransomSite object at 0x7fd43615ce90>)</pre>
+~~~
 
-XXX Table with the other files under config/.
+<!-- ## Site configuration -->
+
+<!-- `config/site.py` -->
+
+<!-- XXX Table with the other files under config/. -->
 
 ## The Site API
 

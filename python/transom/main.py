@@ -613,7 +613,7 @@ class SiteInterface(Restricted):
 
 class PageInterface(Restricted):
     def __init__(self, obj):
-        allowed = "site", "url", "title", "head", "extra_headers", "body", "content", \
+        allowed = "site", "parent", "url", "title", "head", "extra_headers", "body", "content", \
             "path_nav", "toc_nav", "directory_nav", "include"
         super().__init__(obj, allowed)
 
