@@ -224,6 +224,7 @@ Symlink the Transom and Plano libraries into your `python` directory:
 ~~~ sh
 mkdir -p python
 ln -s ../external/transom/python/transom python/transom
+ln -s ../external/transom/python/mistune python/mistune
 ln -s ../external/transom/python/plano python/plano
 ~~~
 
