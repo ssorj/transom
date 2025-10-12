@@ -60,6 +60,8 @@ transom: Creating 'input/site.css'
 transom: Creating 'input/site.js'
 ~~~
 
+#### transom init --github
+
 If you want to deploy your site from a GitHub repo, use the `--github`
 option to include additional files in the starter project:
 
@@ -194,10 +196,12 @@ link URLs from link checking.  The default is `[]`, the empty list.
 
 `page.site` - The site API object.
 
-`page.include(path)` - Include the file at `path`.  Any variables in
-the input file are evaluated.
+`page.include(path)` - Include the file at `path`.  Any template
+variables in the input file are evaluated.
 
 #### HTML page parts
+
+<!-- How are these used? XXX -->
 
 `page.head` - The head element of the page.  It is a template read
 from `config/head.html`.
