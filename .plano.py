@@ -62,7 +62,4 @@ def update_mistune():
     """
     Update the embedded Mistune repo
     """
-    with temp_dir() as repo_dir:
-        make_dir(repo_dir)
-        update_external_from_github(repo_dir, "lepture", "mistune", ref="v3.1.4")
-        replace("python/transom/mistune", join(repo_dir, "src", "mistune"))
+    update_external_from_github("external/mistune", "lepture", "mistune", ref="v3.1.4")
