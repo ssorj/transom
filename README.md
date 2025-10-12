@@ -154,7 +154,7 @@ You can call functions or access variables you've defined in
 `page` objects, which have APIs for accessing metadata and performing
 object-specific operations.
 
-You can use `{{{ }}}` to produce literal `{{ }}` output.
+You can use `{{{` and `}}}` to produce literal `{{` and `}}` output.
 
 `config/site.py`:
 
