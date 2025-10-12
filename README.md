@@ -39,33 +39,57 @@ Markdown input files into HTML output files.
 
 ## Using the transom command
 
+#### transom init
+
 To generate a starter website project, use `transom init`.  The
 starter site is really basic.  It lays down an index page
 (`input/index.md`) a CSS file (`input/site.css`) and a JavaScript file
 (`input/site.js`) plus the supporting Transom config files.
 
 ~~~ console
-$ cd <your-new-project-dir>
+$ cd <your-project-dir>
 
 $ transom init
+transom: Creating 'config/body.html'
+transom: Creating 'config/head.html'
 transom: Creating 'config/site.py'
 transom: Creating 'config/transom.css'
 transom: Creating 'config/transom.js'
-transom: Creating 'config/head.html'
-transom: Creating 'config/body.html'
 transom: Creating 'input/index.md'
 transom: Creating 'input/site.css'
 transom: Creating 'input/site.js'
 ~~~
 
-If you want deploy your site from a GitHub repo, use the `--github`
-option to include additional files in the start project:
+If you want to deploy your site from a GitHub repo, use the `--github`
+option to include additional files in the starter project:
 
 ~~~ console
-XXX
+$ cd <your-project-dir>
+
+$ transom init --github
+transom: Creating 'config/body.html'
+transom: Creating 'config/head.html'
+transom: Creating 'config/site.py'
+transom: Creating 'config/transom.css'
+transom: Creating 'config/transom.js'
+transom: Creating 'input/index.md'
+transom: Creating 'input/site.css'
+transom: Creating 'input/site.js'
+transom: Creating '.github/workflows/main.yaml'
+transom: Creating '.gitignore'
+transom: Creating '.plano.py'
+transom: Creating 'plano'
+transom: Creating 'python/transom'
+transom: Creating 'python/mistune'
+transom: Creating 'python/plano'
+transom: Creating 'python/poyo'
 ~~~
 
-XXX self-contained
+The resulting site code is self-contained.  You don't need any
+dependencies beyond the Python standard library.  Use the `./plano`
+command to perform site operations.
+
+#### transom render
 
 The `transom render` command uses the config and input files to
 generate the rendered output.
@@ -79,6 +103,8 @@ Rendered 3 output files
 
 Now you have the HTML website under `<your-project-dir>/output`.  You
 can send that whereever you need it for publishing purposes.
+
+#### transom serve
 
 For local development, you will likely want to use the `transom serve`
 command.  This renders the site to the output dir and stands up a
@@ -201,48 +227,3 @@ or `input/<file>.html.in`.
 `html_table_csv(path, **attrs)`
 
 `convert_markdown(text)`
-
-## Setting up Transom for a website repo
-
-Change directory to the root of your project:
-
-~~~
-cd <project-dir>/
-~~~
-
-Add the Transom code as a subdirectory:
-
-~~~
-mkdir -p external
-curl -sfL https://github.com/ssorj/transom/archive/main.tar.gz | tar -C external -xz
-mv external/transom-main external/transom
-~~~
-
-Symlink the Transom and Plano libraries into your `python` directory:
-
-~~~ sh
-mkdir -p python
-ln -s ../external/transom/python/transom python/transom
-ln -s ../external/transom/python/mistune python/mistune
-ln -s ../external/transom/python/plano python/plano
-~~~
-
-Copy the `plano` command into the root of your project:
-
-~~~ sh
-cp external/transom/plano plano
-~~~
-
-Copy the standard config files:
-
-~~~ sh
-cp external/transom/profiles/website/.plano.py .plano.py
-cp external/transom/profiles/website/.gitignore .gitignore
-~~~
-
-Copy the standard workflow file:
-
-~~~ sh
-mkdir -p .github/workflows
-cp external/transom/profiles/website/.github/workflows/main.yaml .github/workflows/main.yaml
-~~~
