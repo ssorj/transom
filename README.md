@@ -89,7 +89,9 @@ The resulting site code is self-contained.  You don't need any
 dependencies beyond the Python standard library.  Use the `./plano`
 command to perform site operations.
 
-#### transom render
+<!-- How to set up GitHub Pages to use this -->
+
+#### transom render (./plano render)
 
 The `transom render` command uses the config and input files to
 generate the rendered output.
@@ -104,7 +106,7 @@ Rendered 3 output files
 Now you have the HTML website under `<your-project-dir>/output`.  You
 can send that whereever you need it for publishing purposes.
 
-#### transom serve
+#### transom serve (./plano serve)
 
 For local development, you will likely want to use the `transom serve`
 command.  This renders the site to the output dir and stands up a
@@ -132,11 +134,12 @@ Serving at http://localhost:8080
 
 <!-- ## Site configuration -->
 
-<!-- ## Page configuration -->
+<!-- ## Page configuration (YAML header) -->
 
-## The rendering process
+<!-- (./plano serve) -->
+<!-- Explain plano, the command runner - think Make but Python-centric -->
 
-XXX
+<!-- ## The rendering process -->
 
 ## Templates
 
