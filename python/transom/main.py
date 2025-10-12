@@ -982,7 +982,10 @@ class TransomCommand:
                  project_dir / ".github" / "workflows" / "main.yaml")
             copy(profile_dir / ".gitignore", project_dir / ".gitignore")
             copy(profile_dir / ".plano.py", project_dir / ".plano.py")
+            copy(profile_dir / "plano", project_dir / "plano")
             copy(python_dir / "transom", project_dir / "python" / "transom")
+            copy(python_dir / "mistune", project_dir / "python" / "mistune")
+            copy(python_dir / "plano", project_dir / "python" / "plano")
 
     def render_command(self):
         self.site.render(force=self.args.force)
