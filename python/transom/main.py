@@ -309,21 +309,20 @@ class File:
         self.output_mtime = None
 
         self.url = f"{self.site.prefix}/{relative_path(self.output_path, self.site.output_dir)}"
-        self.title = None
+        self.title = self.output_path.name
         self.parent = None
 
-        dir_ = self.input_path.parent
-        name = self.input_path.name
+        parent_dir = self.input_path.parent
 
-        if name in File.INDEX_FILE_NAMES:
-            self.site.index_files[dir_] = self
-            dir_ = dir_.parent
+        if self.input_path.name in File.INDEX_FILE_NAMES:
+            self.site.index_files[parent_dir] = self
+            parent_dir = parent_dir.parent
 
-        while dir_ not in File.ROOT_PATHS:
+        while parent_dir not in File.ROOT_PATHS:
             try:
-                self.parent = self.site.index_files[dir_]
+                self.parent = self.site.index_files[parent_dir]
             except KeyError:
-                dir_ = dir_.parent
+                parent_dir = parent_dir.parent
             else:
                 break
 
@@ -369,11 +368,6 @@ class File:
                 yield file_
 
 class StaticFile(File):
-    def process_input(self):
-        super().process_input()
-
-        self.title = self.output_path.name
-
     def render_output(self):
         super().render_output()
 
@@ -395,6 +389,21 @@ class TemplatePage(File):
         text = self.input_path.read_text()
         text, header = self.extract_header(text)
 
+        file_extension = "".join(self.input_path.suffixes)
+
+        match file_extension:
+            case ".md":
+                m = TemplatePage.MARKDOWN_TITLE_REGEX.search(text)
+                self.title = m.group(1) if m else ""
+            case ".html.in":
+                m = TemplatePage.HTML_BODY_TITLE_REGEX.search(text)
+                self.title = m.group(1) if m else ""
+            case ".html":
+                m = TemplatePage.HTML_PAGE_TITLE_REGEX.search(text)
+                self.title = m.group(1) if m else ""
+            case _:
+                self.title = self.input_path.name
+
         self.template = Template(text, self.input_path)
         self.locals = {"page": PageInterface(self)}
 
@@ -405,22 +414,6 @@ class TemplatePage(File):
                 raise
             except Exception as e:
                 raise TransomError(f"{self.input_path}: header: {e}")
-
-        if self.title is None:
-            file_extension = "".join(self.input_path.suffixes)
-
-            match file_extension:
-                case ".md":
-                    m = TemplatePage.MARKDOWN_TITLE_REGEX.search(text)
-                    self.title = m.group(1) if m else ""
-                case ".html.in":
-                    m = TemplatePage.HTML_BODY_TITLE_REGEX.search(text)
-                    self.title = m.group(1) if m else ""
-                case ".html":
-                    m = TemplatePage.HTML_PAGE_TITLE_REGEX.search(text)
-                    self.title = m.group(1) if m else ""
-                case _:
-                    self.title = self.input_path.name
 
     def extract_header(self, text):
         if text.startswith("---\n"):
