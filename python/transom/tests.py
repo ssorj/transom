@@ -32,9 +32,9 @@ result_file = "output/result.json"
 
 class test_site(working_dir):
     def __enter__(self):
-        dir = super(test_site, self).__enter__()
+        dir_ = super().__enter__()
         copy(test_site_dir, ".", inside=False, symlinks=False)
-        return dir
+        return dir_
 
 @test
 def transom_options():
@@ -115,10 +115,11 @@ def transom_render():
 
         transom_command.main(["render", "--verbose", "--init-only"])
 
-    with test_site():
-        remove("config/body.html") # No body template
+    # XXX require page.html?
+    # with test_site():
+    #     remove("config/body.html") # No body template
 
-        transom_command.main(["render", "--verbose"])
+    #     transom_command.main(["render", "--verbose"])
 
 @test
 def transom_serve():

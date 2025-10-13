@@ -38,40 +38,10 @@ from html.parser import HTMLParser
 # os.path.relpath is a lot faster than Path.relative_to in Python 3.12
 from os.path import relpath as relative_path
 from pathlib import Path
-from poyo import parse_string as parse_yaml
 from queue import Queue
 from urllib import parse as urlparse
 
 __all__ = ["TransomSite", "TransomCommand"]
-
-DEFAULT_PAGE_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-
-{{page.head}}
-
-{{page.body}}
-
-</html>
-"""
-
-DEFAULT_HEAD_TEMPLATE = """
-<head>
-  <title>{{page.title}}</title>
-  <link rel="icon" href="data:;"/>
-
-{{page.extra_headers}}
-
-</head>
-"""
-
-DEFAULT_BODY_TEMPLATE = """
-<body>
-
-{{page.content}}
-
-</body>
-"""
 
 class TransomError(Exception):
     pass
@@ -96,7 +66,7 @@ class TransomSite:
         self.files = list()
         self.index_files = dict() # parent input dir => File
 
-        self.template_globals = {
+        self.globals = {
             "site": SiteInterface(self),
             "lipsum": lipsum,
             "plural": plural,
@@ -106,12 +76,12 @@ class TransomSite:
         }
 
     def init(self):
-        self.page_template = Template.load(self.config_dir / "page.html", DEFAULT_PAGE_TEMPLATE)
-        self.head_template = Template.load(self.config_dir / "head.html", DEFAULT_HEAD_TEMPLATE)
-        self.body_template = Template.load(self.config_dir / "body.html", DEFAULT_BODY_TEMPLATE)
+        self.page_template = self.load_template(self.config_dir / "page.html")
+        self.head_template = self.load_template(self.config_dir / "head.html")
+        self.body_template = self.load_template(self.config_dir / "body.html")
 
         try:
-            exec((self.config_dir / "site.py").read_text(), self.template_globals)
+            exec((self.config_dir / "site.py").read_text(), self.globals)
         except FileNotFoundError as e:
             self.warning("Config file not found: {}", e)
 
@@ -119,6 +89,13 @@ class TransomSite:
             ("(?:{})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns])))
 
         self.init_files()
+
+    def load_template(self, path):
+        # XXX Path?
+        try:
+            return Template(path.read_text(), path)
+        except FileNotFoundError as e:
+            pass
 
     def init_files(self):
         self.files.clear()
@@ -159,7 +136,7 @@ class TransomSite:
 
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
 
-        thread_count = os.cpu_count()
+        thread_count = 1 # os.cpu_count() # XXX consider debug mode
         batch_size = (len(self.files) + thread_count - 1) // thread_count
         threads = list()
         render_counter = ThreadSafeCounter()
@@ -170,7 +147,7 @@ class TransomSite:
             end = start + batch_size
             files = self.files[start:end]
 
-            threads.append(RenderThread(self, f"RenderThread{i + 1}", files, errors))
+            threads.append(RenderThread(self, f"RenderThread{i + 1:02}", files, errors))
 
         for thread in threads:
             thread.start()
@@ -309,6 +286,12 @@ class TransomSite:
     def warning(self, message, *args):
         print("Warning:", message.format(*args))
 
+    # XXX A protocol for exceptions
+    # Duplication with Command XXX
+    def fail(self, message, *args):
+        print("Error!", message)
+        sys.exit(1)
+
 class File:
     __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title", "parent"
     INDEX_FILE_NAMES = "index.md", "index.html.in", "index.html"
@@ -324,7 +307,7 @@ class File:
         self.output_mtime = None
 
         self.url = f"{self.site.prefix}/{relative_path(self.output_path, self.site.output_dir)}"
-        self.title = self.output_path.name
+        self.title = None
         self.parent = None
 
         dir_ = self.input_path.parent
@@ -384,6 +367,11 @@ class File:
                 yield file_
 
 class StaticFile(File):
+    def process_input(self):
+        super().process_input()
+
+        self.title = self.output_path.name
+
     def render_output(self):
         super().render_output()
 
@@ -391,7 +379,7 @@ class StaticFile(File):
         shutil.copy(self.input_path, self.output_path)
 
 class TemplatePage(File):
-    __slots__ = "metadata", "template", "template_locals"
+    __slots__ = "template", "locals"
     MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
     HTML_PAGE_TITLE_REGEX = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
     HTML_BODY_TITLE_REGEX = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
@@ -403,12 +391,18 @@ class TemplatePage(File):
         super().process_input()
 
         text = self.input_path.read_text()
-        text = self.extract_metadata(text)
+        text, header = self.extract_header(text)
 
         self.template = Template(text, self.input_path)
-        self.template_locals = {"page": PageInterface(self)}
+        self.locals = {"page": PageInterface(self)}
 
-        self.title = self.metadata.get("title")
+        if header:
+            try:
+                exec(header, self.site.globals, self.locals)
+            except TransomError:
+                raise
+            except Exception as e:
+                raise TransomError(f"{self.input_path}: header: {e}")
 
         if self.title is None:
             file_extension = "".join(self.input_path.suffixes)
@@ -426,17 +420,15 @@ class TemplatePage(File):
                 case _:
                     self.title = self.input_path.name
 
-    def extract_metadata(self, text):
+    def extract_header(self, text):
         if text.startswith("---\n"):
             end = text.index("---\n", 4)
             header = text[4:end]
             text = text[end + 4:]
-
-            self.metadata = parse_yaml(header)
         else:
-            self.metadata = dict()
+            header = None
 
-        return text
+        return text, header
 
     def render_output(self):
         super().render_output()
@@ -446,11 +438,12 @@ class TemplatePage(File):
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         self.output_path.write_text(output)
 
-    def include(self, input_path):
-        return Template.load(Path(input_path)).render(self)
+    def include(self, path):
+        # XXX Do I need to bake the template part in here?  Do I want to?
+        return self.site.load_template(Path(path)).render(self)
 
 class HtmlPage(TemplatePage):
-    __slots__ = "head_template", "body_template", "content_template"
+    __slots__ = "head_template", "body_template", "content_template", "extra_headers"
 
     def process_input(self):
         super().process_input()
@@ -458,29 +451,18 @@ class HtmlPage(TemplatePage):
         # Shift the input file template down to be a child of the page
         # template
         self.content_template = self.template
+        self.template = self.site.page_template
 
-        try:
-            self.template = Template.load(Path(self.metadata["page_template"]))
-        except KeyError:
-            self.template = self.site.page_template
+        self.head_template = self.site.head_template
+        self.body_template = self.site.body_template
 
-        try:
-            self.head_template = Template.load(Path(self.metadata["head_template"]))
-        except KeyError:
-            self.head_template = self.site.head_template
+        self.extra_headers = "" # XXX A list?
 
-        try:
-            self.body_template = Template.load(Path(self.metadata["body_template"]), "{{page.content}}")
-        except KeyError:
-            self.body_template = self.site.body_template
+        #     self.template = Template.load(Path(self.metadata["page_template"]))
 
     @property
     def head(self):
         return self.head_template.render(self)
-
-    @property
-    def extra_headers(self):
-        return self.metadata.get("extra_headers", "")
 
     @property
     def body(self):
@@ -541,9 +523,9 @@ class Template:
         self.pieces = list()
         self.context = context
 
-        self.parse_template(text)
+        self.parse(text)
 
-    def parse_template(self, text):
+    def parse(self, text):
         for token in Template.VARIABLE_REGEX.split(text):
             if token.startswith("{{{") and token.endswith("}}}"):
                 piece = token[1:-1]
@@ -557,18 +539,29 @@ class Template:
 
             self.pieces.append(piece)
 
-    @staticmethod
-    def load(path, default_text=""):
-        if path is None or not path.exists():
-            return Template(default_text, "[default]")
+    # XXX
+    # @staticmethod
+    # def require(path):
+    #     try:
+    #         Template(path.read_text(), path)
+    #     except FileNotFoundError as e:
+    #         self.fail(
+    #         raise TransomError(f"Template file not found: {path}")
 
-        return Template(path.read_text(), path)
+    #     return
+
+    # @staticmethod
+    # def load(path):
+    #     if not path.exists():
+    #         return
+
+    #     return Template(path.read_text(), path)
 
     def render(self, page):
         for piece in self.pieces:
             if type(piece) is types.CodeType:
                 try:
-                    result = eval(piece, page.site.template_globals, page.template_locals)
+                    result = eval(piece, page.site.globals, page.locals)
                 except TransomError:
                     raise
                 except Exception as e:
@@ -619,7 +612,7 @@ class PageInterface(Restricted):
 
     @property
     def site(self):
-        return self._object.site.template_globals.site
+        return self._object.site.globals.site
 
 class RenderThread(threading.Thread):
     def __init__(self, site, name, files, errors):
@@ -931,12 +924,9 @@ class TransomCommand:
         message = "Warning: {}".format(message)
         self.print_message(message, *args)
 
-    def error(self, message, *args):
+    def fail(self, message, *args):
         message = "Error! {}".format(message)
         self.print_message(message, *args)
-
-    def fail(self, message, *args):
-        self.error(message, *args)
         sys.exit(1)
 
     def print_message(self, message, *args):
@@ -987,7 +977,6 @@ class TransomCommand:
             copy(python_dir / "transom", project_dir / "python" / "transom")
             copy(python_dir / "mistune", project_dir / "python" / "mistune")
             copy(python_dir / "plano", project_dir / "python" / "plano")
-            copy(python_dir / "poyo", project_dir / "python" / "poyo")
 
     def render_command(self):
         self.site.render(force=self.args.force)

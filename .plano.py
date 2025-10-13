@@ -33,6 +33,7 @@ def build(*args, **kwargs):
 
         with working_dir(quiet=True):
             touch("config/config.py", quiet=True)
+            touch("config/page.html", quiet=True)
             run("transom render --init-only", quiet=True)
 
 @command(parent=clean)
@@ -63,10 +64,3 @@ def update_mistune():
     Update the embedded Mistune repo
     """
     update_external_from_github("external/mistune", "lepture", "mistune", ref="v3.1.4")
-
-@command
-def update_poyo():
-    """
-    Update the embedded Poyo repo
-    """
-    update_external_from_github("external/poyo", "hackebrot", "poyo", ref="0.5.0")

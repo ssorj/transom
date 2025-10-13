@@ -1,7 +1,9 @@
 ---
-title: Test 3
-test_attribute: |
-  abc
+page.title = "Test 3 Whoa"
+
+def littlebig(page):
+    return f"LITTLE BIG {page.site}"
+
 ---
 
 <h1>Test 3</h1>
@@ -23,3 +25,5 @@ test_attribute: |
 {{albert}}
 
 {{benny()}}
+
+<pre>{{littlebig(page)}}</pre>
