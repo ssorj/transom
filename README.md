@@ -145,9 +145,11 @@ Serving at http://localhost:8080
 
 ## Page templates
 
+<!-- XXX which files -->
+
 Transom templates allow you to generate output by embedding Python
 expressions inside `{{ }}` placeholders.  These expressions are
-executed using Python's `eval` function.
+executed using Python's `eval()` function.
 
 You can call functions or access variables you've defined in
 `config/site.py`.  You also have access to the Transom `site` and
