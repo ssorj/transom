@@ -204,15 +204,14 @@ link URLs from link checking.  The default is `[]`, the empty list.
 
 `page.site` - The site API object.
 
-`page.include(path)` - Include the file at `path`.  Any template
-variables in the input file are evaluated.
-
 #### HTML page parts
 
 <!-- How are these used? XXX -->
 
 `page.head` - The head element of the page.  It is a template read
 from `config/head.html`.
+
+<!-- XXX How do I change the head template for a given page? -->
 
 `page.extra_headers` - A list of extra HTML headers to add to the
 HTML head element.  The default is `[]`, the empty list.
@@ -232,6 +231,8 @@ or `input/<file>.html.in`.
 `page.directory_nav()`
 
 ## Text and HTML generation functions
+
+`include(path)` - Include the file at `path`.
 
 `lipsum(count=50, end=".")`
 

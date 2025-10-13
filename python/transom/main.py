@@ -41,7 +41,7 @@ from pathlib import Path
 from queue import Queue
 from urllib import parse as urlparse
 
-__all__ = ["TransomSite", "TransomCommand"]
+__all__ = "TransomError", "TransomSite", "TransomCommand"
 
 class TransomError(Exception):
     pass
@@ -68,6 +68,7 @@ class TransomSite:
 
         self.globals = {
             "site": SiteInterface(self),
+            "include": include,
             "lipsum": lipsum,
             "plural": plural,
             "html_table": html_table,
@@ -82,8 +83,8 @@ class TransomSite:
 
         try:
             exec((self.config_dir / "site.py").read_text(), self.globals)
-        except FileNotFoundError as e:
-            self.warning("Config file not found: {}", e)
+        except FileNotFoundError:
+            self.notice("Config file not found: {}", self.config_dir / "site.py")
 
         self.ignored_file_regex = re.compile \
             ("(?:{})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns])))
@@ -91,11 +92,12 @@ class TransomSite:
         self.init_files()
 
     def load_template(self, path):
-        # XXX Path?
+        path = Path(path) if isinstance(path, str) else path
+
         try:
             return Template(path.read_text(), path)
-        except FileNotFoundError as e:
-            pass
+        except FileNotFoundError:
+            self.notice("Template file not found: {}", path)
 
     def init_files(self):
         self.files.clear()
@@ -136,7 +138,7 @@ class TransomSite:
 
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
 
-        thread_count = 1 # os.cpu_count() # XXX consider debug mode
+        thread_count = os.cpu_count() # XXX consider debug mode, one thread
         batch_size = (len(self.files) + thread_count - 1) // thread_count
         threads = list()
         render_counter = ThreadSafeCounter()
@@ -204,9 +206,9 @@ class TransomSite:
         try:
             watcher = WatcherThread(self)
         except ImportError: # pragma: nocover
-            self.notice("Failed to import pyinotify, so I won't auto-render updated input files")
-            self.notice("Try installing the Python inotify package")
-            self.notice("On Fedora, use 'dnf install python-inotify'")
+            self.notice("Failed to import pyinotify, so I won't auto-render updated input files\n"
+                        "Try installing the Python inotify package\n"
+                        "On Fedora, use 'dnf install python-inotify'")
         else:
             watcher.start()
 
@@ -433,32 +435,30 @@ class TemplatePage(File):
     def render_output(self):
         super().render_output()
 
-        output = "".join(self.template.render(self))
+        output = "".join(self.page)
 
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         self.output_path.write_text(output)
 
-    def include(self, path):
-        # XXX Do I need to bake the template part in here?  Do I want to?
-        return self.site.load_template(Path(path)).render(self)
+    @property
+    def page(self):
+        return self.template.render(self)
 
 class HtmlPage(TemplatePage):
-    __slots__ = "head_template", "body_template", "content_template", "extra_headers"
+    __slots__ = "page_template", "head_template", "body_template", "content_template", "extra_headers"
 
     def process_input(self):
         super().process_input()
 
-        # Shift the input file template down to be a child of the page
-        # template
-        self.content_template = self.template
-        self.template = self.site.page_template
-
+        self.page_template = self.site.page_template
         self.head_template = self.site.head_template
         self.body_template = self.site.body_template
 
-        self.extra_headers = "" # XXX A list?
+        self.extra_headers = ""
 
-        #     self.template = Template.load(Path(self.metadata["page_template"]))
+    @property
+    def page(self):
+        return self.page_template.render(self)
 
     @property
     def head(self):
@@ -470,7 +470,7 @@ class HtmlPage(TemplatePage):
 
     @property
     def content(self):
-        return self.content_template.render(self)
+        return self.template.render(self)
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
@@ -539,24 +539,6 @@ class Template:
 
             self.pieces.append(piece)
 
-    # XXX
-    # @staticmethod
-    # def require(path):
-    #     try:
-    #         Template(path.read_text(), path)
-    #     except FileNotFoundError as e:
-    #         self.fail(
-    #         raise TransomError(f"Template file not found: {path}")
-
-    #     return
-
-    # @staticmethod
-    # def load(path):
-    #     if not path.exists():
-    #         return
-
-    #     return Template(path.read_text(), path)
-
     def render(self, page):
         for piece in self.pieces:
             if type(piece) is types.CodeType:
@@ -607,7 +589,7 @@ class SiteInterface(Restricted):
 class PageInterface(Restricted):
     def __init__(self, obj):
         allowed = "site", "parent", "url", "title", "head", "extra_headers", "body", "content", \
-            "path_nav", "toc_nav", "directory_nav", "include"
+            "path_nav", "toc_nav", "directory_nav"
         super().__init__(obj, allowed)
 
     @property
@@ -1032,6 +1014,10 @@ LIPSUM_WORDS = (
     "vestibulum", "vitae", "augue", "non", "augue", "lobortis", "semper", "nullam", "fringilla", "odio", "quis",
     "ligula", "consequat", "condimentum", "integer", "tempus", "sem",
 )
+
+def include(path):
+    path = Path(path) if isinstance(path, str) else path
+    return path.read_text()
 
 def lipsum(count=50, end="."):
     return (" ".join((LIPSUM_WORDS[i % len(LIPSUM_WORDS)] for i in range(count))) + end).capitalize()
