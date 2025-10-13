@@ -33,6 +33,7 @@ import yaml
 
 from collections import defaultdict
 from collections.abc import Iterable
+from functools import cache
 from html import escape as html_escape
 from html.parser import HTMLParser
 # os.path.relpath is a lot faster than Path.relative_to in Python 3.12
@@ -462,6 +463,7 @@ class HtmlPage(TemplatePage):
         return self.body_template.render(self)
 
     @property
+    @cache
     def content(self):
         return self.template.render(self)
 
@@ -491,22 +493,13 @@ class HtmlPage(TemplatePage):
         return f"<nav class=\"page-directory\">{''.join(links)}</nav>"
 
 class MarkdownPage(HtmlPage):
-    __slots__ = "converted_content",
-
-    def process_input(self):
-        super().process_input()
-
-        self.converted_content = None
-
     @property
+    @cache
     def content(self):
-        if self.converted_content is None:
-            try:
-                self.converted_content = convert_markdown("".join(super().content))
-            except Exception as e:
-                raise TransomError(f"Error converting Markdown: {self.input_path}: {e}")
-
-        return self.converted_content
+        try:
+            return convert_markdown("".join(super().content))
+        except Exception as e:
+            raise TransomError(f"Error converting Markdown: {self.input_path}: {e}")
 
 class Template:
     __slots__ = "pieces", "context"
