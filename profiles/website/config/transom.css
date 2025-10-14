@@ -207,6 +207,8 @@
 
     :where(:is(header, footer) > div:nth-child(3)) {
         flex: 0 1 calc((100% - (var(--page-width, 1100px))) / 2);
+        display: flex;
+        justify-content: right;
     }
 
     :where(main) {

@@ -1,1 +1,28 @@
-../../../profiles/website/config/body.html
+<body>
+  <header>
+    <div>
+      <a href="{{site.prefix}}/index.html">★</a>
+    </div>
+    <div>
+
+{{page.path_nav()}}
+
+    </div>
+    <div>
+      <a href="{{site.prefix}}/index.html">★</a>
+    </div>
+  </header>
+  <main>
+
+{{page.content}}
+
+  </main>
+  <aside>
+
+{{page.toc_nav()}}
+
+  </aside>
+
+{{render("config/footer.md")}}
+
+</body>

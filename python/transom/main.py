@@ -33,7 +33,7 @@ import yaml
 
 from collections import defaultdict
 from collections.abc import Iterable
-from functools import cache
+from functools import cache, partial
 from html import escape as html_escape
 from html.parser import HTMLParser
 # os.path.relpath is a lot faster than Path.relative_to in Python 3.12
@@ -48,7 +48,7 @@ class TransomError(Exception):
     pass
 
 class TransomSite:
-    def __init__(self, project_dir, verbose=False, quiet=False):
+    def __init__(self, project_dir, verbose=False, quiet=False, debug=False):
         self.project_dir = Path(project_dir).resolve()
         self.config_dir = self.project_dir / "config"
         self.input_dir = self.project_dir / "input"
@@ -56,6 +56,7 @@ class TransomSite:
 
         self.verbose = verbose
         self.quiet = quiet
+        self.debug_mode = debug
 
         self.ignored_file_patterns = [".git", ".svn", ".#*", "#*"]
         self.ignored_link_patterns = []
@@ -74,8 +75,11 @@ class TransomSite:
             "plural": plural,
             "html_table": html_table,
             "html_table_csv": html_table_csv,
-            "convert_markdown": convert_markdown,
+            "load_template": partial(TransomSite.load_template, self),
         }
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.project_dir})"
 
     def init(self):
         self.page_template = self.load_template(self.config_dir / "page.html")
@@ -98,6 +102,7 @@ class TransomSite:
         try:
             return Template(path.read_text(), path)
         except FileNotFoundError:
+            # XXX self.fail("Template file not found: {}", path)
             self.notice("Template file not found: {}", path)
 
     def init_files(self):
@@ -118,16 +123,15 @@ class TransomSite:
                 self.files.append(self.init_file(root / name))
 
     def init_file(self, input_path):
-        file_extension = "".join(input_path.suffixes)
         output_path = self.output_dir / relative_path(input_path, self.input_dir)
 
-        match file_extension:
+        match "".join(input_path.suffixes):
             case ".md":
                 return MarkdownPage(self, input_path, output_path.with_suffix(".html"))
             case ".html.in":
                 return HtmlPage(self, input_path, output_path.with_suffix(""))
             case ".css" | ".js" | ".html":
-                return TemplatePage(self, input_path, output_path)
+                return AssetPage(self, input_path, output_path)
             case _:
                 return StaticFile(self, input_path, output_path)
 
@@ -139,7 +143,7 @@ class TransomSite:
 
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
 
-        thread_count = os.cpu_count() # XXX consider debug mode, one thread
+        thread_count = 1 if self.debug_mode else os.cpu_count()
         batch_size = (len(self.files) + thread_count - 1) // thread_count
         threads = list()
         render_counter = ThreadSafeCounter()
@@ -292,7 +296,7 @@ class TransomSite:
     # XXX A protocol for exceptions
     # Duplication with Command XXX
     def fail(self, message, *args):
-        print("Error!", message)
+        print("Error!", message.format(*args))
         sys.exit(1)
 
 class File:
@@ -308,6 +312,8 @@ class File:
 
         self.output_path = output_path
         self.output_mtime = None
+
+        self.debug("Initializing")
 
         self.url = f"{self.site.prefix}/{relative_path(self.output_path, self.site.output_dir)}"
         self.title = self.output_path.name
@@ -340,10 +346,11 @@ class File:
         return self.input_mtime > self.output_mtime
 
     def process_input(self):
-        self.site.debug("Processing input of {}", self)
+        self.debug("Processing input")
 
     def render_output(self):
-        self.site.debug("Rendering output of {}", self)
+        self.debug("Rendering output")
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
     def collect_link_data(self, link_sources, link_targets):
         link_targets.add(self.url)
@@ -368,18 +375,19 @@ class File:
             if file_.parent is self:
                 yield file_
 
+    def debug(self, message, *args):
+        message = f"{self.input_path}: {message}"
+        self.site.debug(message, *args)
+
 class StaticFile(File):
+    __slots__ = ()
+
     def render_output(self):
         super().render_output()
-
-        self.output_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(self.input_path, self.output_path)
 
-class TemplatePage(File):
+class Page(File):
     __slots__ = "template", "locals"
-    MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
-    HTML_PAGE_TITLE_REGEX = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
-    HTML_BODY_TITLE_REGEX = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
 
     def is_modified(self):
         return self.site.config_modified or super().is_modified()
@@ -390,33 +398,12 @@ class TemplatePage(File):
         text = self.input_path.read_text()
         text, header = self.extract_header(text)
 
-        file_extension = "".join(self.input_path.suffixes)
-
-        match file_extension:
-            case ".md":
-                m = TemplatePage.MARKDOWN_TITLE_REGEX.search(text)
-                self.title = m.group(1) if m else ""
-            case ".html.in":
-                m = TemplatePage.HTML_BODY_TITLE_REGEX.search(text)
-                self.title = m.group(1) if m else ""
-            case ".html":
-                m = TemplatePage.HTML_PAGE_TITLE_REGEX.search(text)
-                self.title = m.group(1) if m else ""
-            case _:
-                self.title = self.input_path.name
-
         self.template = Template(text, self.input_path)
-        self.locals = {"page": PageInterface(self)}
 
-        if header:
-            try:
-                exec(header, self.site.globals, self.locals)
-            except TransomError:
-                raise
-            except Exception as e:
-                raise TransomError(f"{self.input_path}: header: {e}")
+        return text, header
 
     def extract_header(self, text):
+        # XXX Make this tolerant of trailing whitespace
         if text.startswith("---\n"):
             end = text.index("---\n", 4)
             header = text[4:end]
@@ -426,23 +413,41 @@ class TemplatePage(File):
 
         return text, header
 
-    def render_output(self):
-        super().render_output()
+    def exec_header(self, header):
+        if not header:
+            return
 
-        output = "".join(self.page)
+        self.debug("Executing header")
 
-        self.output_path.parent.mkdir(parents=True, exist_ok=True)
-        self.output_path.write_text(output)
+        try:
+            exec(header, self.site.globals, self.locals)
+        except TransomError:
+            raise
+        except Exception as e:
+            raise TransomError(f"{self.input_path}: header: {e}")
 
-    @property
-    def page(self):
-        return self.template.render(self)
-
-class HtmlPage(TemplatePage):
-    __slots__ = "page_template", "head_template", "body_template", "content_template", "extra_headers"
+class AssetPage(Page):
+    __slots__ = ()
 
     def process_input(self):
-        super().process_input()
+        text, header = super().process_input()
+
+        self.locals = {"page": PageInterface(self)}
+
+        self.exec_header(header)
+
+    def render_output(self):
+        super().render_output()
+        self.output_path.write_text("".join(self.template.render(self)))
+
+class HtmlPage(Page):
+    __slots__ = "page_template", "head_template", "body_template", "content_template", "extra_headers"
+    MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
+    HTML_PAGE_TITLE_REGEX = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+    HTML_BODY_TITLE_REGEX = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
+
+    def process_input(self):
+        text, header = super().process_input()
 
         self.page_template = self.site.page_template
         self.head_template = self.site.head_template
@@ -450,9 +455,39 @@ class HtmlPage(TemplatePage):
 
         self.extra_headers = ""
 
-    @property
-    def page(self):
-        return self.page_template.render(self)
+        match "".join(self.input_path.suffixes):
+            case ".md":
+                m = HtmlPage.MARKDOWN_TITLE_REGEX.search(text)
+                self.title = m.group(1) if m else ""
+            case ".html.in":
+                m = HtmlPage.HTML_BODY_TITLE_REGEX.search(text)
+                self.title = m.group(1) if m else ""
+            case ".html":
+                m = HtmlPage.HTML_PAGE_TITLE_REGEX.search(text)
+                self.title = m.group(1) if m else ""
+            case _:
+                self.title = self.input_path.name
+
+        self.locals = {
+            "page": PageInterface(self),
+            "render": partial(HtmlPage.render_file, self),
+        }
+
+        self.exec_header(header)
+
+    def render_file(self, path):
+        path = Path(path) if isinstance(path, str) else path
+        pieces = self.site.load_template(path).render(self)
+
+        match "".join(path.suffixes):
+            case ".md":
+                return convert_markdown("".join(pieces))
+            case _:
+                return pieces
+
+    def render_output(self):
+        super().render_output()
+        self.output_path.write_text("".join(self.page_template.render(self)))
 
     @property
     def head(self):
@@ -463,7 +498,6 @@ class HtmlPage(TemplatePage):
         return self.body_template.render(self)
 
     @property
-    @cache
     def content(self):
         return self.template.render(self)
 
@@ -493,6 +527,8 @@ class HtmlPage(TemplatePage):
         return f"<nav class=\"page-directory\">{''.join(links)}</nav>"
 
 class MarkdownPage(HtmlPage):
+    __slots__ = ()
+
     @property
     @cache
     def content(self):
@@ -568,14 +604,19 @@ class Restricted:
         raise AttributeError(f"Accessing '{name}' is not allowed")
 
 class SiteInterface(Restricted):
+    __slots__ = ()
+
     def __init__(self, obj):
-        allowed = "prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns"
+        allowed = "prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns", "globals"
         super().__init__(obj, allowed)
 
 class PageInterface(Restricted):
+    __slots__ = ()
+
     def __init__(self, obj):
         allowed = "site", "parent", "url", "title", "head", "extra_headers", "body", "content", \
-            "path_nav", "toc_nav", "directory_nav"
+            "path_nav", "toc_nav", "directory_nav", \
+            "locals"
         super().__init__(obj, allowed)
 
     @property
@@ -804,8 +845,6 @@ class TransomCommand:
         self.parser.formatter_class = argparse.RawDescriptionHelpFormatter
 
         self.args = None
-        self.quiet = False
-        self.verbose = False
 
         subparsers = self.parser.add_subparsers(title="subcommands")
 
@@ -816,6 +855,8 @@ class TransomCommand:
                             help="Print detailed logging to the console")
         common.add_argument("--quiet", action="store_true",
                             help="Print no logging to the console")
+        common.add_argument("--debug", action="store_true",
+                            help="Enable debug mode")
         common.add_argument("--output", metavar="OUTPUT-DIR",
                             help="The output directory (default: PROJECT-DIR/output)")
         common.add_argument("project_dir", metavar="PROJECT-DIR", nargs="?", default=".",
@@ -858,11 +899,9 @@ class TransomCommand:
             self.parser.print_usage()
             sys.exit(1)
 
-        self.quiet = self.args.quiet
-        self.verbose = self.args.verbose
-
         if self.args.command_fn != self.init_command:
-            self.site = TransomSite(self.args.project_dir, verbose=self.verbose, quiet=self.quiet)
+            self.site = TransomSite(self.args.project_dir, verbose=self.args.verbose, quiet=self.args.quiet,
+                                    debug=self.args.debug)
 
             if self.args.output:
                 self.site.output_dir = self.args.output
@@ -885,7 +924,7 @@ class TransomCommand:
             pass
 
     def notice(self, message, *args):
-        if not self.quiet:
+        if not self.args.quiet:
             self.print_message(message, *args)
 
     def warning(self, message, *args):

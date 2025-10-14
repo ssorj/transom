@@ -4,6 +4,9 @@
 
 Transom renders static websites from Markdown and Python.
 
+<!-- XXX Markdown conversion happens after templates are resolved, so
+you can generate markdown in functions -->
+
 ## Overview
 
 Transom is a static site generator written in Python.  It converts
@@ -12,12 +15,15 @@ Markdown input files into HTML output files.
 - Input files come from `input/`.  Corresponding output files go to
   `output/`.
 
-- `.md` input files are converted to `.html` output files.  Transom
-  uses [Mistune][mistune] for conversion.
-
 - `.md`, `.html.in`, `.html`, `.js`, and `.css` input files are
   treated as templates, with `{{ }}` curly braces for template
   placeholders.  All other files are copied as is.
+
+- `.md` input files are converted to `.html` output files.  Transom
+  uses [Mistune][mistune] for conversion.
+
+- `.md` and `.html.in` files are wrapped in page templates defined in
+  `config/page.html`, `config/head.html`, and `config/body.html`.
 
 - Template placeholders contain Python code, executed using `eval()`.
   The Python environment is defined in `config/site.py`.
@@ -25,9 +31,6 @@ Markdown input files into HTML output files.
 - The Python environment includes a `site` object for configuring the
   site.  It also includes a `page` object and utility functions for
   generating output.
-
-- `.md` and `.html.in` files are wrapped in page templates defined in
-  `config/head.html` and `config/body.html`.
 
 [mistune]: https://github.com/lepture/mistune
 
@@ -200,6 +203,8 @@ input files from processing.  The default is `[".git", ".svn", ".#*","#*"]`.
 `site.ignored_link_patterns` - A list of shell globs for excluding
 link URLs from link checking.  The default is `[]`, the empty list.
 
+`site.load_template(path)` - XXX Template has a render(page) method.
+
 ## The Page API
 
 `page.site` - The site API object.
@@ -226,7 +231,9 @@ or `input/<file>.html.in`.
 
 `page.path_nav(start=0, end=None, min=1)`
 
-`page.toc_nav()`
+`page.toc_nav()` - XXX inspects the page content and generates a table
+of contents from its headings.  This must be placed outside the page
+content, in a separate navigation element, such as an aside.
 
 `page.directory_nav()`
 
