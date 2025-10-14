@@ -580,6 +580,9 @@ class Restricted:
         object.__setattr__(self, "_object", obj)
         object.__setattr__(self, "_allowed", allowed)
 
+    def __repr__(self):
+        return getattr(self._object, "__repr__")()
+
     def __getattribute__(self, name):
         if name in Restricted.__slots__:
             return object.__getattribute__(self, name)
@@ -602,15 +605,16 @@ class SiteInterface(Restricted):
     __slots__ = ()
 
     def __init__(self, obj):
-        allowed = "prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns", "globals"
+        allowed = "prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns", "globals", \
+            "page_template", "head_template", "body_template"
         super().__init__(obj, allowed)
 
 class PageInterface(Restricted):
     __slots__ = ()
 
     def __init__(self, obj):
-        allowed = "site", "parent", "url", "title", "head", "body", "content", "extra_headers", "locals"
-        # XXX page_template, head_template, body_template
+        allowed = "site", "parent", "url", "title", "locals", "head", "body", "content", "extra_headers", \
+            "page_template", "head_template", "body_template"
         super().__init__(obj, allowed)
 
     @property
@@ -1018,7 +1022,8 @@ class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
 
 class MarkdownLocal(threading.local):
     def __init__(self):
-        self.value = mistune.create_markdown(renderer=HtmlRenderer(escape=False), plugins=["table", "strikethrough"])
+        plugins = "table", "strikethrough", "def_list"
+        self.value = mistune.create_markdown(renderer=HtmlRenderer(escape=False), plugins=plugins)
         self.value.block.list_rules += ['table', 'nptable']
 
 MarkdownLocal.INSTANCE = MarkdownLocal()
