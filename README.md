@@ -45,7 +45,7 @@ Markdown input files into HTML output files.
 #### transom init
 
 To generate a starter website project, use `transom init`.  The
-starter site is really basic.  It lays down an index page
+starter site is very basic.  It lays down an index page
 (`input/index.md`) a CSS file (`input/site.css`) and a JavaScript file
 (`input/site.js`) plus the supporting Transom config files.
 
@@ -55,6 +55,7 @@ $ cd <your-project-dir>
 $ transom init
 transom: Creating 'config/body.html'
 transom: Creating 'config/head.html'
+transom: Creating 'config/page.html'
 transom: Creating 'config/site.py'
 transom: Creating 'config/transom.css'
 transom: Creating 'config/transom.js'
@@ -74,6 +75,7 @@ $ cd <your-project-dir>
 $ transom init --github
 transom: Creating 'config/body.html'
 transom: Creating 'config/head.html'
+transom: Creating 'config/page.html'
 transom: Creating 'config/site.py'
 transom: Creating 'config/transom.css'
 transom: Creating 'config/transom.js'
@@ -87,7 +89,6 @@ transom: Creating 'plano'
 transom: Creating 'python/transom'
 transom: Creating 'python/mistune'
 transom: Creating 'python/plano'
-transom: Creating 'python/poyo'
 ~~~
 
 The resulting site code is self-contained.  You don't need any
@@ -150,6 +151,8 @@ Serving at http://localhost:8080
 
 <!-- XXX which files -->
 
+<!-- XXX This is missing discussion of the page header -->
+
 Transom templates allow you to generate output by embedding Python
 expressions inside `{{ }}` placeholders.  These expressions are
 executed using Python's `eval()` function.
@@ -177,7 +180,7 @@ def get_page_info(page):
 `output/index.html`
 
 ~~~ html
-<pre>('/index.html', 'Transom', None, <transom.main.TransomSite object at 0x7fd43615ce90>)</pre>
+<pre>('/index.html', 'Transom', None, TransomSite(/home/fritz/example-site))</pre>
 ~~~
 
 <!-- ## Site configuration -->
@@ -186,67 +189,93 @@ def get_page_info(page):
 
 <!-- XXX Table with the other files under config/. -->
 
-## The Site API
+<!-- XXX All site properties and functions are available in page context as well -->
 
-`site.prefix` - A string prefix used in templates and for generated
-links.  It is inserted before the file path.  This is important when
-the published site lives under a directory prefix, as is the case for
-GitHub Pages.  The default is `""`, the empty string.
+<!-- XXX paths are relative to the current dir when transom is run, which is the project_dir -->
+
+## Site properties
+
+`site.prefix` - A string prefix used in generated links.  It is
+inserted before the file path.  This is important when the published
+site lives under a directory prefix, as is the case for GitHub Pages.
+The default is `""`, meaning no prefix.
 
 `site.config_dirs` - A list of directories to watch for changes.  If
-any file changes in these directories, the whole site is re-rendered.
-The default is `["config"]`.
+any file changes, the whole site is re-rendered.  The default is
+`["config"]`, with only the standard `config/` directory.
 
 `site.ignored_file_patterns` - A list of shell globs for excluding
 input files from processing.  The default is `[".git", ".svn", ".#*","#*"]`.
 
 `site.ignored_link_patterns` - A list of shell globs for excluding
-link URLs from link checking.  The default is `[]`, the empty list.
+link URLs from link checking.  The default is `[]`, meaning none are
+ignored.
 
-`site.load_template(path)` - XXX Template has a render(page) method.
+`site.page_template` - The top-level template object for the page.
+The page template includes `{{page.head}}` and `{{page.body}}`.  The
+default is loaded from `config/page.html`.
 
-## The Page API
+`site.head_template` - The template object for the head element of the
+page.  The head template includes `{{page.extra_headers}}`.  The
+default is loaded from `config/head.html`.
 
-`page.site` - The site API object.
+`site.body_template` - The template object for the body element of the
+page.  The body element includes `{{page.content}}`.  The default is
+loaded from `config/body.html`.
 
-#### HTML page parts
+## Page properties
 
-<!-- How are these used? XXX -->
+`page.site` - The site object.
 
-`page.head` - The head element of the page.  It is a template read
-from `config/head.html`.
+`page.head` - The head element of the page.  It is rendered from
+`page.head_template`.
 
-<!-- XXX How do I change the head template for a given page? -->
+`page.extra_headers` - A list of extra HTML headers to add to the HTML
+head element.  The default is `[]`, the empty list.
 
-`page.extra_headers` - A list of extra HTML headers to add to the
-HTML head element.  The default is `[]`, the empty list.
+`page.body` - The body element of the page.  It is rendered from
+`page.body_template`.
 
-`page.body` - The body element of the page.  It is a template read
-from `config/body.html`.
+`page.content` - The primary page content.  It is rendered from
+`input/<file>.md` or `input/<file>.html.in`.
 
-`page.content` - The primary page content, read from `input/<file>.md`
-or `input/<file>.html.in`.
+`page.page_template` - The top-level template object for the page.
+The page template includes `{{page.head}}` and `{{page.body}}`.  The
+default is `site.page_template`.
 
-#### Navigation elements
+`page.head_template` - The template object for the head element of the
+page.  The head template includes `{{page.extra_headers}}`.  The
+default is `site.head_template`.
 
-`page.path_nav(start=0, end=None, min=1)`
+`page.body_template` - The template object for the body element of the
+page.  The body element includes `{{page.content}}`.  The default is
+`site.body_template`.
 
-`page.toc_nav()` - XXX inspects the page content and generates a table
-of contents from its headings.  This must be placed outside the page
-content, in a separate navigation element, such as an aside.
+## Functions
 
-`page.directory_nav()`
-
-## Text and HTML generation functions
+`load_template(path)` - Load a template object from `path`.  Use this
+when setting template properties.
 
 `include(path)` - Include the file at `path`.
 
-`lipsum(count=50, end=".")`
+`lipsum(count=50, end=".")` - Generate filler text.
 
-`plural(noun, count=0, plural=None)`
+`plural(noun, count=0, plural=None)` - Generate the plural form of a
+word based on `count`.  Set the plural form explicitly with `plural`
+if it's not a simple matter of adding `s` or `es`.
 
-`html_table(data, headings=None, cell_fn=<default>, **attrs)`
+`html_table(data, headings=None, cell_fn=<default>, **attrs)` -
+Generate an HTML table.
 
-`html_table_csv(path, **attrs)`
+`html_table_csv(path, **attrs)`- Generate an HTML table from a CSV
+file.
 
-`convert_markdown(text)`
+`render(path)` - XXX Uses the local variables on page
+
+`path_nav(start=0, end=None, min=1)`
+
+`toc_nav()` - XXX inspects the page content and generates a table
+of contents from its headings.  This must be placed outside the page
+content, in a separate navigation element, such as an aside.
+
+`directory_nav()`

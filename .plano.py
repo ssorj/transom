@@ -45,6 +45,18 @@ def clean(*args, **kwargs):
     remove(".coverage")
 
 @command
+def render_readme():
+    """
+    Render README.html from README.md
+    """
+    markdown = read("README.md")
+    html = convert_github_markdown(markdown)
+
+    write("README.html", html)
+
+    print(f"file:{get_real_path('README.html')}")
+
+@command
 def update_bullseye():
     """
     Update the embedded Bullseye repo
