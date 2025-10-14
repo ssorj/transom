@@ -390,7 +390,7 @@ class Page(File):
     __slots__ = "template", "locals"
 
     def is_modified(self):
-        return self.site.config_modified or super().is_modified()
+        return super().is_modified() or self.site.config_modified
 
     def process_input(self):
         super().process_input()
@@ -753,7 +753,6 @@ class WatcherThread:
 
         def render_file(event):
             input_path = Path(relative_path(event.pathname, Path.cwd()))
-            base_name = input_path.name
 
             if input_path.is_dir():
                 return True
