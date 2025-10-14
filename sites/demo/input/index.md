@@ -1,3 +1,3 @@
 # Transom
 
-{{page.directory_nav()}}
+{{directory_nav()}}

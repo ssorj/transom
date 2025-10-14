@@ -56,7 +56,7 @@ class TransomSite:
 
         self.verbose = verbose
         self.quiet = quiet
-        self.debug_mode = debug
+        self.debug_ = debug
 
         self.ignored_file_patterns = [".git", ".svn", ".#*", "#*"]
         self.ignored_link_patterns = []
@@ -143,7 +143,7 @@ class TransomSite:
 
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
 
-        thread_count = 1 if self.debug_mode else os.cpu_count()
+        thread_count = 1 if self.debug_ else os.cpu_count()
         batch_size = (len(self.files) + thread_count - 1) // thread_count
         threads = list()
         render_counter = ThreadSafeCounter()
@@ -462,20 +462,13 @@ class HtmlPage(Page):
         self.locals = {
             "page": PageInterface(self),
             "render": partial(HtmlPage.render_file, self),
+            "path_nav": partial(HtmlPage.path_nav, self),
+            "toc_nav": partial(HtmlPage.toc_nav, self),
+            "directory_nav": partial(HtmlPage.directory_nav, self),
         }
 
         if header:
             self.exec_header(header)
-
-    def render_file(self, path):
-        path = Path(path) if isinstance(path, str) else path
-        pieces = self.site.load_template(path).render(self)
-
-        match "".join(path.suffixes):
-            case ".md":
-                return convert_markdown("".join(pieces))
-            case _:
-                return pieces
 
     def render_output(self):
         super().render_output()
@@ -492,6 +485,16 @@ class HtmlPage(Page):
     @property
     def content(self):
         return self.template.render(self)
+
+    def render_file(self, path):
+        path = Path(path) if isinstance(path, str) else path
+        pieces = self.site.load_template(path).render(self)
+
+        match "".join(path.suffixes):
+            case ".md":
+                return convert_markdown("".join(pieces))
+            case _:
+                return pieces
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
@@ -606,9 +609,8 @@ class PageInterface(Restricted):
     __slots__ = ()
 
     def __init__(self, obj):
-        allowed = "site", "parent", "url", "title", "head", "extra_headers", "body", "content", \
-            "path_nav", "toc_nav", "directory_nav", \
-            "locals"
+        allowed = "site", "parent", "url", "title", "head", "body", "content", "extra_headers", "locals"
+        # XXX page_template, head_template, body_template
         super().__init__(obj, allowed)
 
     @property

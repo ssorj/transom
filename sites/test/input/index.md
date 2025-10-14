@@ -1,5 +1,5 @@
 # Transom
 
-{{page.directory_nav()}}
+{{directory_nav()}}
 
 <pre>{{get_page_info(page)}}</pre>
