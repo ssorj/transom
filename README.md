@@ -211,17 +211,18 @@ input files from processing.  The default is `[".git", ".svn", ".#*","#*"]`.
 link URLs from link checking.  The default is `[]`, meaning none are
 ignored.
 
-`site.page_template` - The top-level template object for the page.
-The page template includes `{{page.head}}` and `{{page.body}}`.  The
-default is loaded from `config/page.html`.
+`site.page_template` - The default top-level template object for HTML
+pages.  The page template includes `{{page.head}}` and
+`{{page.body}}`.  The default is loaded from `config/page.html`.
 
-`site.head_template` - The template object for the head element of the
-page.  The head template includes `{{page.extra_headers}}`.  The
-default is loaded from `config/head.html`.
+`site.head_template` - The default template object for the head
+element of HTML pages.  The head template includes
+`{{page.extra_headers}}`.  The default is loaded from
+`config/head.html`.
 
-`site.body_template` - The template object for the body element of the
-page.  The body element includes `{{page.content}}`.  The default is
-loaded from `config/body.html`.
+`site.body_template` - The default template object for the body
+element of HTML pages.  The body element includes `{{page.content}}`.
+The default is loaded from `config/body.html`.
 
 ## Page properties
 
