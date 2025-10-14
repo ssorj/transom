@@ -254,24 +254,17 @@ page.  The body element includes `{{page.content}}`.  The default is
 
 ## Functions
 
-`load_template(path)` - Load a template object from `path`.  Use this
-when setting template properties.
+#### File operations
 
 `include(path)` - Include the file at `path`.
 
-`lipsum(count=50, end=".")` - Generate filler text.
+`load_template(path)` - Load a template object from `path`.  Use this
+when setting template properties.
 
-`plural(noun, count=0, plural=None)` - Generate the plural form of a
-word based on `count`.  Set the plural form explicitly with `plural`
-if it's not a simple matter of adding `s` or `es`.
+`render(path)` - Include the file at `path` and render it as a
+template.  If `path` ends with `.md`, it is converted to HTML.
 
-`html_table(data, headings=None, cell_fn=<default>, **attrs)` -
-Generate an HTML table.
-
-`html_table_csv(path, **attrs)`- Generate an HTML table from a CSV
-file.
-
-`render(path)` - XXX Uses the local variables on page
+#### Page navigation functions
 
 `path_nav(start=0, end=None, min=1)`
 
@@ -280,3 +273,19 @@ of contents from its headings.  This must be placed outside the page
 content, in a separate navigation element, such as an aside.
 
 `directory_nav()`
+
+#### HTML generation functions
+
+`html_table(data, headings=None, cell_fn=<default>, **attrs)` -
+Generate an HTML table.
+
+`html_table_csv(path, **attrs)`- Generate an HTML table from a CSV
+file.
+
+#### Text generation functions
+
+`lipsum(count=50, end=".")` - Generate filler text.
+
+`plural(noun, count=0, plural=None)` - Generate the plural form of a
+word based on `count`.  Set the plural form explicitly with `plural`
+if it's not a simple matter of adding `s` or `es`.
