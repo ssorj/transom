@@ -396,13 +396,7 @@ class Page(File):
         super().process_input()
 
         text = self.input_path.read_text()
-        text, header = self.extract_header(text)
 
-        self.template = Template(text, self.input_path)
-
-        return text, header
-
-    def extract_header(self, text):
         # XXX Make this tolerant of trailing whitespace
         if text.startswith("---\n"):
             end = text.index("---\n", 4)
@@ -411,12 +405,12 @@ class Page(File):
         else:
             header = None
 
+        self.template = Template(text, self.input_path)
+        self.locals = {"page": PageInterface(self)}
+
         return text, header
 
     def exec_header(self, header):
-        if not header:
-            return
-
         self.debug("Executing header")
 
         try:
@@ -430,11 +424,10 @@ class AssetPage(Page):
     __slots__ = ()
 
     def process_input(self):
-        text, header = super().process_input()
+        _, header = super().process_input()
 
-        self.locals = {"page": PageInterface(self)}
-
-        self.exec_header(header)
+        if header:
+            self.exec_header(header)
 
     def render_output(self):
         super().render_output()
@@ -465,15 +458,14 @@ class HtmlPage(Page):
             case ".html":
                 m = HtmlPage.HTML_PAGE_TITLE_REGEX.search(text)
                 self.title = m.group(1) if m else ""
-            case _:
-                self.title = self.input_path.name
 
         self.locals = {
             "page": PageInterface(self),
             "render": partial(HtmlPage.render_file, self),
         }
 
-        self.exec_header(header)
+        if header:
+            self.exec_header(header)
 
     def render_file(self, path):
         path = Path(path) if isinstance(path, str) else path
