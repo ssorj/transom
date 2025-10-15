@@ -153,6 +153,8 @@ Serving at http://localhost:8080
 
 <!-- XXX This is missing discussion of the page header -->
 
+<!-- XXX The function return values can be strings or string generators (yield "somestring"). -->
+
 Transom templates allow you to generate output by embedding Python
 expressions inside `{{ }}` placeholders.  These expressions are
 executed using Python's `eval()` function.
@@ -180,7 +182,7 @@ def get_page_info(page):
 `output/index.html`
 
 ~~~ html
-<pre>('/index.html', 'Transom', None, TransomSite(/home/fritz/example-site))</pre>
+<pre>('/index.html', 'Transom', None, TransomSite('/home/fritz/example-site'))</pre>
 ~~~
 
 <!-- ## Site configuration -->
@@ -205,7 +207,7 @@ any file changes, the whole site is re-rendered.  The default is
 `["config"]`, with only the standard `config/` directory.
 
 `site.ignored_file_patterns` - A list of shell globs for excluding
-input files from processing.  The default is `[".git", ".svn", ".#*","#*"]`.
+input files from processing.  The default is `[".git", ".#*","#*"]`.
 
 `site.ignored_link_patterns` - A list of shell globs for excluding
 link URLs from link checking.  The default is `[]`, meaning none are

@@ -2,7 +2,7 @@
 page.title = "Test 3 Whoa"
 
 def littlebig(page):
-    return f"LITTLE BIG {page.site}"
+    return f"LITTLE BIG {site}"
 ---
 
 <h1>Test 3</h1>

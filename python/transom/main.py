@@ -50,15 +50,15 @@ class TransomError(Exception):
 class TransomSite:
     def __init__(self, project_dir, verbose=False, quiet=False, debug=False):
         self.project_dir = Path(project_dir).resolve()
-        self.config_dir = self.project_dir / "config"
-        self.input_dir = self.project_dir / "input"
-        self.output_dir = self.project_dir / "output"
+        self.config_dir = (self.project_dir / "config").relative_to(Path.cwd())
+        self.input_dir = (self.project_dir / "input").relative_to(Path.cwd())
+        self.output_dir = (self.project_dir / "output").relative_to(Path.cwd())
 
         self.verbose = verbose
         self.quiet = quiet
         self.debug_ = debug
 
-        self.ignored_file_patterns = [".git", ".svn", ".#*", "#*"]
+        self.ignored_file_patterns = [".git", ".#*", "#*"]
         self.ignored_link_patterns = []
 
         self.prefix = ""
@@ -79,7 +79,7 @@ class TransomSite:
         }
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.project_dir})"
+        return f"{self.__class__.__name__}('{self.project_dir}')"
 
     def init(self):
         self.page_template = self.load_template(self.config_dir / "page.html")
@@ -127,7 +127,7 @@ class TransomSite:
 
         match "".join(input_path.suffixes):
             case ".md":
-                return MarkdownPage(self, input_path, output_path.with_suffix(".html"))
+                return HtmlPage(self, input_path, output_path.with_suffix(".html"))
             case ".html.in":
                 return HtmlPage(self, input_path, output_path.with_suffix(""))
             case ".css" | ".js" | ".html":
@@ -334,7 +334,7 @@ class File:
                 break
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.input_path}, {self.output_path})"
+        return f"{self.__class__.__name__}('{self.input_path}', '{self.output_path}')"
 
     def is_modified(self):
         if self.output_mtime is None:
@@ -483,8 +483,18 @@ class HtmlPage(Page):
         return self.body_template.render(self)
 
     @property
+    @cache
     def content(self):
-        return self.template.render(self)
+        pieces = self.template.render(self)
+
+        match "".join(self.input_path.suffixes):
+            case ".md":
+                try:
+                    return convert_markdown("".join(pieces))
+                except Exception as e:
+                    raise TransomError(f"Error converting Markdown: {self.input_path}: {e}")
+            case _:
+                return pieces
 
     def render_file(self, path):
         path = Path(path) if isinstance(path, str) else path
@@ -521,17 +531,6 @@ class HtmlPage(Page):
 
         return f"<nav class=\"page-directory\">{''.join(links)}</nav>"
 
-class MarkdownPage(HtmlPage):
-    __slots__ = ()
-
-    @property
-    @cache
-    def content(self):
-        try:
-            return convert_markdown("".join(super().content))
-        except Exception as e:
-            raise TransomError(f"Error converting Markdown: {self.input_path}: {e}")
-
 class Template:
     __slots__ = "pieces", "context"
     VARIABLE_REGEX = re.compile(r"({{{.+?}}}|{{.+?}})")
@@ -541,6 +540,9 @@ class Template:
         self.context = context
 
         self.parse(text)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}('{self.context}')"
 
     def parse(self, text):
         for token in Template.VARIABLE_REGEX.split(text):
@@ -573,7 +575,7 @@ class Template:
             else:
                 yield piece
 
-class Restricted:
+class RestrictedInterface:
     __slots__ = "_object", "_allowed"
 
     def __init__(self, obj, allowed):
@@ -584,7 +586,7 @@ class Restricted:
         return getattr(self._object, "__repr__")()
 
     def __getattribute__(self, name):
-        if name in Restricted.__slots__:
+        if name in RestrictedInterface.__slots__:
             return object.__getattribute__(self, name)
 
         if name in self._allowed:
@@ -593,7 +595,7 @@ class Restricted:
         raise AttributeError(f"Accessing '{name}' is not allowed")
 
     def __setattr__(self, name, value):
-        assert name not in Restricted.__slots__
+        assert name not in RestrictedInterface.__slots__
 
         if name in self._allowed:
             setattr(self._object, name, value)
@@ -601,24 +603,25 @@ class Restricted:
 
         raise AttributeError(f"Accessing '{name}' is not allowed")
 
-class SiteInterface(Restricted):
+class SiteInterface(RestrictedInterface):
     __slots__ = ()
 
     def __init__(self, obj):
-        allowed = "prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns", "globals", \
+        allowed = "prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns", \
             "page_template", "head_template", "body_template"
         super().__init__(obj, allowed)
 
-class PageInterface(Restricted):
+class PageInterface(RestrictedInterface):
     __slots__ = ()
 
     def __init__(self, obj):
-        allowed = "site", "parent", "url", "title", "locals", "head", "body", "content", "extra_headers", \
+        allowed = "url", "title", "parent", "head", "extra_headers", "body", "content", \
             "page_template", "head_template", "body_template"
         super().__init__(obj, allowed)
 
     @property
     def site(self):
+        print(333)
         return self._object.site.globals.site
 
 class RenderThread(threading.Thread):
@@ -742,45 +745,52 @@ class HeadingParser(HTMLParser):
             self.open_element_id = None
             self.open_element_text = list()
 
+# XXX Try using the unthreaded notifier
 class WatcherThread:
     def __init__(self, site):
-        import pyinotify as _pyinotify
+        import pyinotify
 
         self.site = site
 
-        watcher = _pyinotify.WatchManager()
-        mask = _pyinotify.IN_CREATE | _pyinotify.IN_MODIFY
+        watcher = pyinotify.WatchManager()
+        mask = pyinotify.IN_CREATE | pyinotify.IN_MODIFY
 
         def render_file(event):
-            input_path = Path(relative_path(event.pathname, Path.cwd()))
-
-            if input_path.is_dir():
-                return True
-
-            if self.site.ignored_file_regex.match(input_path.name):
-                return True
-
             try:
-                file_ = self.site.init_file(input_path)
-            except FileNotFoundError:
-                return True
+                input_path = Path(relative_path(event.pathname, Path.cwd()))
 
-            file_.process_input()
-            file_.render_output()
+                if input_path.is_dir():
+                    return True
 
-            if self.site.output_dir.exists():
-                self.site.output_dir.touch()
+                if self.site.ignored_file_regex.match(input_path.name):
+                    return True
+
+                try:
+                    file_ = self.site.init_file(input_path)
+                except FileNotFoundError:
+                    return True
+
+                file_.process_input()
+                file_.render_output()
+
+                if self.site.output_dir.exists():
+                    self.site.output_dir.touch()
+            except:
+                traceback.print_exc()
 
         def render_site(event):
-            self.site.init()
-            self.site.render()
+            try:
+                self.site.init()
+                self.site.render()
+            except:
+                traceback.print_exc()
 
         watcher.add_watch(str(self.site.input_dir), mask, render_file, rec=True, auto_add=True)
 
         for config_dir in self.site.config_dirs:
             watcher.add_watch(config_dir, mask, render_site, rec=True, auto_add=True)
 
-        self.notifier = _pyinotify.ThreadedNotifier(watcher)
+        self.notifier = pyinotify.ThreadedNotifier(watcher)
 
     def start(self):
         self.site.notice("Watching for input file changes")
