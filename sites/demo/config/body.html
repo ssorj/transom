@@ -1,1 +1,36 @@
-../../../profiles/website/config/body.html
+<body>
+  <header>
+    <div>
+      <a href="{{site.prefix}}/index.html">★</a>
+    </div>
+    <div>
+
+{{path_nav()}}
+
+    </div>
+    <div>
+      <a href="{{site.prefix}}/index.html">★</a>
+    </div>
+  </header>
+  <main>
+
+{{page.content}}
+
+  </main>
+  <aside>
+
+{{toc_nav()}}
+
+  </aside>
+  <footer>
+    <div></div>
+    <div style="display: flex; justify-content: space-between; gap: 1em;">
+
+{{interface_object_properties("site", site)}}
+
+{{interface_object_properties("page", page)}}
+
+    </div>
+    <div></div>
+  </footer>
+</body>

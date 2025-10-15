@@ -1,10 +1,8 @@
 <footer>
   <div></div>
-  <div style="display: flex; justify-content: space-between; gap: 1em;">
+  <div>
 
-{{interface_object_properties("site", site)}}
-
-{{interface_object_properties("page", page)}}
+_An included and rendered Markdown footer_
 
   </div>
   <div></div>

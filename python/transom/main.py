@@ -73,6 +73,7 @@ class TransomSite:
             "include": include,
             "lipsum": lipsum,
             "plural": plural,
+            "html_escape": html_escape,
             "html_table": html_table,
             "html_table_csv": html_table_csv,
             "load_template": partial(TransomSite.load_template, self),
