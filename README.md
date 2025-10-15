@@ -278,6 +278,8 @@ content, in a separate navigation element, such as an aside.
 
 #### HTML generation functions
 
+`html_escape(xxx)` - XXX
+
 `html_table(data, headings=None, cell_fn=<default>, **attrs)` -
 Generate an HTML table.
 

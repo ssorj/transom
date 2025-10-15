@@ -48,6 +48,11 @@ class TransomError(Exception):
     pass
 
 class TransomSite:
+    FALLBACK_PAGE_TEMPLATE = \
+        """<!doctype html><html lang="en">""" \
+        """<head><meta charset="utf-8"><title>{{page.title}}</title></head>""" \
+        """<body>{{page.content}}</body></html>"""
+
     def __init__(self, project_dir, verbose=False, quiet=False, debug=False):
         self.project_dir = Path(project_dir).resolve()
         self.config_dir = (self.project_dir / "config").relative_to(Path.cwd())
@@ -83,9 +88,22 @@ class TransomSite:
         return f"{self.__class__.__name__}('{self.project_dir}')"
 
     def init(self):
-        self.page_template = self.load_template(self.config_dir / "page.html")
-        self.head_template = self.load_template(self.config_dir / "head.html")
-        self.body_template = self.load_template(self.config_dir / "body.html")
+        page_template_path = self.config_dir / "page.html"
+        head_template_path = self.config_dir / "head.html"
+        body_template_path = self.config_dir / "body.html"
+
+        # XXX try except these, which requires allowign FNF to bubble up
+
+        if page_template_path.exists():
+            self.page_template = self.load_template(page_template_path)
+        else:
+            self.page_template = Template(TransomSite.FALLBACK_PAGE_TEMPLATE, "[fallback]")
+
+        if head_template_path.exists():
+            self.head_template = self.load_template(head_template_path)
+
+        if body_template_path.exists():
+            self.body_template = self.load_template(body_template_path)
 
         try:
             exec((self.config_dir / "site.py").read_text(), self.globals)
@@ -103,8 +121,7 @@ class TransomSite:
         try:
             return Template(path.read_text(), path)
         except FileNotFoundError:
-            # XXX self.fail("Template file not found: {}", path)
-            self.notice("Template file not found: {}", path)
+            self.fail("Template file not found: {}", path)
 
     def init_files(self):
         self.files.clear()
@@ -533,17 +550,17 @@ class HtmlPage(Page):
         return f"<nav class=\"page-directory\">{''.join(links)}</nav>"
 
 class Template:
-    __slots__ = "pieces", "context"
+    __slots__ = "pieces", "path"
     VARIABLE_REGEX = re.compile(r"({{{.+?}}}|{{.+?}})")
 
-    def __init__(self, text, context):
+    def __init__(self, text, path):
         self.pieces = list()
-        self.context = context
+        self.path = path
 
         self.parse(text)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}('{self.context}')"
+        return f"{self.__class__.__name__}('{self.path}')"
 
     def parse(self, text):
         for token in Template.VARIABLE_REGEX.split(text):
@@ -553,7 +570,7 @@ class Template:
                 try:
                     piece = compile(token[2:-2], "<string>", "eval")
                 except Exception as e:
-                    raise TransomError(f"Error parsing template: {self.context}: {e}")
+                    raise TransomError(f"Error parsing template: {self.path}: {e}")
             else:
                 piece = token
 
@@ -567,7 +584,7 @@ class Template:
                 except TransomError:
                     raise
                 except Exception as e:
-                    raise TransomError(f"{self.context}: {e}")
+                    raise TransomError(f"{self.path}: {e}")
 
                 if type(result) is types.GeneratorType:
                     yield from result
