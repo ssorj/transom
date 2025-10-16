@@ -91,22 +91,23 @@ class TransomSite:
         try:
             self.page_template = self.load_template(self.config_dir / "page.html")
         except FileNotFoundError:
+            self.debug("Template file not found: {}", self.config_dir / "page.html")
             self.page_template = Template(TransomSite.FALLBACK_PAGE_TEMPLATE, "[fallback]")
 
         try:
             self.head_template = self.load_template(self.config_dir / "head.html")
         except FileNotFoundError:
-            pass
+            self.debug("Template file not found: {}", self.config_dir / "head.html")
 
         try:
             self.body_template = self.load_template(self.config_dir / "body.html")
         except FileNotFoundError:
-            pass
+            self.debug("Template file not found: {}", self.config_dir / "body.html")
 
         try:
             exec((self.config_dir / "site.py").read_text(), self.globals)
         except FileNotFoundError:
-            self.notice("Config file not found: {}", self.config_dir / "site.py")
+            self.debug("Config file not found: {}", self.config_dir / "site.py")
 
         self.ignored_file_regex = re.compile \
             ("(?:{})".format("|".join(fnmatch.translate(x) for x in self.ignored_file_patterns)))
@@ -143,7 +144,7 @@ class TransomSite:
             case ".html.in":
                 return HtmlPage(self, input_path, output_path.with_suffix(""))
             case ".css" | ".js" | ".html":
-                return AssetFile(self, input_path, output_path)
+                return TemplateFile(self, input_path, output_path)
             case _:
                 return StaticFile(self, input_path, output_path)
 
@@ -244,11 +245,11 @@ class TransomSite:
                 watcher.stop()
 
     def check_files(self):
-        expected_paths = {x.output_path for x in self.files}
+        expected_paths = set(x.output_path for x in self.files)
         found_paths = set()
 
         for root, dirs, files in self.output_dir.walk():
-            found_paths.update((root / x for x in files))
+            found_paths.update(root / x for x in files)
 
         missing_paths = expected_paths - found_paths
         extra_paths = found_paths - expected_paths
@@ -398,22 +399,20 @@ class StaticFile(File):
         super().render_output()
         shutil.copy(self.input_path, self.output_path)
 
-class TemplateFile(File):
-    __slots__ = "template", "locals"
+class GeneratedFile(File):
+    __slots__ = ()
+    HEADER_REGEX = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
 
     def is_modified(self):
         return super().is_modified() or self.site.config_modified
 
     def extract_header(self, text):
-        # XXX Make this tolerant of trailing whitespace
-        if text.startswith("---\n"):
-            end = text.index("---\n", 4)
-            header = text[4:end]
-            text = text[end + 4:]
-        else:
-            header = None
+        match_ = GeneratedFile.HEADER_REGEX.match(text)
 
-        return text, header
+        if match_:
+            return text[match_.end():], match_.group(1)
+
+        return text, None
 
     def exec_header(self, header):
         self.debug("Executing header")
@@ -425,8 +424,8 @@ class TemplateFile(File):
         except Exception as e:
             raise TransomError(f"{self.input_path}: header: {e}")
 
-class AssetFile(TemplateFile):
-    __slots__ = ()
+class TemplateFile(GeneratedFile):
+    __slots__ = "template", "locals"
 
     def process_input(self):
         super().process_input()
@@ -444,10 +443,10 @@ class AssetFile(TemplateFile):
         super().render_output()
         self.template.write(self)
 
-class HtmlPage(TemplateFile):
-    __slots__ = "page_template", "head_template", "body_template", "content_template", "extra_headers"
-    MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
-    HTML_TITLE_REGEX = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
+class HtmlPage(GeneratedFile):
+    __slots__ = "page_template", "head_template", "body_template", "content_template", "extra_headers", "locals"
+    MARKDOWN_TITLE_REGEX = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
+    HTML_TITLE_REGEX = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
     def process_input(self):
         super().process_input()
@@ -455,7 +454,7 @@ class HtmlPage(TemplateFile):
         text = self.input_path.read_text()
         text, header = self.extract_header(text)
 
-        self.template = Template(text, self.input_path)
+        self.content_template = Template(text, self.input_path)
 
         self.locals = {
             "page": PageInterface(self),
@@ -496,7 +495,7 @@ class HtmlPage(TemplateFile):
     @property
     @cache
     def content(self):
-        pieces = self.template.render(self)
+        pieces = self.content_template.render(self)
 
         if self.input_path.suffix == ".md":
             return self.convert_markdown("".join(pieces))
