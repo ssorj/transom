@@ -88,22 +88,20 @@ class TransomSite:
         return f"{self.__class__.__name__}('{self.project_dir}')"
 
     def init(self):
-        page_template_path = self.config_dir / "page.html"
-        head_template_path = self.config_dir / "head.html"
-        body_template_path = self.config_dir / "body.html"
-
-        # XXX try except these, which requires allowign FNF to bubble up
-
-        if page_template_path.exists():
-            self.page_template = self.load_template(page_template_path)
-        else:
+        try:
+            self.page_template = self.load_template(self.config_dir / "page.html")
+        except FileNotFoundError:
             self.page_template = Template(TransomSite.FALLBACK_PAGE_TEMPLATE, "[fallback]")
 
-        if head_template_path.exists():
-            self.head_template = self.load_template(head_template_path)
+        try:
+            self.head_template = self.load_template(self.config_dir / "head.html")
+        except FileNotFoundError:
+            pass
 
-        if body_template_path.exists():
-            self.body_template = self.load_template(body_template_path)
+        try:
+            self.body_template = self.load_template(self.config_dir / "body.html")
+        except FileNotFoundError:
+            pass
 
         try:
             exec((self.config_dir / "site.py").read_text(), self.globals)
@@ -111,17 +109,13 @@ class TransomSite:
             self.notice("Config file not found: {}", self.config_dir / "site.py")
 
         self.ignored_file_regex = re.compile \
-            ("(?:{})".format("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns])))
+            ("(?:{})".format("|".join(fnmatch.translate(x) for x in self.ignored_file_patterns)))
 
         self.init_files()
 
     def load_template(self, path):
         path = Path(path) if isinstance(path, str) else path
-
-        try:
-            return Template(path.read_text(), path)
-        except FileNotFoundError:
-            self.fail("Template file not found: {}", path)
+        return Template(path.read_text(), path)
 
     def init_files(self):
         self.files.clear()
