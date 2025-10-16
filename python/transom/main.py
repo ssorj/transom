@@ -149,7 +149,7 @@ class TransomSite:
             case ".html.in":
                 return HtmlPage(self, input_path, output_path.with_suffix(""))
             case ".css" | ".js" | ".html":
-                return AssetPage(self, input_path, output_path)
+                return AssetFile(self, input_path, output_path)
             case _:
                 return StaticFile(self, input_path, output_path)
 
@@ -404,7 +404,7 @@ class StaticFile(File):
         super().render_output()
         shutil.copy(self.input_path, self.output_path)
 
-class Page(File):
+class TemplateFile(File):
     __slots__ = "template", "locals"
 
     def is_modified(self):
@@ -424,7 +424,7 @@ class Page(File):
             header = None
 
         self.template = Template(text, self.input_path)
-        self.locals = {"page": PageInterface(self)}
+        self.locals = None
 
         return text, header
 
@@ -438,7 +438,7 @@ class Page(File):
         except Exception as e:
             raise TransomError(f"{self.input_path}: header: {e}")
 
-class AssetPage(Page):
+class AssetFile(TemplateFile):
     __slots__ = ()
 
     def process_input(self):
@@ -451,7 +451,7 @@ class AssetPage(Page):
         super().render_output()
         self.output_path.write_text("".join(self.template.render(self)))
 
-class HtmlPage(Page):
+class HtmlPage(TemplateFile):
     __slots__ = "page_template", "head_template", "body_template", "content_template", "extra_headers"
     MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
     HTML_PAGE_TITLE_REGEX = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
