@@ -504,24 +504,25 @@ class HtmlPage(TemplateFile):
     def content(self):
         pieces = self.template.render(self)
 
-        match "".join(self.input_path.suffixes):
-            case ".md":
-                try:
-                    return convert_markdown("".join(pieces))
-                except Exception as e:
-                    raise TransomError(f"Error converting Markdown: {self.input_path}: {e}")
-            case _:
-                return pieces
+        if self.input_path.suffix == ".md":
+            return self.convert_markdown("".join(pieces))
+
+        return pieces
 
     def render_file(self, path):
         path = Path(path) if isinstance(path, str) else path
         pieces = self.site.load_template(path).render(self)
 
-        match "".join(path.suffixes):
-            case ".md":
-                return convert_markdown("".join(pieces))
-            case _:
-                return pieces
+        if path.suffix == ".md":
+            return self.convert_markdown("".join(pieces))
+
+        return pieces
+
+    def convert_markdown(self, text):
+        try:
+            return MarkdownLocal.INSTANCE.value(text)
+        except Exception as e:
+            raise TransomError(f"Error converting Markdown: {self.input_path}: {e}")
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
