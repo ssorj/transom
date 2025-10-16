@@ -454,19 +454,10 @@ class HtmlPage(GeneratedFile):
         text = self.input_path.read_text()
         text, header = self.extract_header(text)
 
-        self.content_template = Template(text, self.input_path)
-
-        self.locals = {
-            "page": PageInterface(self),
-            "render": partial(HtmlPage.render_file, self),
-            "path_nav": partial(HtmlPage.path_nav, self),
-            "toc_nav": partial(HtmlPage.toc_nav, self),
-            "directory_nav": partial(HtmlPage.directory_nav, self),
-        }
-
         self.page_template = self.site.page_template
         self.head_template = self.site.head_template
         self.body_template = self.site.body_template
+        self.content_template = Template(text, self.input_path)
         self.extra_headers = ""
 
         match "".join(self.input_path.suffixes):
@@ -476,6 +467,14 @@ class HtmlPage(GeneratedFile):
             case ".html.in":
                 m = HtmlPage.HTML_TITLE_REGEX.search(text)
                 self.title = m.group(1) if m else ""
+
+        self.locals = {
+            "page": PageInterface(self),
+            "render": partial(HtmlPage.render_file, self),
+            "path_nav": partial(HtmlPage.path_nav, self),
+            "toc_nav": partial(HtmlPage.toc_nav, self),
+            "directory_nav": partial(HtmlPage.directory_nav, self),
+        }
 
         if header:
             self.exec_header(header)
