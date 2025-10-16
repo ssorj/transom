@@ -67,7 +67,7 @@ class TransomSite:
         self.ignored_link_patterns = []
 
         self.prefix = ""
-        self.config_dirs = [str(self.config_dir)]
+        self.config_dirs = [self.config_dir]
         self.config_modified = False
 
         self.files = list()
@@ -526,7 +526,7 @@ class HtmlPage(TemplateFile):
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
-        links = [f"<a href=\"{x.url}\">{x.title}</a>" for x in files]
+        links = tuple(f"<a href=\"{x.url}\">{x.title}</a>" for x in files)
         links = links[start:end]
 
         if len(links) < min:
@@ -538,14 +538,14 @@ class HtmlPage(TemplateFile):
         parser = HeadingParser()
         parser.feed("".join(self.content))
 
-        links = [f"<a href=\"#{x[1]}\">{x[2]}</a>" for x in parser.headings
-                 if x[0] in ("h1", "h2") and x[1] is not None]
+        links = tuple(f"<a href=\"#{x[1]}\">{x[2]}</a>" for x in parser.headings
+                      if x[0] in ("h1", "h2") and x[1] is not None)
 
         return f"<nav class=\"page-toc\">{''.join(links)}</nav>"
 
     def directory_nav(self):
         children = sorted(self.children, key=lambda x: x.title)
-        links = ["<a href=\"{}\">{}</a>".format(x.url, x.title) for x in children]
+        links = tuple("<a href=\"{}\">{}</a>".format(x.url, x.title) for x in children)
 
         return f"<nav class=\"page-directory\">{''.join(links)}</nav>"
 
@@ -1058,9 +1058,6 @@ class MarkdownLocal(threading.local):
         self.value.block.list_rules += ['table', 'nptable']
 
 MarkdownLocal.INSTANCE = MarkdownLocal()
-
-def convert_markdown(text):
-    return MarkdownLocal.INSTANCE.value(text)
 
 LIPSUM_WORDS = (
     "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "vestibulum", "enim", "urna",
