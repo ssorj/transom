@@ -210,7 +210,7 @@ class TransomSite:
 
                 try:
                     config_mtime = path.stat().st_mtime
-                except (FileNotFoundError, PermissionError):
+                except (FileNotFoundError, PermissionError): # pragma: nocover
                     continue
 
                 if config_mtime > output_mtime:
@@ -305,12 +305,6 @@ class TransomSite:
 
     def warning(self, message, *args):
         print("Warning:", message.format(*args))
-
-    # XXX A protocol for exceptions
-    # Duplication with Command XXX
-    def fail(self, message, *args):
-        print("Error!", message.format(*args))
-        sys.exit(1)
 
 class File:
     __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title", "parent"
