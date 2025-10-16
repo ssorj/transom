@@ -629,14 +629,9 @@ class PageInterface(RestrictedInterface):
     __slots__ = ()
 
     def __init__(self, obj):
-        allowed = "url", "title", "parent", "head", "extra_headers", "body", "content", \
+        allowed = "url", "title", "parent", "head", "body", "content", "extra_headers", \
             "page_template", "head_template", "body_template"
         super().__init__(obj, allowed)
-
-    @property
-    def site(self):
-        print(333)
-        return self._object.site.globals.site
 
 class RenderThread(threading.Thread):
     def __init__(self, site, name, files, errors):
