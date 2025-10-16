@@ -410,11 +410,7 @@ class TemplateFile(File):
     def is_modified(self):
         return super().is_modified() or self.site.config_modified
 
-    def process_input(self):
-        super().process_input()
-
-        text = self.input_path.read_text()
-
+    def extract_header(self, text):
         # XXX Make this tolerant of trailing whitespace
         if text.startswith("---\n"):
             end = text.index("---\n", 4)
@@ -422,9 +418,6 @@ class TemplateFile(File):
             text = text[end + 4:]
         else:
             header = None
-
-        self.template = Template(text, self.input_path)
-        self.locals = None
 
         return text, header
 
@@ -442,7 +435,13 @@ class AssetFile(TemplateFile):
     __slots__ = ()
 
     def process_input(self):
-        _, header = super().process_input()
+        super().process_input()
+
+        text = self.input_path.read_text()
+        text, header = self.extract_header(text)
+
+        self.template = Template(text, self.input_path)
+        self.locals = None
 
         if header:
             self.exec_header(header)
@@ -454,28 +453,15 @@ class AssetFile(TemplateFile):
 class HtmlPage(TemplateFile):
     __slots__ = "page_template", "head_template", "body_template", "content_template", "extra_headers"
     MARKDOWN_TITLE_REGEX = re.compile(r"^(?:#|##)\s+(.*)")
-    HTML_PAGE_TITLE_REGEX = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
-    HTML_BODY_TITLE_REGEX = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
+    HTML_TITLE_REGEX = re.compile(r"<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>", re.IGNORECASE | re.DOTALL)
 
     def process_input(self):
-        text, header = super().process_input()
+        super().process_input()
 
-        self.page_template = self.site.page_template
-        self.head_template = self.site.head_template
-        self.body_template = self.site.body_template
+        text = self.input_path.read_text()
+        text, header = self.extract_header(text)
 
-        self.extra_headers = ""
-
-        match "".join(self.input_path.suffixes):
-            case ".md":
-                m = HtmlPage.MARKDOWN_TITLE_REGEX.search(text)
-                self.title = m.group(1) if m else ""
-            case ".html.in":
-                m = HtmlPage.HTML_BODY_TITLE_REGEX.search(text)
-                self.title = m.group(1) if m else ""
-            case ".html":
-                m = HtmlPage.HTML_PAGE_TITLE_REGEX.search(text)
-                self.title = m.group(1) if m else ""
+        self.template = Template(text, self.input_path)
 
         self.locals = {
             "page": PageInterface(self),
@@ -484,6 +470,19 @@ class HtmlPage(TemplateFile):
             "toc_nav": partial(HtmlPage.toc_nav, self),
             "directory_nav": partial(HtmlPage.directory_nav, self),
         }
+
+        self.page_template = self.site.page_template
+        self.head_template = self.site.head_template
+        self.body_template = self.site.body_template
+        self.extra_headers = ""
+
+        match "".join(self.input_path.suffixes):
+            case ".md":
+                m = HtmlPage.MARKDOWN_TITLE_REGEX.search(text)
+                self.title = m.group(1) if m else ""
+            case ".html.in":
+                m = HtmlPage.HTML_TITLE_REGEX.search(text)
+                self.title = m.group(1) if m else ""
 
         if header:
             self.exec_header(header)
