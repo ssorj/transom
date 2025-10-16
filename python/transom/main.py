@@ -49,9 +49,9 @@ class TransomError(Exception):
 
 class TransomSite:
     FALLBACK_PAGE_TEMPLATE = \
-        """<!doctype html><html lang="en">""" \
-        """<head><meta charset="utf-8"><title>{{page.title}}</title></head>""" \
-        """<body>{{page.content}}</body></html>"""
+        "<!doctype html><html lang=\"en\">" \
+        "<head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>" \
+        "<body>{{page.content}}</body></html>"
 
     def __init__(self, project_dir, verbose=False, quiet=False, debug=False):
         self.project_dir = Path(project_dir).resolve()
