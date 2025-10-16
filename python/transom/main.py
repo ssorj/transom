@@ -449,7 +449,7 @@ class AssetFile(TemplateFile):
 
     def render_output(self):
         super().render_output()
-        self.output_path.write_text("".join(self.template.render(self)))
+        self.template.write(self)
 
 class HtmlPage(TemplateFile):
     __slots__ = "page_template", "head_template", "body_template", "content_template", "extra_headers"
@@ -490,7 +490,7 @@ class HtmlPage(TemplateFile):
 
     def render_output(self):
         super().render_output()
-        self.output_path.write_text("".join(self.page_template.render(self)))
+        self.page_template.write(self)
 
     @property
     def head(self):
@@ -576,11 +576,11 @@ class Template:
 
             self.pieces.append(piece)
 
-    def render(self, page):
+    def render(self, file_):
         for piece in self.pieces:
             if type(piece) is types.CodeType:
                 try:
-                    result = eval(piece, page.site.globals, page.locals)
+                    result = eval(piece, file_.site.globals, file_.locals)
                 except TransomError:
                     raise
                 except Exception as e:
@@ -592,6 +592,10 @@ class Template:
                     yield str(result)
             else:
                 yield piece
+
+    def write(self, file_):
+        text = "".join(self.render(file_))
+        file_.output_path.write_text(text)
 
 class RestrictedInterface:
     __slots__ = "_object", "_allowed"
