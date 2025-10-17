@@ -130,6 +130,24 @@ def transom_render():
         with expect_system_exit():
             call_transom_command(["render"])
 
+    with empty_test_site():
+        write("input/test.md", "---\n1 / 0\n---\n")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
+    with empty_test_site():
+        write("config/site.py", "1 / 0")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
+    with empty_test_site():
+        write("config/site.py", "raise TransomError()")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
 @test
 def transom_serve():
     run("transom serve --help")

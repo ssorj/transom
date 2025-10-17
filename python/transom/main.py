@@ -47,13 +47,6 @@ __all__ = "TransomError", "TransomSite", "TransomCommand"
 class TransomError(Exception):
     pass
 
-class TransomPageError(TransomError):
-    def __init__(self, page):
-        self.page = page
-
-    def __str__(self):
-        return f"{self.page}: {super().__str__()}"
-
 class TransomSite:
     FALLBACK_PAGE_TEMPLATE = \
         "<!doctype html><html lang=\"en\">" \
@@ -89,6 +82,7 @@ class TransomSite:
             "html_table": html_table,
             "html_table_csv": html_table_csv,
             "load_template": partial(TransomSite.load_template, self),
+            "TransomError": TransomError,
         }
 
     def __repr__(self):
@@ -98,25 +92,31 @@ class TransomSite:
         try:
             self.page_template = self.load_template(self.config_dir / "page.html")
         except FileNotFoundError:
-            self.debug("Template file not found: {}", self.config_dir / "page.html")
+            self.debug("No template file at '{}'.  Using fallback.", self.config_dir / "page.html")
             self.page_template = Template(TransomSite.FALLBACK_PAGE_TEMPLATE, "[fallback]")
 
         try:
             self.head_template = self.load_template(self.config_dir / "head.html")
         except FileNotFoundError:
-            self.debug("Template file not found: {}", self.config_dir / "head.html")
+            self.debug("No template file at '{}'", self.config_dir / "head.html")
             self.head_template = None
 
         try:
             self.body_template = self.load_template(self.config_dir / "body.html")
         except FileNotFoundError:
-            self.debug("Template file not found: {}", self.config_dir / "body.html")
+            self.debug("No template file at '{}'", self.config_dir / "body.html")
             self.body_template = None
 
+        site_code = self.config_dir / "site.py"
+
         try:
-            exec((self.config_dir / "site.py").read_text(), self.globals)
+            exec(site_code.read_text(), self.globals)
         except FileNotFoundError:
-            self.debug("Config file not found: {}", self.config_dir / "site.py")
+            self.debug("No config file at '{}'", site_code)
+        except TransomError:
+            raise
+        except Exception as e:
+            raise TransomError(f"{site_code}: {e}")
 
         self.ignored_file_regex = re.compile \
             ("(?:{})".format("|".join(fnmatch.translate(x) for x in self.ignored_file_patterns)))
