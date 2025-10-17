@@ -26,9 +26,9 @@ import os
 import re
 import shutil
 import sys
+import types
 import threading
 import traceback
-import types
 import yaml
 
 from collections import defaultdict
@@ -196,7 +196,7 @@ class TransomSite:
             thread.join()
 
         if not errors.empty():
-            raise TransomError("Rendering failed")
+            raise errors.get()
 
         if self.output_dir.exists():
             self.output_dir.touch()
@@ -564,7 +564,7 @@ class Template:
                 piece = token[1:-1]
             elif token.startswith("{{") and token.endswith("}}"):
                 try:
-                    piece = compile(token[2:-2], "<string>", "eval")
+                    piece = compile(token[2:-2], "<string>", "eval"), token
                 except Exception as e:
                     raise TransomError(f"Error parsing template: {self.path}: {e}")
             else:
@@ -574,13 +574,15 @@ class Template:
 
     def render(self, file_):
         for piece in self.pieces:
-            if type(piece) is types.CodeType:
+            if type(piece) is tuple:
+                code, token = piece
+
                 try:
-                    result = eval(piece, file_.site.globals, file_.locals)
+                    result = eval(code, file_.site.globals, file_.locals)
                 except TransomError:
                     raise
                 except Exception as e:
-                    raise TransomError(f"{self.path}: {e}")
+                    raise TransomError(f"{self.path}: {token}: {e}")
 
                 if type(result) is types.GeneratorType:
                     yield from result

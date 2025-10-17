@@ -36,6 +36,9 @@ class test_site(working_dir):
         copy(test_site_dir, ".", inside=False, symlinks=False)
         return dir_
 
+class empty_test_site(working_dir):
+    pass
+
 def call_transom_command(args=[]):
     transom_command.main(args + ["--verbose"])
 
@@ -114,16 +117,18 @@ def transom_render():
             call_transom_command(["render"])
 
     with test_site():
-        remove("config/site.py") # No site.py
-
-        call_transom_command(["render", "--init-only"])
-
-    with test_site():
+        remove("config/site.py")
         remove("config/page.html")
         remove("config/head.html")
         remove("config/body.html")
 
         call_transom_command(["render"])
+
+    with empty_test_site():
+        write("input/test.md", "{{1 / 0}}")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
 
 @test
 def transom_serve():
