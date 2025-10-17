@@ -36,6 +36,9 @@ class test_site(working_dir):
         copy(test_site_dir, ".", inside=False, symlinks=False)
         return dir_
 
+def call_transom_command(args=[]):
+    transom_command.main(args + ["--verbose"])
+
 @test
 def transom_options():
     run("transom --help")
@@ -44,10 +47,10 @@ def transom_options():
         TransomCommand(home=None).main([])
 
     with expect_system_exit():
-        transom_command.main(["--help"])
+        call_transom_command(["--help"])
 
     with expect_system_exit():
-        transom_command.main([])
+        call_transom_command([])
 
 @test
 def transom_init():
@@ -57,10 +60,10 @@ def transom_init():
     with expect_system_exit():
         TransomCommand(home=None).main(["init"])
 
-    transom_command.main(["init", "--init-only"])
+    call_transom_command(["init", "--init-only"])
 
     with working_dir():
-        transom_command.main(["init", "--github", "--verbose"])
+        call_transom_command(["init", "--github"])
 
         check_dir("config")
         check_dir("input")
@@ -74,12 +77,12 @@ def transom_init():
         check_file(".plano.py")
         check_dir("python/transom")
 
-        transom_command.main(["init"]) # Re-init
+        call_transom_command(["init"]) # Re-init
 
     with working_dir():
         touch("input/index.html") # A preexisting index file
 
-        transom_command.main(["init"])
+        call_transom_command(["init"])
 
 @test
 def transom_render():
@@ -87,7 +90,7 @@ def transom_render():
     run("transom render --init-only --quiet")
 
     with test_site():
-        transom_command.main(["render", "--verbose"])
+        call_transom_command(["render"])
 
         check_dir("output")
         check_file("output/index.html")
@@ -101,25 +104,26 @@ def transom_render():
         assert "<title>Transom</title>" in result, result
         assert "<h1 id=\"transom\">Transom</h1>" in result, result
 
-        transom_command.main(["render", "--quiet"])
-        transom_command.main(["render", "--force", "--verbose"])
+        call_transom_command(["render", "--quiet"]) # XXX
+        call_transom_command(["render", "--force"])
 
     with test_site():
         touch("input/index.html") # A duplicate index file
 
         with expect_system_exit():
-            transom_command.main(["render", "--verbose"])
+            call_transom_command(["render"])
 
     with test_site():
         remove("config/site.py") # No site.py
 
-        transom_command.main(["render", "--verbose", "--init-only"])
+        call_transom_command(["render", "--init-only"])
 
-    # XXX require page.html?
-    # with test_site():
-    #     remove("config/body.html") # No body template
+    with test_site():
+        remove("config/page.html")
+        remove("config/head.html")
+        remove("config/body.html")
 
-    #     transom_command.main(["render", "--verbose"])
+        call_transom_command(["render"])
 
 @test
 def transom_serve():
@@ -128,9 +132,9 @@ def transom_serve():
 
     with test_site():
         def run_():
-            transom_command.main(["serve", "--port", "9191"])
+            call_transom_command(["serve", "--port", "9191"])
 
-        server = Thread(target=run_)
+        server = Thread(target=run_, name="test-thread")
         server.start()
 
         await_port(9191)
@@ -140,8 +144,16 @@ def transom_serve():
         http_get("http://localhost:9191/site.css")
         http_get("http://localhost:9191/site.js")
 
-        write("input/another.md", "# Another") # A new file
-        write("input/#ignore.md", "# Ignore")  # A new ignored file
+        write("input/another.md", "# Another")  # A new file
+        write("input/#ignore.md", "# Ignore")   # A new ignored file
+        write("config/#ignore.html", "<html/>") # A new config file
+
+        sleep(0.1)
+
+        http_get("http://localhost:9191/another.html")
+
+        with expect_error():
+            http_get("http://localhost:9191/ignore.html")
 
         http_post("http://localhost:9191/STOP", "please")
 
@@ -153,15 +165,15 @@ def transom_check_links():
     run("transom check-links --init-only --verbose")
 
     with test_site():
-        transom_command.main(["render"])
-        transom_command.main(["check-links"])
+        call_transom_command(["render"])
+        call_transom_command(["check-links"])
 
         append("input/test-1.md", "[Not there](not-there.html)")
 
-        transom_command.main(["render"])
+        call_transom_command(["render"])
 
         with expect_system_exit():
-            transom_command.main(["check-links"])
+            call_transom_command(["check-links"])
 
 @test
 def transom_check_files():
@@ -169,13 +181,13 @@ def transom_check_files():
     run("transom check-files --init-only --quiet")
 
     with test_site():
-        transom_command.main(["render"])
+        call_transom_command(["render"])
 
         remove("input/test-1.md") # An extra output file
         remove("output/test-2.html") # A missing output file
 
         with expect_system_exit():
-            transom_command.main(["check-files"])
+            call_transom_command(["check-files"])
 
 @test
 def plano_render():

@@ -47,6 +47,13 @@ __all__ = "TransomError", "TransomSite", "TransomCommand"
 class TransomError(Exception):
     pass
 
+class TransomPageError(TransomError):
+    def __init__(self, page):
+        self.page = page
+
+    def __str__(self):
+        return f"{self.page}: {super().__str__()}"
+
 class TransomSite:
     FALLBACK_PAGE_TEMPLATE = \
         "<!doctype html><html lang=\"en\">" \
@@ -98,11 +105,13 @@ class TransomSite:
             self.head_template = self.load_template(self.config_dir / "head.html")
         except FileNotFoundError:
             self.debug("Template file not found: {}", self.config_dir / "head.html")
+            self.head_template = None
 
         try:
             self.body_template = self.load_template(self.config_dir / "body.html")
         except FileNotFoundError:
             self.debug("Template file not found: {}", self.config_dir / "body.html")
+            self.body_template = None
 
         try:
             exec((self.config_dir / "site.py").read_text(), self.globals)
@@ -152,6 +161,7 @@ class TransomSite:
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
 
         if self.output_dir.exists():
+            self.debug("Checking for config file changes")
             self.config_modified = self.compute_config_modified()
 
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
@@ -167,7 +177,7 @@ class TransomSite:
             end = start + batch_size
             files = self.files[start:end]
 
-            threads.append(RenderThread(self, f"RenderThread{i + 1:02}", files, errors))
+            threads.append(RenderThread(self, f"render-thread-{i + 1:02}", files, errors))
 
         for thread in threads:
             thread.start()
@@ -320,7 +330,7 @@ class File:
         self.output_path = output_path
         self.output_mtime = None
 
-        self.debug("Initializing")
+        self.debug("Initializing file")
 
         self.url = f"{self.site.prefix}/{relative_path(self.output_path, self.site.output_dir)}"
         self.title = self.output_path.name
@@ -756,11 +766,12 @@ class WatcherThread:
         self.site = site
 
         watcher = pyinotify.WatchManager()
-        mask = pyinotify.IN_CREATE | pyinotify.IN_MODIFY
 
         def render_file(event):
             try:
                 input_path = Path(relative_path(event.pathname, Path.cwd()))
+
+                self.site.debug("File changed: {}", input_path)
 
                 if input_path.is_dir():
                     return True
@@ -782,21 +793,24 @@ class WatcherThread:
                 traceback.print_exc()
 
         def render_site(event):
+            self.site.debug("A config file changed")
+
             try:
                 self.site.init()
                 self.site.render()
             except:
                 traceback.print_exc()
 
-        watcher.add_watch(str(self.site.input_dir), mask, render_file, rec=True, auto_add=True)
+        watcher.add_watch(str(self.site.input_dir), pyinotify.IN_CLOSE_WRITE, render_file, rec=True, auto_add=True)
 
         for config_dir in self.site.config_dirs:
-            watcher.add_watch(config_dir, mask, render_site, rec=True, auto_add=True)
+            watcher.add_watch(str(config_dir), pyinotify.IN_CLOSE_WRITE, render_site, rec=True, auto_add=True)
 
         self.notifier = pyinotify.ThreadedNotifier(watcher)
+        self.notifier.name = "watcher-thread"
 
     def start(self):
-        self.site.notice("Watching for input file changes")
+        self.site.notice("Watching for input and config file changes")
         self.notifier.start()
 
     def stop(self):
@@ -847,6 +861,8 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
 
 class TransomCommand:
     def __init__(self, home=None):
+        threading.current_thread().name = "main-thread"
+
         self.home = Path(home) if home is not None else None
         self.name = "transom"
 
