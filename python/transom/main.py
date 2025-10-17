@@ -248,7 +248,7 @@ class TransomSite:
             # OSError: [Errno 98] Address already in use
             if e.errno == 98:
                 raise TransomError(f"Port {port} is already in use")
-            else:
+            else: # pragma: nocover
                 raise
         finally:
             if watcher is not None:

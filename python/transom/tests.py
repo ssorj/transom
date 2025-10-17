@@ -155,6 +155,10 @@ def transom_serve():
         with expect_error():
             http_get("http://localhost:9191/ignore.html")
 
+        with expect_system_exit():
+            # Another server on the same port
+            call_transom_command(["serve", "--port", "9191"])
+
         http_post("http://localhost:9191/STOP", "please")
 
         server.join()
