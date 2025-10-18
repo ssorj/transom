@@ -144,6 +144,8 @@ class TransomSite:
                 self.files.append(self.init_file(root / name))
 
     def init_file(self, input_path):
+        self.debug("Initializing '{}'", input_path)
+
         output_path = self.output_dir / relative_path(input_path, self.input_dir)
 
         match "".join(input_path.suffixes):
@@ -313,14 +315,10 @@ class File:
 
     def __init__(self, site, input_path, output_path):
         self.site = site
-
         self.input_path = input_path
         self.input_mtime = self.input_path.stat().st_mtime
-
         self.output_path = output_path
         self.output_mtime = None
-
-        self.debug("Initializing file")
 
         self.url = f"{self.site.prefix}/{relative_path(self.output_path, self.site.output_dir)}"
         self.title = self.output_path.name
