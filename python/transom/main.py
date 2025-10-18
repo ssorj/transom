@@ -713,7 +713,6 @@ class HeadingParser(HTMLParser):
         super().__init__()
 
         self.headings = list()
-
         self.open_element_tag = None
         self.open_element_id = None
         self.open_element_text = list()
@@ -728,8 +727,6 @@ class HeadingParser(HTMLParser):
 
         if "id" in attrs:
             self.open_element_id = attrs["id"]
-        else:
-            self.open_element_id = None
 
     def handle_data(self, data):
         if self.open_element_tag:
@@ -756,16 +753,10 @@ class WatcherThread:
             try:
                 input_path = Path(relative_path(event.pathname, Path.cwd()))
 
-                if input_path.is_dir():
-                    return True
-
                 if self.site.ignored_file_re.match(input_path.name):
                     return True
 
-                try:
-                    file_ = self.site.init_file(input_path)
-                except FileNotFoundError:
-                    return True
+                file_ = self.site.init_file(input_path)
 
                 self.site.debug("Input file changed: {}", input_path)
 
@@ -774,7 +765,7 @@ class WatcherThread:
 
                 if self.site.output_dir.exists():
                     self.site.output_dir.touch()
-            except:
+            except: # pragma: nocover
                 traceback.print_exc()
 
         def render_site(event):
@@ -783,7 +774,7 @@ class WatcherThread:
             try:
                 self.site.init()
                 self.site.render()
-            except:
+            except: # pragma: nocover
                 traceback.print_exc()
 
         watcher.add_watch(str(self.site.input_dir), pyinotify.IN_CLOSE_WRITE, render_file, rec=True, auto_add=True)

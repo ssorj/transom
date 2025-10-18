@@ -1,7 +1,5 @@
 # Transom
 
-[![main](https://github.com/ssorj/transom/workflows/main/badge.svg)](https://github.com/ssorj/transom/actions?query=workflow%3Amain)
-
 Transom renders static websites from Markdown and Python.
 
 <!-- XXX Markdown conversion happens after templates are resolved, so
