@@ -58,6 +58,7 @@ def transom_options():
 @test
 def transom_init():
     run("transom init --help")
+    run("transom init --init-only --quiet")
     run("transom init --init-only --verbose")
 
     with expect_system_exit():
@@ -91,6 +92,7 @@ def transom_init():
 def transom_render():
     run("transom render --help")
     run("transom render --init-only --quiet")
+    run("transom render --init-only --verbose")
 
     with test_site():
         call_transom_command(["render"])
@@ -150,6 +152,7 @@ def transom_render():
 def transom_serve():
     run("transom serve --help")
     run("transom serve --init-only --port 9191 --quiet")
+    run("transom serve --init-only --port 9191 --verbose")
 
     with test_site():
         def run_():
@@ -192,6 +195,7 @@ def transom_serve():
 @test
 def transom_check_links():
     run("transom check-links --help")
+    run("transom check-links --init-only --quiet")
     run("transom check-links --init-only --verbose")
 
     with test_site():
@@ -206,6 +210,7 @@ def transom_check_links():
 def transom_check_files():
     run("transom check-files --help")
     run("transom check-files --init-only --quiet")
+    run("transom check-files --init-only --verbose")
 
     with test_site():
         write("output/extra.html", "<html/>") # An extra output file
