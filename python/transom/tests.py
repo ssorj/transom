@@ -17,12 +17,13 @@
 # under the License.
 #
 
-import csv as _csv
+import csv
+import threading
+
+from plano import *
+from xml.etree.ElementTree import XML
 
 from .main import TransomCommand, lipsum, plural, html_table, html_table_csv
-from plano import *
-from threading import Thread
-from xml.etree.ElementTree import XML
 
 transom_home = get_parent_dir(get_parent_dir(get_parent_dir(__file__)))
 result_file = "output/result.json"
@@ -158,7 +159,7 @@ def transom_serve():
         def run_():
             call_transom_command(["serve", "--port", "9191"])
 
-        server = Thread(target=run_, name="test-thread")
+        server = threading.Thread(target=run_, name="test-thread")
         server.start()
 
         await_port(9191)
@@ -237,7 +238,7 @@ def plano_serve():
         def run():
             call_plano_command(["serve", "--port", "9191", "--force"])
 
-        server = Thread(target=run)
+        server = threading.Thread(target=run)
         server.start()
 
         await_port(9191)
@@ -323,7 +324,7 @@ def html_table_functions():
 
     with working_dir():
         with open("test.csv", "w", newline="") as f:
-            writer = _csv.writer(f)
+            writer = csv.writer(f)
             writer.writerows(data)
 
         XML(html_table_csv("test.csv"))

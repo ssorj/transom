@@ -976,16 +976,13 @@ class TransomCommand:
             copy(name, project_dir / "input" / name.name)
 
         if self.args.github:
-            python_dir = self.home / "python"
-
-            copy(profile_dir / ".github" / "workflows" / "main.yaml",
-                 project_dir / ".github" / "workflows" / "main.yaml")
+            copy(profile_dir / ".github", project_dir / ".github")
             copy(profile_dir / ".gitignore", project_dir / ".gitignore")
             copy(profile_dir / ".plano.py", project_dir / ".plano.py")
             copy(profile_dir / "plano", project_dir / "plano")
-            copy(python_dir / "transom", project_dir / "python" / "transom")
-            copy(python_dir / "mistune", project_dir / "python" / "mistune")
-            copy(python_dir / "plano", project_dir / "python" / "plano")
+            copy(self.home / "python/transom", project_dir / "python/transom")
+            copy(self.home / "python/mistune", project_dir / "python/mistune")
+            copy(self.home / "python/plano", project_dir / "python/plano")
 
     def render_command(self):
         self.site.render(force=self.args.force)
