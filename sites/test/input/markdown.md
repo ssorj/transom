@@ -1,4 +1,4 @@
-# Markdown sample 2
+# Markdown sample
 
 Paragraphs are separated by a blank line.
 

@@ -627,7 +627,7 @@ class PageInterface(RestrictedInterface):
     __slots__ = ()
 
     def __init__(self, obj):
-        allowed = "url", "title", "parent", "head", "body", "content", "extra_headers", \
+        allowed = "url", "title", "parent", "body", "content", "extra_headers", \
             "page_template", "body_template"
         super().__init__(obj, allowed)
 

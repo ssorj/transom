@@ -97,8 +97,8 @@ def transom_render():
 
         check_dir("output")
         check_file("output/index.html")
-        check_file("output/test-1.html")
-        check_file("output/test-2.html")
+        check_file("output/test-cases-1.html")
+        check_file("output/test-cases-2.html")
         check_file("output/site.css")
         check_file("output/site.js")
         check_file("output/steamboat.png")
@@ -195,7 +195,7 @@ def transom_check_links():
         call_transom_command(["render"])
         call_transom_command(["check-links"])
 
-        append("input/test-1.md", "[Not there](not-there.html)")
+        append("input/test-cases-1.md", "[Not there](not-there.html)")
 
         call_transom_command(["render"])
 
@@ -210,8 +210,8 @@ def transom_check_files():
     with test_site():
         call_transom_command(["render"])
 
-        remove("input/test-1.md") # An extra output file
-        remove("output/test-2.html") # A missing output file
+        remove("input/test-cases-1.md") # An extra output file
+        remove("output/test-cases-2.html") # A missing output file
 
         with expect_system_exit():
             call_transom_command(["check-files"])

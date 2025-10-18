@@ -1,0 +1,18 @@
+---
+page.title = "Test cases 2"
+
+def littlebig(page):
+    return f"LITTLE BIG {site}"
+---
+
+<h1>{{page.title}}</h1>
+
+<!-- Duplicate link targets -->
+<h2 id="animal">Animal</h2>
+<h2 id="animal">Animal</h2>
+
+{{albert}}
+
+{{benny()}}
+
+<pre>{{littlebig(page)}}</pre>

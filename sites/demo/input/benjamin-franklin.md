@@ -1,4 +1,4 @@
-# Markdown sample 3
+# Benjamin Franklin
 
 Title: The Autobiography of Benjamin Franklin
 
