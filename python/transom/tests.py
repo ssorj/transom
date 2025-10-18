@@ -201,10 +201,13 @@ def transom_check_links():
     run("transom check-links --init-only --verbose")
 
     with test_site():
+        call_transom_command(["render"])
         call_transom_command(["check-links"])
 
     with empty_test_site():
         write("input/test.md", "[Nope](no-such-file.html)")
+
+        call_transom_command(["render"])
 
         with expect_system_exit():
             call_transom_command(["check-links"])
@@ -217,12 +220,10 @@ def transom_check_files():
 
     with test_site():
         write("output/extra.html", "<html/>") # An extra output file
-        # XXX Need a way to do this.  Right now render restores the file.
-        # remove("output/test-cases-2.html") # A missing output file
+        remove("output/test-cases-2.html") # A missing output file
 
-        # with expect_system_exit():
-        #     call_transom_command(["check-files"])
-        call_transom_command(["check-files"])
+        with expect_system_exit():
+            call_transom_command(["check-files"])
 
 @test
 def plano_render():

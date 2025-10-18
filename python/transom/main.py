@@ -875,15 +875,15 @@ class TransomCommand:
         render = subparsers.add_parser("render", parents=[common], add_help=False,
                                        help="Generate output files")
         render.set_defaults(command_fn=self.render_command)
-        render.add_argument("--force", action="store_true",
+        render.add_argument("-f", "--force", action="store_true",
                             help="Render all input files, including unchanged ones")
 
         render = subparsers.add_parser("serve", parents=[common], add_help=False,
                                        help="Generate output files and serve the site on a local port")
         render.set_defaults(command_fn=self.serve_command)
-        render.add_argument("--port", type=int, metavar="PORT", default=8080,
+        render.add_argument("-p", "--port", type=int, metavar="PORT", default=8080,
                             help="Listen on PORT (default 8080)")
-        render.add_argument("--force", action="store_true",
+        render.add_argument("-f", "--force", action="store_true",
                             help="Render all input files, including unchanged ones")
 
         check_links = subparsers.add_parser("check-links", parents=[common], add_help=False,
@@ -991,9 +991,8 @@ class TransomCommand:
         self.site.render(force=self.args.force)
         self.site.serve(port=self.args.port)
 
+    # XXX These require rendered output, but I don't want them to do the render themselves
     def check_links_command(self):
-        self.site.render(force=True)
-
         errors = self.site.check_links()
 
         if errors == 0:
@@ -1001,9 +1000,8 @@ class TransomCommand:
         else:
             self.fail("FAILED")
 
+    # XXX These require rendered output, but I don't want them to do the render themselves
     def check_files_command(self):
-        self.site.render(force=True)
-
         missing_files, extra_files = self.site.check_files()
 
         if extra_files != 0:
