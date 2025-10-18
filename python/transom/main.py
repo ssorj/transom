@@ -1067,13 +1067,16 @@ def html_table_cell(column_index, value):
     return html_elem("td", str(value if value is not None else ""))
 
 def html_table(data, headings=None, cell_fn=html_table_cell, **attrs):
-    # XXX Use thead
-    return html_elem("table", html_elem("tbody", html_table_rows(data, headings, cell_fn)), **attrs)
+    if headings:
+        thead = html_elem("thead", html_elem("tr", (html_elem("th", x) for x in headings)))
+    else:
+        thead = ""
+
+    tbody = html_elem("tbody", html_table_rows(data, headings, cell_fn))
+
+    return html_elem("table", (thead, tbody), **attrs)
 
 def html_table_rows(data, headings, cell_fn):
-    if headings:
-        yield html_elem("tr", (html_elem("th", x) for x in headings))
-
     for row in data:
         yield html_elem("tr", (cell_fn(i, x) for i, x in enumerate(row)))
 
