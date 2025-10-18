@@ -41,6 +41,8 @@ def clean(*args, **kwargs):
     parent(*args, **kwargs)
 
     remove("sites/test/output")
+    remove("sites/demo/output")
+    remove("sites/qpid/output")
     remove("htmlcov")
     remove(".coverage")
 

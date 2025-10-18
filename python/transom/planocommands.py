@@ -44,8 +44,6 @@ def check_links(passthrough_args=[]):
     """
     Check for broken links
     """
-    render()
-
     with project_env():
         TransomCommand().main(["check-links"] + passthrough_args)
 
@@ -54,14 +52,13 @@ def check_files(passthrough_args=[]):
     """
     Check for missing or extra files
     """
-    render()
-
     with project_env():
         TransomCommand().main(["check-files"] + passthrough_args)
 
 @command
 def clean():
     remove(find(".", "__pycache__"))
+    remove("output")
 
 @command
 def update_transom():

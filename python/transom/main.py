@@ -706,7 +706,7 @@ class LinkParser(HTMLParser):
             normalized_url = urlparse.urljoin(self.file.url, f"#{attrs['id']}")
 
             if normalized_url in self.link_targets:
-                self.file.site.warning("Duplicate link target in '{}'", normalized_url)
+                self.file.site.warning("Duplicate link target: {}", normalized_url)
 
             self.link_targets.add(normalized_url)
 
@@ -1006,6 +1006,8 @@ class TransomCommand:
         self.site.serve(port=self.args.port)
 
     def check_links_command(self):
+        self.site.render(force=True)
+
         errors = self.site.check_links()
 
         if errors == 0:
@@ -1014,6 +1016,8 @@ class TransomCommand:
             self.fail("FAILED")
 
     def check_files_command(self):
+        self.site.render(force=True)
+
         missing_files, extra_files = self.site.check_files()
 
         if extra_files != 0:

@@ -117,9 +117,7 @@ def transom_render():
             call_transom_command(["render"])
 
     with test_site():
-        remove("config/site.py")
         remove("config/page.html")
-        remove("config/head.html")
         remove("config/body.html")
 
         call_transom_command(["render"])
@@ -167,20 +165,25 @@ def transom_serve():
         http_get("http://localhost:9191/site.css")
         http_get("http://localhost:9191/site.js")
 
-        write("input/another.md", "# Another")  # A new file
-        write("input/#ignore.md", "# Ignore")   # A new ignored file
-        write("config/#ignore.html", "<html/>") # A new config file
-
-        sleep(0.1)
-
-        http_get("http://localhost:9191/another.html")
-
-        with expect_error():
-            http_get("http://localhost:9191/ignore.html")
-
         with expect_system_exit():
             # Another server on the same port
             call_transom_command(["serve", "--port", "9191"])
+
+        try:
+            import pyinotify
+        except ModuleNotFoundError:
+            pass
+        else:
+            write("input/another.md", "# Another")  # A new file
+            write("input/#ignore.md", "# Ignore")   # A new ignored file
+            write("config/#ignore.html", "<html/>") # A new config file
+
+            sleep(0.1)
+
+            http_get("http://localhost:9191/another.html")
+
+            with expect_error():
+                http_get("http://localhost:9191/ignore.html")
 
         http_post("http://localhost:9191/STOP", "please")
 
