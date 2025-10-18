@@ -112,9 +112,9 @@ class TransomSite:
             except Exception as e:
                 raise TransomError(f"{site_code_path}: {e}")
 
-        self.ignored_file_regex = re.compile \
+        self.ignored_file_re = re.compile \
             ("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns] + ["(?!)"]))
-        self.ignored_link_regex = re.compile \
+        self.ignored_link_re = re.compile \
             ("|".join([fnmatch.translate(x) for x in self.ignored_link_patterns] + ["(?!)"]))
 
         self.init_files()
@@ -128,7 +128,7 @@ class TransomSite:
         self.index_files.clear()
 
         for root, dirs, files in self.input_dir.walk():
-            files = {x for x in files if not self.ignored_file_regex.match(x)}
+            files = {x for x in files if not self.ignored_file_re.match(x)}
             index_files = {x for x in files if x in File.INDEX_FILE_NAMES}
 
             if len(index_files) > 1:
@@ -209,7 +209,7 @@ class TransomSite:
         output_mtime = self.output_dir.stat().st_mtime
 
         for config_dir in self.config_dirs:
-            for path in (x for x in Path(config_dir).rglob("*") if not self.ignored_file_regex.match(str(x))):
+            for path in (x for x in Path(config_dir).rglob("*") if not self.ignored_file_re.match(str(x))):
                 try:
                     config_mtime = path.stat().st_mtime
                 except (FileNotFoundError, PermissionError): # pragma: nocover
@@ -278,11 +278,7 @@ class TransomSite:
         for file_ in self.files:
             file_.collect_link_data(link_sources, link_targets)
 
-        print(111, link_sources.keys())
-        print(222, tuple(x for x in link_sources.keys() if not self.ignored_link_regex.match(x)))
-        print(333, self.ignored_link_regex)
-
-        for link in (x for x in link_sources.keys() if not self.ignored_link_regex.match(x)):
+        for link in (x for x in link_sources.keys() if not self.ignored_link_re.match(x)):
             if link not in link_targets:
                 errors += 1
 
@@ -396,13 +392,13 @@ class StaticFile(File):
 
 class GeneratedFile(File):
     __slots__ = ()
-    HEADER_REGEX = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
+    HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
 
     def is_modified(self):
         return super().is_modified() or self.site.config_modified
 
     def extract_header_code(self, text):
-        match_ = GeneratedFile.HEADER_REGEX.match(text)
+        match_ = GeneratedFile.HEADER_RE.match(text)
 
         if match_:
             return text[match_.end():], match_.group(1)
@@ -440,8 +436,8 @@ class TemplateFile(GeneratedFile):
 
 class HtmlPage(GeneratedFile):
     __slots__ = "page_template", "body_template", "content_template", "extra_headers", "locals"
-    MARKDOWN_TITLE_REGEX = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
-    HTML_TITLE_REGEX = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
+    MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
+    HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
     def process_input(self):
         super().process_input()
@@ -456,10 +452,10 @@ class HtmlPage(GeneratedFile):
 
         match "".join(self.input_path.suffixes):
             case ".md":
-                m = HtmlPage.MARKDOWN_TITLE_REGEX.search(text)
+                m = HtmlPage.MARKDOWN_TITLE_RE.search(text)
                 self.title = m.group(1) if m else ""
             case ".html.in":
-                m = HtmlPage.HTML_TITLE_REGEX.search(text)
+                m = HtmlPage.HTML_TITLE_RE.search(text)
                 self.title = m.group(1) if m else ""
 
         self.locals = {
@@ -533,7 +529,7 @@ class HtmlPage(GeneratedFile):
 
 class Template:
     __slots__ = "pieces", "path"
-    VARIABLE_REGEX = re.compile(r"({{{.+?}}}|{{.+?}})")
+    VARIABLE_RE = re.compile(r"({{{.+?}}}|{{.+?}})")
 
     def __init__(self, text, path):
         self.pieces = list()
@@ -545,7 +541,7 @@ class Template:
         return f"{self.__class__.__name__}('{self.path}')"
 
     def parse(self, text):
-        for token in Template.VARIABLE_REGEX.split(text):
+        for token in Template.VARIABLE_RE.split(text):
             if token.startswith("{{{") and token.endswith("}}}"):
                 piece = token[1:-1]
             elif token.startswith("{{") and token.endswith("}}"):
@@ -759,18 +755,18 @@ class WatcherThread:
             try:
                 input_path = Path(relative_path(event.pathname, Path.cwd()))
 
-                self.site.debug("File changed: {}", input_path)
-
                 if input_path.is_dir():
                     return True
 
-                if self.site.ignored_file_regex.match(input_path.name):
+                if self.site.ignored_file_re.match(input_path.name):
                     return True
 
                 try:
                     file_ = self.site.init_file(input_path)
                 except FileNotFoundError:
                     return True
+
+                self.site.debug("Input file changed: {}", input_path)
 
                 file_.process_input()
                 file_.render_output()
@@ -1030,12 +1026,13 @@ class TransomCommand:
             self.fail("FAILED")
 
 class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
-    heading_id_regex_1 = re.compile(r"[^a-zA-Z0-9_ ]+")
-    heading_id_regex_2 = re.compile(r"[_ ]")
+    # XXX Can these be just one re?
+    heading_id_re_1 = re.compile(r"[^a-zA-Z0-9_ ]+")
+    heading_id_re_2 = re.compile(r"[_ ]")
 
     def heading(self, text, level, **attrs):
-        id_ = HtmlRenderer.heading_id_regex_1.sub("", text)
-        id_ = HtmlRenderer.heading_id_regex_2.sub("-", id_)
+        id_ = HtmlRenderer.heading_id_re_1.sub("", text)
+        id_ = HtmlRenderer.heading_id_re_2.sub("-", id_)
         id_ = id_.lower()
 
         return f"<h{level} id=\"{id_}\">{text}</h{level}>\n"
