@@ -23,7 +23,7 @@ Markdown input files into HTML output files.
   uses [Mistune][mistune] for conversion.
 
 - `.md` and `.html.in` files are wrapped in page templates defined in
-  `config/page.html`, `config/head.html`, and `config/body.html`.
+  `config/page.html` and `config/body.html`.
 
 - Template placeholders contain Python code, executed using `eval()`.
   The Python environment is defined in `config/site.py`.
@@ -54,7 +54,6 @@ $ cd <your-project-dir>
 
 $ transom init
 transom: Creating 'config/body.html'
-transom: Creating 'config/head.html'
 transom: Creating 'config/page.html'
 transom: Creating 'config/site.py'
 transom: Creating 'config/transom.css'
@@ -74,7 +73,6 @@ $ cd <your-project-dir>
 
 $ transom init --github
 transom: Creating 'config/body.html'
-transom: Creating 'config/head.html'
 transom: Creating 'config/page.html'
 transom: Creating 'config/site.py'
 transom: Creating 'config/transom.css'
@@ -214,13 +212,8 @@ link URLs from link checking.  The default is `[]`, meaning none are
 ignored.
 
 `site.page_template` - The default top-level template object for HTML
-pages.  The page template includes `{{page.head}}` and
-`{{page.body}}`.  The default is loaded from `config/page.html`.
-
-`site.head_template` - The default template object for the head
-element of HTML pages.  The head template includes
-`{{page.extra_headers}}`.  The default is loaded from
-`config/head.html`.
+pages.  The page template includes `{{page.body}}`.  The default is
+loaded from `config/page.html`.
 
 `site.body_template` - The default template object for the body
 element of HTML pages.  The body element includes `{{page.content}}`.
@@ -229,9 +222,6 @@ The default is loaded from `config/body.html`.
 ## Page properties
 
 `page.site` - The site object.
-
-`page.head` - The head element of the page.  It is rendered from
-`page.head_template`.
 
 `page.extra_headers` - A list of extra HTML headers to add to the HTML
 head element.  The default is `[]`, the empty list.
@@ -243,12 +233,8 @@ head element.  The default is `[]`, the empty list.
 `input/<file>.md` or `input/<file>.html.in`.
 
 `page.page_template` - The top-level template object for the page.
-The page template includes `{{page.head}}` and `{{page.body}}`.  The
-default is `site.page_template`.
-
-`page.head_template` - The template object for the head element of the
-page.  The head template includes `{{page.extra_headers}}`.  The
-default is `site.head_template`.
+The page template includes `{{page.body}}`.  The default is
+`site.page_template`.
 
 `page.body_template` - The template object for the body element of the
 page.  The body element includes `{{page.content}}`.  The default is

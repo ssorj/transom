@@ -96,12 +96,6 @@ class TransomSite:
             self.page_template = Template(TransomSite.FALLBACK_PAGE_TEMPLATE, "[fallback]")
 
         try:
-            self.head_template = self.load_template(self.config_dir / "head.html")
-        except FileNotFoundError:
-            self.debug("No template file at '{}'", self.config_dir / "head.html")
-            self.head_template = None
-
-        try:
             self.body_template = self.load_template(self.config_dir / "body.html")
         except FileNotFoundError:
             self.debug("No template file at '{}'", self.config_dir / "body.html")
@@ -451,7 +445,7 @@ class TemplateFile(GeneratedFile):
         self.template.write(self)
 
 class HtmlPage(GeneratedFile):
-    __slots__ = "page_template", "head_template", "body_template", "content_template", "extra_headers", "locals"
+    __slots__ = "page_template", "body_template", "content_template", "extra_headers", "locals"
     MARKDOWN_TITLE_REGEX = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
     HTML_TITLE_REGEX = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
@@ -462,7 +456,6 @@ class HtmlPage(GeneratedFile):
         text, header = self.extract_header(text)
 
         self.page_template = self.site.page_template
-        self.head_template = self.site.head_template
         self.body_template = self.site.body_template
         self.content_template = Template(text, self.input_path)
         self.extra_headers = ""
@@ -489,10 +482,6 @@ class HtmlPage(GeneratedFile):
     def render_output(self):
         super().render_output()
         self.page_template.write(self)
-
-    @property
-    def head(self):
-        return self.head_template.render(self)
 
     @property
     def body(self):
@@ -631,7 +620,7 @@ class SiteInterface(RestrictedInterface):
 
     def __init__(self, obj):
         allowed = "prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns", \
-            "page_template", "head_template", "body_template"
+            "page_template", "body_template"
         super().__init__(obj, allowed)
 
 class PageInterface(RestrictedInterface):
@@ -639,7 +628,7 @@ class PageInterface(RestrictedInterface):
 
     def __init__(self, obj):
         allowed = "url", "title", "parent", "head", "body", "content", "extra_headers", \
-            "page_template", "head_template", "body_template"
+            "page_template", "body_template"
         super().__init__(obj, allowed)
 
 class RenderThread(threading.Thread):
