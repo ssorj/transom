@@ -107,16 +107,19 @@ class TransomSite:
             self.debug("No template file at '{}'", self.config_dir / "body.html")
             self.body_template = None
 
-        site_code = self.config_dir / "site.py"
-
         try:
-            exec(site_code.read_text(), self.globals)
+            site_code = (self.config_dir / "site.py").read_text()
         except FileNotFoundError:
-            self.debug("No config file at '{}'", site_code)
-        except TransomError:
-            raise
-        except Exception as e:
-            raise TransomError(f"{site_code}: {e}")
+            self.debug("No config file at '{}'", self.config_dir / "site.py")
+            site_code = None
+
+        if site_code:
+            try:
+                exec(site_code, self.globals)
+            except TransomError:
+                raise
+            except Exception as e:
+                raise TransomError(f"{self.config_dir / "site.py"}: {e}")
 
         self.ignored_file_regex = re.compile \
             ("(?:{})".format("|".join(fnmatch.translate(x) for x in self.ignored_file_patterns)))
