@@ -28,6 +28,7 @@ import sys
 import types
 import threading
 import traceback
+import unicodedata
 import yaml
 
 from collections import defaultdict
@@ -1026,16 +1027,8 @@ class TransomCommand:
             self.fail("FAILED")
 
 class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
-    # XXX Can these be just one re?
-    heading_id_re_1 = re.compile(r"[^a-zA-Z0-9_ ]+")
-    heading_id_re_2 = re.compile(r"[_ ]")
-
     def heading(self, text, level, **attrs):
-        id_ = HtmlRenderer.heading_id_re_1.sub("", text)
-        id_ = HtmlRenderer.heading_id_re_2.sub("-", id_)
-        id_ = id_.lower()
-
-        return f"<h{level} id=\"{id_}\">{text}</h{level}>\n"
+        return f"<h{level} id=\"{html_id(text)}\">{text}</h{level}>\n"
 
 class MarkdownLocal(threading.local):
     def __init__(self):
@@ -1106,6 +1099,16 @@ def html_attrs(attrs):
 
         if value is not False:
             yield f" {name}=\"{html_escape(value, quote=True)}\""
+
+HTML_ID_RESTRICT_RE = re.compile(r"[^a-z0-9\s-]")
+HTML_ID_HYPHENATE_RE = re.compile(r"[-\s]+")
+
+def html_id(text):
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    text = HTML_ID_RESTRICT_RE.sub("", text.lower())
+    text = HTML_ID_HYPHENATE_RE.sub("-", text).strip("-")
+
+    return text
 
 if __name__ == "__main__": # pragma: nocover
     command = TransomCommand()
