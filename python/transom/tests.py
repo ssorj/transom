@@ -25,22 +25,22 @@ from threading import Thread
 from xml.etree.ElementTree import XML
 
 transom_home = get_parent_dir(get_parent_dir(get_parent_dir(__file__)))
-transom_command = TransomCommand(home=transom_home)
-
-test_site_dir = join(transom_home, "sites/test")
 result_file = "output/result.json"
+
+def call_transom_command(args=[]):
+    TransomCommand(home=transom_home).main(args + ["--verbose"])
+
+def call_plano_command(args=[]):
+    PlanoCommand().main(args + ["--verbose"])
 
 class test_site(working_dir):
     def __enter__(self):
         dir_ = super().__enter__()
-        copy(test_site_dir, ".", inside=False, symlinks=False)
+        copy(join(transom_home, "sites/test"), ".", inside=False, symlinks=False)
         return dir_
 
 class empty_test_site(working_dir):
     pass
-
-def call_transom_command(args=[]):
-    transom_command.main(args + ["--verbose"])
 
 @test
 def transom_options():
@@ -195,12 +195,9 @@ def transom_check_links():
     run("transom check-links --init-only --verbose")
 
     with test_site():
-        call_transom_command(["render"])
         call_transom_command(["check-links"])
 
         append("input/test-cases-1.md", "[Not there](not-there.html)")
-
-        call_transom_command(["render"])
 
         with expect_system_exit():
             call_transom_command(["check-links"])
@@ -211,18 +208,19 @@ def transom_check_files():
     run("transom check-files --init-only --quiet")
 
     with test_site():
-        call_transom_command(["render"])
-
-        remove("input/test-cases-1.md") # An extra output file
-        remove("output/test-cases-2.html") # A missing output file
+        write("output/extra.html", "<html/>") # An extra output file
+        # XXX Need a way to do this.  Right now render restores the file.
+        # remove("output/test-cases-2.html") # A missing output file
 
         with expect_system_exit():
             call_transom_command(["check-files"])
 
+# XXX call_plano_command
+
 @test
 def plano_render():
     with test_site():
-        PlanoCommand().main(["render", "--force", "--verbose"])
+        call_plano_command(["render", "--force"])
 
         result = read_json(result_file)
         assert result["rendered"], result
@@ -231,7 +229,7 @@ def plano_render():
 def plano_serve():
     with test_site():
         def run():
-            PlanoCommand().main(["serve", "--port", "9191", "--force", "--verbose"])
+            call_plano_command(["serve", "--port", "9191", "--force"])
 
         server = Thread(target=run)
         server.start()
@@ -248,7 +246,7 @@ def plano_serve():
 @test
 def plano_check_links():
     with test_site():
-        PlanoCommand().main(["check-links", "--verbose"])
+        call_plano_command(["check-links"])
 
         result = read_json(result_file)
         assert result["links_checked"], result
@@ -256,7 +254,7 @@ def plano_check_links():
 @test
 def plano_check_files():
     with test_site():
-        PlanoCommand().main(["check-files", "--verbose"])
+        call_plano_command(["check-files"])
 
         result = read_json(result_file)
         assert result["files_checked"], result
@@ -264,13 +262,13 @@ def plano_check_files():
 @test
 def plano_clean():
     with test_site():
-        PlanoCommand().main(["clean"])
+        call_plano_command(["clean"])
 
 @test
 def plano_modules():
     with test_site():
         with expect_system_exit():
-            PlanoCommand().main(["modules", "--remote", "--recursive"])
+            call_plano_command(["modules", "--remote", "--recursive"])
 
 @test
 def lipsum_function():
