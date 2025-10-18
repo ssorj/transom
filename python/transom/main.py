@@ -22,7 +22,6 @@ import csv
 import fnmatch
 import http.server as httpserver
 import mistune
-import os
 import re
 import shutil
 import sys
@@ -48,12 +47,11 @@ class TransomError(Exception):
     pass
 
 class TransomSite:
-    FALLBACK_PAGE_TEMPLATE = \
-        "<!doctype html><html lang=\"en\">" \
-        "<head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>" \
-        "<body>{{page.content}}</body></html>"
+    FALLBACK_PAGE_TEMPLATE = "<!doctype html>" \
+        "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>"
+    FALLBACK_BODY_TEMPLATE = "<body>{{page.content}}</body>"
 
-    def __init__(self, project_dir, verbose=False, quiet=False, debug=False):
+    def __init__(self, project_dir, verbose=False, quiet=False, threads=8):
         self.project_dir = Path(project_dir).resolve()
         self.config_dir = (self.project_dir / "config").relative_to(Path.cwd())
         self.input_dir = (self.project_dir / "input").relative_to(Path.cwd())
@@ -61,7 +59,7 @@ class TransomSite:
 
         self.verbose = verbose
         self.quiet = quiet
-        self.debug_ = debug
+        self.threads = threads
 
         self.ignored_file_patterns = [".git", ".#*", "#*"]
         self.ignored_link_patterns = []
@@ -89,34 +87,35 @@ class TransomSite:
         return f"{self.__class__.__name__}('{self.project_dir}')"
 
     def init(self):
-        try:
-            self.page_template = self.load_template(self.config_dir / "page.html")
-        except FileNotFoundError:
-            self.debug("No template file at '{}'.  Using fallback.", self.config_dir / "page.html")
-            self.page_template = Template(TransomSite.FALLBACK_PAGE_TEMPLATE, "[fallback]")
+        page_template_path = self.config_dir / "page.html"
+        body_template_path = self.config_dir / "body.html"
+        site_code_path = self.config_dir / "site.py"
 
-        try:
-            self.body_template = self.load_template(self.config_dir / "body.html")
-        except FileNotFoundError:
-            self.debug("No template file at '{}'", self.config_dir / "body.html")
-            self.body_template = None
+        self.page_template = Template(TransomSite.FALLBACK_PAGE_TEMPLATE, "[fallback]")
+        self.body_template = Template(TransomSite.FALLBACK_BODY_TEMPLATE, "[fallback]")
 
-        try:
-            site_code = (self.config_dir / "site.py").read_text()
-        except FileNotFoundError:
-            self.debug("No config file at '{}'", self.config_dir / "site.py")
-            site_code = None
+        if page_template_path.exists():
+            self.notice("Loading page template from '{}'", page_template_path)
+            self.page_template = self.load_template(page_template_path)
 
-        if site_code:
+        if body_template_path.exists():
+            self.notice("Loading body template from '{}'", body_template_path)
+            self.body_template = self.load_template(body_template_path)
+
+        if site_code_path.exists():
+            self.notice("Executing site code from '{}'", self.config_dir / "site.py")
+
             try:
-                exec(site_code, self.globals)
+                exec(site_code_path.read_text(), self.globals)
             except TransomError:
                 raise
             except Exception as e:
-                raise TransomError(f"{self.config_dir / "site.py"}: {e}")
+                raise TransomError(f"{site_code_path}: {e}")
 
         self.ignored_file_regex = re.compile \
             ("(?:{})".format("|".join(fnmatch.translate(x) for x in self.ignored_file_patterns)))
+        self.ignored_link_regex = re.compile \
+            ("(?:{})".format("|".join(fnmatch.translate(x) for x in self.ignored_link_patterns)))
 
         self.init_files()
 
@@ -163,13 +162,12 @@ class TransomSite:
 
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
 
-        thread_count = 1 if self.debug_ else os.cpu_count()
-        batch_size = (len(self.files) + thread_count - 1) // thread_count
+        batch_size = (len(self.files) + self.threads - 1) // self.threads
         threads = list()
         render_counter = ThreadSafeCounter()
         errors = Queue()
 
-        for i in range(thread_count):
+        for i in range(self.threads):
             start = i * batch_size
             end = start + batch_size
             files = self.files[start:end]
@@ -278,17 +276,12 @@ class TransomSite:
     def check_links(self):
         link_sources = defaultdict(set) # link => files
         link_targets = set()
+        errors = 0
 
         for file_ in self.files:
             file_.collect_link_data(link_sources, link_targets)
 
-        def not_ignored(link):
-            return not any((fnmatch.fnmatchcase(link, x) for x in self.ignored_link_patterns))
-
-        links = filter(not_ignored, link_sources.keys())
-        errors = 0
-
-        for link in links:
+        for link in (x for x in link_sources.keys() if not self.ignored_link_regex.match(x)):
             if link not in link_targets:
                 errors += 1
 
@@ -407,7 +400,7 @@ class GeneratedFile(File):
     def is_modified(self):
         return super().is_modified() or self.site.config_modified
 
-    def extract_header(self, text):
+    def extract_header_code(self, text):
         match_ = GeneratedFile.HEADER_REGEX.match(text)
 
         if match_:
@@ -415,11 +408,11 @@ class GeneratedFile(File):
 
         return text, None
 
-    def exec_header(self, header):
-        self.debug("Executing header")
+    def exec_header_code(self, header_code):
+        self.debug("Executing header code")
 
         try:
-            exec(header, self.site.globals, self.locals)
+            exec(header_code, self.site.globals, self.locals)
         except TransomError:
             raise
         except Exception as e:
@@ -432,13 +425,13 @@ class TemplateFile(GeneratedFile):
         super().process_input()
 
         text = self.input_path.read_text()
-        text, header = self.extract_header(text)
+        text, header_code = self.extract_header_code(text)
 
         self.template = Template(text, self.input_path)
         self.locals = None
 
-        if header:
-            self.exec_header(header)
+        if header_code:
+            self.exec_header_code(header_code)
 
     def render_output(self):
         super().render_output()
@@ -453,7 +446,7 @@ class HtmlPage(GeneratedFile):
         super().process_input()
 
         text = self.input_path.read_text()
-        text, header = self.extract_header(text)
+        text, header_code = self.extract_header_code(text)
 
         self.page_template = self.site.page_template
         self.body_template = self.site.body_template
@@ -476,8 +469,8 @@ class HtmlPage(GeneratedFile):
             "directory_nav": partial(HtmlPage.directory_nav, self),
         }
 
-        if header:
-            self.exec_header(header)
+        if header_code:
+            self.exec_header_code(header_code)
 
     def render_output(self):
         super().render_output()
@@ -875,8 +868,8 @@ class TransomCommand:
                             help="Print detailed logging to the console")
         common.add_argument("--quiet", action="store_true",
                             help="Print no logging to the console")
-        common.add_argument("--debug", action="store_true",
-                            help="Enable debug mode")
+        common.add_argument("--threads", type=int, metavar="COUNT", default=8,
+                            help=f"Use COUNT worker threads (default: 8)")
         common.add_argument("--output", metavar="OUTPUT-DIR",
                             help="The output directory (default: PROJECT-DIR/output)")
         common.add_argument("project_dir", metavar="PROJECT-DIR", nargs="?", default=".",
@@ -921,7 +914,7 @@ class TransomCommand:
 
         if self.args.command_fn != self.init_command:
             self.site = TransomSite(self.args.project_dir, verbose=self.args.verbose, quiet=self.args.quiet,
-                                    debug=self.args.debug)
+                                    threads=self.args.threads)
 
             if self.args.output:
                 self.site.output_dir = self.args.output
