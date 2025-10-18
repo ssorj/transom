@@ -125,6 +125,8 @@ class TransomSite:
         return Template(path.read_text(), path)
 
     def init_files(self):
+        self.notice("Initializing files in '{}'", self.input_dir)
+
         self.files.clear()
         self.index_files.clear()
 
