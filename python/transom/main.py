@@ -128,8 +128,8 @@ class TransomSite:
         self.index_files.clear()
 
         for root, dirs, files in self.input_dir.walk():
-            files = {f for f in files if not self.ignored_file_regex.match(f)}
-            index_files = {f for f in files if f in File.INDEX_FILE_NAMES}
+            files = {x for x in files if not self.ignored_file_regex.match(x)}
+            index_files = {x for x in files if x in File.INDEX_FILE_NAMES}
 
             if len(index_files) > 1:
                 raise TransomError(f"Duplicate index files in {root}")
@@ -209,10 +209,7 @@ class TransomSite:
         output_mtime = self.output_dir.stat().st_mtime
 
         for config_dir in self.config_dirs:
-            for path in Path(config_dir).rglob("*"):
-                if self.ignored_file_regex.match(path.name):
-                    continue
-
+            for path in (x for x in Path(config_dir).rglob("*") if not self.ignored_file_regex.match(str(x))):
                 try:
                     config_mtime = path.stat().st_mtime
                 except (FileNotFoundError, PermissionError): # pragma: nocover

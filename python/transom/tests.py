@@ -177,11 +177,12 @@ def transom_serve():
         except ModuleNotFoundError:
             pass
         else:
-            write("input/another.md", "# Another")  # A new file
-            write("input/#ignore.md", "# Ignore")   # A new ignored file
-            write("config/#ignore.html", "<html/>") # A new config file
+            write("input/another.md", "# Another")  # A new input file
+            write("input/#ignore.md", "# Ignore")   # A new ignored input file
+            write("config/another.html", "<html/>") # A new config file
+            write("config/#ignore.html", "<html/>") # A new ignore config file
 
-            sleep(0.1)
+            sleep(0.2)
 
             http_get("http://localhost:9191/another.html")
 

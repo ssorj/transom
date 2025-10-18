@@ -205,7 +205,8 @@ any file changes, the whole site is re-rendered.  The default is
 `["config"]`, with only the standard `config/` directory.
 
 `site.ignored_file_patterns` - A list of shell globs for excluding
-input files from processing.  The default is `[".git", ".#*","#*"]`.
+input and config from processing.  The default is `[".git",
+".#*","#*"]`.
 
 `site.ignored_link_patterns` - A list of shell globs for excluding
 link URLs from link checking.  The default is `[]`, meaning none are
