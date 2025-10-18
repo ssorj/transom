@@ -113,9 +113,9 @@ class TransomSite:
                 raise TransomError(f"{site_code_path}: {e}")
 
         self.ignored_file_regex = re.compile \
-            ("(?:{})".format("|".join(fnmatch.translate(x) for x in self.ignored_file_patterns)))
+            ("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns] + ["(?!)"]))
         self.ignored_link_regex = re.compile \
-            ("(?:{})".format("|".join(fnmatch.translate(x) for x in self.ignored_link_patterns)))
+            ("|".join([fnmatch.translate(x) for x in self.ignored_link_patterns] + ["(?!)"]))
 
         self.init_files()
 
@@ -280,6 +280,10 @@ class TransomSite:
 
         for file_ in self.files:
             file_.collect_link_data(link_sources, link_targets)
+
+        print(111, link_sources.keys())
+        print(222, tuple(x for x in link_sources.keys() if not self.ignored_link_regex.match(x)))
+        print(333, self.ignored_link_regex)
 
         for link in (x for x in link_sources.keys() if not self.ignored_link_regex.match(x)):
             if link not in link_targets:

@@ -201,7 +201,8 @@ def transom_check_links():
     with test_site():
         call_transom_command(["check-links"])
 
-        append("input/test-cases-1.md", "[Not there](not-there.html)")
+    with empty_test_site():
+        write("input/test.md", "[Nope](no-such-file.html)")
 
         with expect_system_exit():
             call_transom_command(["check-links"])
@@ -217,10 +218,9 @@ def transom_check_files():
         # XXX Need a way to do this.  Right now render restores the file.
         # remove("output/test-cases-2.html") # A missing output file
 
-        with expect_system_exit():
-            call_transom_command(["check-files"])
-
-# XXX call_plano_command
+        # with expect_system_exit():
+        #     call_transom_command(["check-files"])
+        call_transom_command(["check-files"])
 
 @test
 def plano_render():
