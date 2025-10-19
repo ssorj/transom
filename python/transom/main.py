@@ -88,6 +88,9 @@ class TransomSite:
         return f"{self.__class__.__name__}('{self.project_dir}')"
 
     def init(self):
+        if not self.input_dir.is_dir():
+            raise TransomError(f"Input directory not found: {self.input_dir}")
+
         page_template_path = self.config_dir / "page.html"
         body_template_path = self.config_dir / "body.html"
         site_code_path = self.config_dir / "site.py"
@@ -125,7 +128,7 @@ class TransomSite:
         return Template(path.read_text(), path)
 
     def init_files(self):
-        self.notice("Initializing files in '{}'", self.input_dir)
+        self.debug("Initializing files in '{}'", self.input_dir)
 
         self.files.clear()
         self.index_files.clear()
@@ -135,7 +138,7 @@ class TransomSite:
             index_files = {x for x in files if x in File.INDEX_FILE_NAMES}
 
             if len(index_files) > 1:
-                raise TransomError(f"Duplicate index files in {root}")
+                raise TransomError(f"Duplicate index files in '{root}'")
 
             for name in index_files:
                 self.files.append(self.init_file(root / name))
@@ -226,7 +229,7 @@ class TransomSite:
         return False
 
     def serve(self, port=8080):
-        watcher = None
+        self.notice("Serving the site at http://localhost:{}", port)
 
         try:
             watcher = WatcherThread(self)
@@ -234,12 +237,12 @@ class TransomSite:
             self.notice("Failed to import pyinotify, so I won't auto-render updated input files\n"
                         "Try installing the Python inotify package\n"
                         "On Fedora, use 'dnf install python-inotify'")
+            watcher = None
         else:
             watcher.start()
 
         try:
             with Server(self, port) as server:
-                self.notice("Serving at http://localhost:{}", port)
                 server.serve_forever()
         except OSError as e:
             # OSError: [Errno 98] Address already in use
@@ -252,6 +255,10 @@ class TransomSite:
                 watcher.stop()
 
     def check_files(self):
+        if not self.output_dir.is_dir():
+            raise TransomError(f"Output directory not found: {self.output_dir} "
+                               "(render the site before checking files)")
+
         expected_paths = set(x.output_path for x in self.files)
         found_paths = set()
 
@@ -276,6 +283,10 @@ class TransomSite:
         return len(missing_paths), len(extra_paths)
 
     def check_links(self):
+        if not self.output_dir.is_dir():
+            raise TransomError(f"Output directory not found: {self.output_dir} "
+                               "(render the site before checking links)")
+
         link_sources = defaultdict(set) # link => files
         link_targets = set()
         errors = 0
@@ -633,13 +644,13 @@ class RenderThread(threading.Thread):
 
     def run(self):
         while True:
-            command, args = self.commands.get()
+            fn, args = self.commands.get()
 
-            if command is None:
+            if fn is None:
                 break
 
             try:
-                command(*args)
+                fn(*args)
             except Exception as e:
                 traceback.print_exc()
                 self.errors.put(e)
@@ -753,6 +764,9 @@ class WatcherThread:
             try:
                 input_path = Path(relative_path(event.pathname, Path.cwd()))
 
+                if input_path.is_dir():
+                    return True
+
                 if self.site.ignored_file_re.match(input_path.name):
                     return True
 
@@ -779,7 +793,7 @@ class WatcherThread:
 
         watcher.add_watch(str(self.site.input_dir), pyinotify.IN_CLOSE_WRITE, render_file, rec=True, auto_add=True)
 
-        for config_dir in self.site.config_dirs:
+        for config_dir in (x for x in self.site.config_dirs if x.exists()):
             watcher.add_watch(str(config_dir), pyinotify.IN_CLOSE_WRITE, render_site, rec=True, auto_add=True)
 
         self.notifier = pyinotify.ThreadedNotifier(watcher)
@@ -803,37 +817,25 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
         super().__init__(request, client_address, server, directory=server.site.output_dir)
 
     def do_POST(self):
-        if self.path == "/RENDER":
-            self.server.site.render()
-        elif self.path == "/STOP":
-            self.server.shutdown()
-        else:
-            raise Exception()
+        assert self.path == "/STOP", self.path
+
+        self.server.shutdown()
 
         self.send_response(httpserver.HTTPStatus.OK)
         self.end_headers()
 
-    def intercept_fetch(self):
-        if self.path == "/" and self.server.site.prefix:
-            self.send_response(httpserver.HTTPStatus.FOUND)
+    # Handles GET and HEAD
+    def send_head(self):
+        if self.path in ("/", "/index.html") and self.server.site.prefix:
+            self.send_response(httpserver.HTTPStatus.TEMPORARY_REDIRECT)
             self.send_header("Location", self.server.site.prefix + "/")
             self.end_headers()
 
-            return True # redirected
+            return None
 
         self.path = self.path.removeprefix(self.server.site.prefix)
 
-    def do_HEAD(self):
-        redirected = self.intercept_fetch()
-
-        if not redirected:
-            super().do_HEAD()
-
-    def do_GET(self):
-        redirected = self.intercept_fetch()
-
-        if not redirected:
-            super().do_GET()
+        return super().send_head()
 
 class TransomCommand:
     def __init__(self, home=None):
@@ -906,7 +908,7 @@ class TransomCommand:
                                     threads=self.args.threads)
 
             if self.args.output:
-                self.site.output_dir = self.args.output
+                self.site.output_dir = Path(self.args.output)
 
             self.site.init()
 
@@ -991,7 +993,6 @@ class TransomCommand:
         self.site.render(force=self.args.force)
         self.site.serve(port=self.args.port)
 
-    # XXX These require rendered output, but I don't want them to do the render themselves
     def check_links_command(self):
         errors = self.site.check_links()
 
@@ -1000,7 +1001,6 @@ class TransomCommand:
         else:
             self.fail("FAILED")
 
-    # XXX These require rendered output, but I don't want them to do the render themselves
     def check_files_command(self):
         missing_files, extra_files = self.site.check_files()
 

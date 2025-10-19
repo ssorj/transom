@@ -41,7 +41,10 @@ class test_site(working_dir):
         return dir_
 
 class empty_test_site(working_dir):
-    pass
+    def __enter__(self):
+        dir_ = super().__enter__()
+        make_dir("input")
+        return dir_
 
 @test
 def transom_options():
@@ -55,6 +58,9 @@ def transom_options():
 
     with expect_system_exit():
         call_transom_command([])
+
+    with empty_test_site():
+        call_transom_command(["render", "--output", "other"])
 
 @test
 def transom_init():
@@ -92,8 +98,10 @@ def transom_init():
 @test
 def transom_render():
     run("transom render --help")
-    run("transom render --init-only --quiet")
-    run("transom render --init-only --verbose")
+
+    with empty_test_site():
+        run("transom render --init-only --quiet")
+        run("transom render --init-only --verbose")
 
     with test_site():
         call_transom_command(["render"])
@@ -126,18 +134,6 @@ def transom_render():
         call_transom_command(["render"])
 
     with empty_test_site():
-        write("input/test.md", "{{1 / 0}}")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    with empty_test_site():
-        write("input/test.md", "---\n1 / 0\n---\n")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    with empty_test_site():
         write("config/site.py", "1 / 0")
 
         with expect_system_exit():
@@ -149,13 +145,36 @@ def transom_render():
         with expect_system_exit():
             call_transom_command(["render"])
 
+    with empty_test_site():
+        write("input/test.md", "---\n1 / 0\n---\n")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
+    with empty_test_site():
+        write("input/test.md", "---\nraise TransomError()\n---\n")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
+    with empty_test_site():
+        write("input/test.md", "{{1 / 0}}")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
 @test
 def transom_serve():
     run("transom serve --help")
-    run("transom serve --init-only --port 9191 --quiet")
-    run("transom serve --init-only --port 9191 --verbose")
 
-    with test_site():
+    with empty_test_site():
+        run("transom serve --init-only --port 9191 --quiet")
+        run("transom serve --init-only --port 9191 --verbose")
+
+    with empty_test_site():
+        write("config/site.py", "site.prefix = '/prefix'\n")
+        write("input/index.md", "# Test\n")
+
         def run_():
             call_transom_command(["serve", "--port", "9191"])
 
@@ -165,23 +184,17 @@ def transom_serve():
         await_port(9191)
 
         http_get("http://localhost:9191/")
-        http_get("http://localhost:9191/index.html")
-        http_get("http://localhost:9191/site.css")
-        http_get("http://localhost:9191/site.js")
-
-        with expect_system_exit():
-            # Another server on the same port
-            call_transom_command(["serve", "--port", "9191"])
+        http_get("http://localhost:9191/prefix/")
 
         try:
             import pyinotify
         except ModuleNotFoundError:
             pass
         else:
-            write("input/another.md", "# Another")  # A new input file
-            write("input/#ignore.md", "# Ignore")   # A new ignored input file
-            write("config/another.html", "<html/>") # A new config file
-            write("config/#ignore.html", "<html/>") # A new ignore config file
+            write("input/another.md", "# Another\n")  # A new input file
+            write("input/#ignore.md", "# Ignore\n")   # A new ignored input file
+            write("config/another.html", "<html/>\n") # A new config file
+            write("config/#ignore.html", "<html/>\n") # A new ignored config file
 
             sleep(0.2)
 
@@ -190,6 +203,10 @@ def transom_serve():
             with expect_error():
                 http_get("http://localhost:9191/ignore.html")
 
+        with expect_system_exit():
+            # Another server on the same port
+            call_transom_command(["serve", "--port", "9191"])
+
         http_post("http://localhost:9191/STOP", "please")
 
         server.join()
@@ -197,12 +214,19 @@ def transom_serve():
 @test
 def transom_check_links():
     run("transom check-links --help")
-    run("transom check-links --init-only --quiet")
-    run("transom check-links --init-only --verbose")
+
+    with empty_test_site():
+        run("transom check-links --init-only --quiet")
+        run("transom check-links --init-only --verbose")
 
     with test_site():
         call_transom_command(["render"])
         call_transom_command(["check-links"])
+
+    with empty_test_site():
+        with expect_system_exit():
+            # Not rendering before
+            call_transom_command(["check-links"])
 
     with empty_test_site():
         write("input/test.md", "[Nope](no-such-file.html)")
@@ -215,14 +239,21 @@ def transom_check_links():
 @test
 def transom_check_files():
     run("transom check-files --help")
-    run("transom check-files --init-only --quiet")
-    run("transom check-files --init-only --verbose")
+
+    with empty_test_site():
+        run("transom check-files --init-only --quiet")
+        run("transom check-files --init-only --verbose")
 
     with test_site():
         write("output/extra.html", "<html/>") # An extra output file
         remove("output/test-cases-2.html") # A missing output file
 
         with expect_system_exit():
+            call_transom_command(["check-files"])
+
+    with empty_test_site():
+        with expect_system_exit():
+            # Not rendering before
             call_transom_command(["check-files"])
 
 @test
@@ -254,6 +285,7 @@ def plano_serve():
 @test
 def plano_check_links():
     with test_site():
+        call_plano_command(["render"])
         call_plano_command(["check-links"])
 
         result = read_json(result_file)
@@ -262,6 +294,7 @@ def plano_check_links():
 @test
 def plano_check_files():
     with test_site():
+        call_plano_command(["render"])
         call_plano_command(["check-files"])
 
         result = read_json(result_file)

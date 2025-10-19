@@ -32,8 +32,7 @@ def build(*args, **kwargs):
         run("transom --help", quiet=True, stash=True)
 
         with working_dir(quiet=True):
-            touch("config/config.py", quiet=True)
-            touch("config/page.html", quiet=True)
+            make_dir("input", quiet=True)
             run("transom render --init-only", quiet=True)
 
 @command(parent=clean)
