@@ -33,8 +33,7 @@ import unicodedata
 from collections import defaultdict
 from html import escape as html_escape
 from html.parser import HTMLParser
-# os.path.relpath is a lot faster than Path.relative_to in Python 3.12
-from os.path import relpath as relative_path
+from os.path import relpath as relative_path # os.path.relpath is a lot faster than Path.relative_to in Python 3.12
 from pathlib import Path
 from queue import Queue
 from urllib import parse as urlparse
@@ -153,7 +152,7 @@ class TransomSite:
                 return HtmlPage(self, input_path, output_path.with_suffix(".html"))
             case ".html.in":
                 return HtmlPage(self, input_path, output_path.with_suffix(""))
-            case ".css" | ".js" | ".html":
+            case ".css" | ".csv" | ".html" | ".js" | ".json" | ".svg" | ".txt":
                 return TemplateFile(self, input_path, output_path)
             case _:
                 return StaticFile(self, input_path, output_path)
@@ -492,7 +491,7 @@ class HtmlPage(GeneratedFile):
         pieces = self.content_template.render(self)
 
         if self.input_path.suffix == ".md":
-            return self.convert_markdown("".join(pieces))
+            return MarkdownLocal.INSTANCE.value("".join(pieces))
 
         return pieces
 
@@ -501,15 +500,9 @@ class HtmlPage(GeneratedFile):
         pieces = self.site.load_template(path).render(self)
 
         if path.suffix == ".md":
-            return self.convert_markdown("".join(pieces))
+            return MarkdownLocal.INSTANCE.value("".join(pieces))
 
         return pieces
-
-    def convert_markdown(self, text):
-        try:
-            return MarkdownLocal.INSTANCE.value(text)
-        except Exception as e:
-            raise TransomError(f"Error converting Markdown: {self.input_path}: {e}")
 
     def path_nav(self, start=0, end=None, min=1):
         files = reversed(list(self.ancestors))
@@ -702,7 +695,7 @@ class LinkParser(HTMLParser):
 
             # Treat somepath/ as somepath/index.html
             if split_url.path.endswith("/"):
-                split_url = split_url.replace(path=f"{split_url.path}index.html")
+                split_url = split_url._replace(path=f"{split_url.path}index.html")
 
             normalized_url = urlparse.urljoin(self.file.url, urlparse.urlunsplit(split_url))
 
@@ -761,8 +754,9 @@ class WatcherThread:
             try:
                 input_path = Path(relative_path(event.pathname, Path.cwd()))
 
-                if input_path.is_dir():
-                    return True
+                # XXX
+                # if input_path.is_dir():
+                #     return True
 
                 if self.site.ignored_file_re.match(input_path.name):
                     return True

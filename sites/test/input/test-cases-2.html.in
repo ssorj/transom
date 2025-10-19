@@ -1,18 +1,10 @@
 ---
-page.title = "Test cases 2"
-
-def littlebig(page):
-    return f"LITTLE BIG {site}"
+page.title = "Test cases deux"
 ---
 
 <h1>{{page.title}}</h1>
 
-<!-- Duplicate link targets -->
-<h2 id="animal">Animal</h2>
-<h2 id="animal">Animal</h2>
+<h2>Warn about duplicate link targets</h2>
 
-{{albert}}
-
-{{benny()}}
-
-<pre>{{littlebig(page)}}</pre>
+<h4 id="animal">Animal</h2>
+<h4 id="animal">Animal</h2>

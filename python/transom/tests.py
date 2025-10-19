@@ -87,6 +87,7 @@ def transom_init():
         check_file(".gitignore")
         check_file(".plano.py")
         check_dir("python/transom")
+        check_dir(".github")
 
         call_transom_command(["init"]) # Re-init
 
@@ -112,7 +113,6 @@ def transom_render():
         check_file("output/test-cases-2.html")
         check_file("output/site.css")
         check_file("output/site.js")
-        check_file("output/steamboat.png")
 
         result = read("output/index.html")
         assert "<title>Transom</title>" in result, result
@@ -121,17 +121,22 @@ def transom_render():
         call_transom_command(["render", "--quiet"]) # XXX
         call_transom_command(["render", "--force"])
 
-    with test_site():
-        touch("input/index.html") # A duplicate index file
+    with empty_test_site():
+        call_transom_command(["render"])
+
+    with empty_test_site():
+        remove("input") # No input dir
 
         with expect_system_exit():
             call_transom_command(["render"])
 
-    with test_site():
-        remove("config/page.html")
-        remove("config/body.html")
+    with empty_test_site():
+         # Duplicate index files
+        touch("input/index.md")
+        touch("input/index.html")
 
-        call_transom_command(["render"])
+        with expect_system_exit():
+            call_transom_command(["render"])
 
     with empty_test_site():
         write("config/site.py", "1 / 0")
@@ -203,8 +208,8 @@ def transom_serve():
             with expect_error():
                 http_get("http://localhost:9191/ignore.html")
 
+        # Another server on the same port
         with expect_system_exit():
-            # Another server on the same port
             call_transom_command(["serve", "--port", "9191"])
 
         http_post("http://localhost:9191/STOP", "please")
@@ -223,9 +228,9 @@ def transom_check_links():
         call_transom_command(["render"])
         call_transom_command(["check-links"])
 
+    # Not rendering before checking links
     with empty_test_site():
         with expect_system_exit():
-            # Not rendering before
             call_transom_command(["check-links"])
 
     with empty_test_site():
