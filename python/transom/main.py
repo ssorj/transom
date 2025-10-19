@@ -18,8 +18,8 @@
 #
 
 import argparse
-import csv
 import fnmatch
+import functools
 import http.server as httpserver
 import mistune
 import re
@@ -29,11 +29,8 @@ import types
 import threading
 import traceback
 import unicodedata
-import yaml
 
 from collections import defaultdict
-from collections.abc import Iterable
-from functools import cache, partial
 from html import escape as html_escape
 from html.parser import HTMLParser
 # os.path.relpath is a lot faster than Path.relative_to in Python 3.12
@@ -80,7 +77,7 @@ class TransomSite:
             "html_escape": html_escape,
             "html_table": html_table,
             "html_table_csv": html_table_csv,
-            "load_template": partial(TransomSite.load_template, self),
+            "load_template": functools.partial(TransomSite.load_template, self),
             "TransomError": TransomError,
         }
 
@@ -472,10 +469,10 @@ class HtmlPage(GeneratedFile):
 
         self.locals = {
             "page": PageInterface(self),
-            "render": partial(HtmlPage.render_file, self),
-            "path_nav": partial(HtmlPage.path_nav, self),
-            "toc_nav": partial(HtmlPage.toc_nav, self),
-            "directory_nav": partial(HtmlPage.directory_nav, self),
+            "render": functools.partial(HtmlPage.render_file, self),
+            "path_nav": functools.partial(HtmlPage.path_nav, self),
+            "toc_nav": functools.partial(HtmlPage.toc_nav, self),
+            "directory_nav": functools.partial(HtmlPage.directory_nav, self),
         }
 
         if header_code:
@@ -490,7 +487,7 @@ class HtmlPage(GeneratedFile):
         return self.body_template.render(self)
 
     @property
-    @cache
+    @functools.cache
     def content(self):
         pieces = self.content_template.render(self)
 
@@ -1055,6 +1052,8 @@ def plural(noun, count=0, plural=None):
     return plural
 
 def html_table_csv(path, **attrs):
+    import csv
+
     with open(path, newline="") as f:
         return html_table(csv.reader(f), **attrs)
 
@@ -1076,7 +1075,7 @@ def html_table_rows(data, headings, cell_fn):
         yield html_elem("tr", (cell_fn(i, x) for i, x in enumerate(row)))
 
 def html_elem(tag, content, **attrs):
-    if isinstance(content, Iterable) and not isinstance(content, str):
+    if not isinstance(content, str):
         content = "".join(content)
 
     return f"<{tag}{''.join(html_attrs(attrs))}>{content or ''}</{tag}>"
