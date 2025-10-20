@@ -263,38 +263,6 @@ class TransomSite:
             else: # pragma: nocover
                 raise
 
-    def check_output_files(self):
-        self.notice("Checking output files in '{}'", self.output_dir)
-
-        if not self.output_dir.is_dir():
-            raise TransomError(f"Output directory not found: {self.output_dir} "
-                               "(render the site before checking files)")
-
-        self.load_files()
-
-        expected_paths = set(x.output_path for x in self.files)
-        found_paths = set()
-
-        for root, dirs, files in self.output_dir.walk():
-            found_paths.update(root / x for x in files)
-
-        missing_paths = expected_paths - found_paths
-        extra_paths = found_paths - expected_paths
-
-        if missing_paths:
-            print("Missing output files:")
-
-            for path in sorted(missing_paths):
-                print(f"  {path}")
-
-        if extra_paths:
-            print("Extra output files:")
-
-            for path in sorted(extra_paths):
-                print(f"  {path}")
-
-        return len(missing_paths), len(extra_paths)
-
     def debug(self, message, *args):
         if self.verbose:
             print("{}: ".format(threading.current_thread().name), end="")
@@ -935,7 +903,35 @@ class TransomCommand:
     def command_check(self):
         # XXX Check links
 
-        missing_files, extra_files = self.site.check_output_files()
+        self.notice("Checking output files in '{}'", self.site.output_dir)
+
+        if not self.site.output_dir.is_dir():
+            self.fail("Output directory not found: {} (render the site before checking files)", self.site.output_dir)
+
+        self.site.load_files()
+
+        expected_paths = set(x.output_path for x in self.site.files)
+        found_paths = set()
+
+        for root, dirs, files in self.site.output_dir.walk():
+            found_paths.update(root / x for x in files)
+
+        missing_paths = expected_paths - found_paths
+        extra_paths = found_paths - expected_paths
+
+        if missing_paths:
+            print("Missing output files:")
+
+            for path in sorted(missing_paths):
+                print(f"  {path}")
+
+        if extra_paths:
+            print("Extra output files:")
+
+            for path in sorted(extra_paths):
+                print(f"  {path}")
+
+        missing_files, extra_files = len(missing_paths), len(extra_paths)
 
         if extra_files != 0:
             self.warning("{} extra {} in the output", extra_files, plural("file", extra_files))
