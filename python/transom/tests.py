@@ -197,20 +197,15 @@ def transom_serve():
         http_get("http://localhost:9191/")
         http_get("http://localhost:9191/prefix/")
 
-        try:
-            import pyinotify
-        except ModuleNotFoundError:
-            pass
-        else:
-            write("input/another.md", "# Another\n")  # A new input file
-            write("input/#ignore.md", "# Ignore\n")   # A new ignored input file
-            write("config/another.html", "<html/>\n") # A new config file
-            write("config/#ignore.html", "<html/>\n") # A new ignored config file
+        write("input/another.md", "# Another\n")  # A new input file
+        write("input/#ignore.md", "# Ignore\n")   # A new ignored input file
+        write("config/another.html", "<html/>\n") # A new config file
+        write("config/#ignore.html", "<html/>\n") # A new ignored config file
 
-            http_get("http://localhost:9191/another.html")
+        http_get("http://localhost:9191/another.html")
 
-            with expect_error():
-                http_get("http://localhost:9191/ignore.html")
+        with expect_error():
+            http_get("http://localhost:9191/ignore.html")
 
         # Another server on the same port
         with expect_system_exit():
