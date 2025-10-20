@@ -23,7 +23,7 @@ import threading
 from plano import *
 from xml.etree.ElementTree import XML
 
-from .main import TransomCommand, lipsum, plural, html_table, html_table_csv
+from .main import TransomError, TransomSite, TransomCommand, lipsum, plural, html_table, html_table_csv
 
 transom_home = get_parent_dir(get_parent_dir(get_parent_dir(__file__)))
 result_file = "output/result.json"
@@ -34,20 +34,71 @@ def call_transom_command(args=[]):
 def call_plano_command(args=[]):
     PlanoCommand().main(args + ["--verbose"])
 
-class test_site(working_dir):
+class test_site_dir(working_dir):
     def __enter__(self):
-        dir_ = super().__enter__()
+        super().__enter__()
         copy(join(transom_home, "sites/test"), ".", inside=False, symlinks=False)
-        return dir_
 
-class empty_test_site(working_dir):
+class empty_test_site_dir(working_dir):
     def __enter__(self):
-        dir_ = super().__enter__()
+        super().__enter__()
         make_dir("input")
-        return dir_
+
+class empty_test_site(empty_test_site_dir):
+    def __enter__(self):
+        super().__enter__()
+        return TransomSite(".", verbose=True, threads=1)
 
 @test
-def transom_options():
+def site_init():
+    # The standard test site
+    with test_site_dir():
+        site = TransomSite(".", verbose=True, threads=1)
+        site.init()
+
+    # Only the input dir, no config
+    with empty_test_site() as site:
+        site.init()
+
+    # No input dir
+    with empty_test_site() as site:
+        remove("input")
+
+        with expect_exception(TransomError):
+            site.init()
+
+    # Duplicate index files
+    with empty_test_site() as site:
+        touch("input/index.md")
+        touch("input/index.html")
+
+        with expect_exception(TransomError):
+            site.init()
+
+@test
+def site_render():
+    # The standard test site
+    with test_site_dir():
+        site = TransomSite(".", verbose=True, threads=1)
+
+        site.init()
+        site.render()
+
+        check_dir("output")
+        check_file("output/index.html")
+        check_file("output/test-cases-1.html")
+        check_file("output/test-cases-2.html")
+        check_file("output/site.css")
+        check_file("output/site.js")
+
+        result = read("output/index.html")
+        assert "<title>Transom</title>" in result, result
+        assert "<h1 id=\"transom\">Transom</h1>" in result, result
+
+    # with empty_test_site() as site:
+
+@test
+def command_options():
     run("transom --help")
 
     with expect_system_exit():
@@ -59,11 +110,11 @@ def transom_options():
     with expect_system_exit():
         call_transom_command([])
 
-    with empty_test_site():
+    with empty_test_site_dir():
         call_transom_command(["render", "--output", "other"])
 
 @test
-def transom_init():
+def command_init():
     run("transom init --help")
     run("transom init --init-only --quiet")
     run("transom init --init-only --verbose")
@@ -89,22 +140,24 @@ def transom_init():
         check_dir("python/transom")
         check_dir(".github")
 
-        call_transom_command(["init"]) # Re-init
+        # Re-init
+        call_transom_command(["init"])
 
+    # A preexisting index file
     with working_dir():
-        touch("input/index.html") # A preexisting index file
+        touch("input/index.html")
 
         call_transom_command(["init"])
 
 @test
-def transom_render():
+def command_render():
     run("transom render --help")
 
-    with empty_test_site():
+    with empty_test_site_dir():
         run("transom render --init-only --quiet")
         run("transom render --init-only --verbose")
 
-    with test_site():
+    with test_site_dir():
         call_transom_command(["render"])
 
         check_dir("output")
@@ -118,85 +171,88 @@ def transom_render():
         assert "<title>Transom</title>" in result, result
         assert "<h1 id=\"transom\">Transom</h1>" in result, result
 
-        call_transom_command(["render", "--quiet"]) # XXX
+        call_transom_command(["render", "--quiet"])
         call_transom_command(["render", "--force"])
 
-    with empty_test_site():
-        # Only the input dir, no config
-        call_transom_command(["render"])
-
-    with empty_test_site():
-        remove("input") # No input dir
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    with empty_test_site():
-         # Duplicate index files
-        touch("input/index.md")
-        touch("input/index.html")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    with empty_test_site():
+    # Broken site code
+    with empty_test_site_dir():
         write("config/site.py", "1 / 0")
 
         with expect_system_exit():
             call_transom_command(["render"])
 
-    with empty_test_site():
+    # Transom error handling in site code
+    with empty_test_site_dir():
         write("config/site.py", "raise TransomError()")
 
         with expect_system_exit():
             call_transom_command(["render"])
 
-    with empty_test_site():
-        # Illegal write
+    # Syntax error in site code
+    with empty_test_site_dir():
+        write("config/site.py", ")(")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
+    # Illegal site attribute access
+    with empty_test_site_dir():
         write("config/site.py", "print(site.files)")
 
         with expect_system_exit():
             call_transom_command(["render"])
 
-        # Illegal read
-        write("config/site.py", "site.files = []")
+    # Illegal site attribute access
+    with empty_test_site_dir():
+        write("input/test.md", "{{page.input_path = '/nope'}}")
 
         with expect_system_exit():
             call_transom_command(["render"])
 
-    with empty_test_site():
+    # Broken header code
+    with empty_test_site_dir():
         write("input/test.md", "---\n1 / 0\n---\n")
 
         with expect_system_exit():
             call_transom_command(["render"])
 
-    with empty_test_site():
+    # Transom error handling in header code
+    with empty_test_site_dir():
         write("input/test.md", "---\nraise TransomError()\n---\n")
 
         with expect_system_exit():
             call_transom_command(["render"])
 
-    with empty_test_site():
-        write("input/test.md", "{{)(}}")
+    # Syntax error in header code
+    with empty_test_site_dir():
+        write("input/test.md", "---\n)(\n---\n")
 
         with expect_system_exit():
             call_transom_command(["render"])
 
-    with empty_test_site():
+    # Broken template code
+    with empty_test_site_dir():
         write("input/test.md", "{{1 / 0}}")
 
         with expect_system_exit():
             call_transom_command(["render"])
 
+    # Syntax error in template code
+    with empty_test_site_dir():
+        write("input/test.md", "{{)(}}")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
 @test
-def transom_serve():
+def command_serve():
     run("transom serve --help")
 
-    with empty_test_site():
+    with empty_test_site_dir():
         run("transom serve --init-only --port 9191 --quiet")
         run("transom serve --init-only --port 9191 --verbose")
 
-    with empty_test_site():
+    with empty_test_site_dir():
         write("config/site.py", "site.prefix = '/prefix'\n")
         write("input/index.md", "# Test\n")
 
@@ -211,10 +267,10 @@ def transom_serve():
         http_get("http://localhost:9191/")
         http_get("http://localhost:9191/prefix/")
 
-        write("input/another.md", "# Another\n")  # A new input file
-        write("input/#ignore.md", "# Ignore\n")   # A new ignored input file
-        write("config/another.html", "<html/>\n") # A new config file
-        write("config/#ignore.html", "<html/>\n") # A new ignored config file
+        write("input/another.md", "# Another")  # A new input file
+        write("input/#ignore.md", "# Ignore")   # A new ignored input file
+        write("config/another.html", "<html/>") # A new config file
+        write("config/#ignore.html", "<html/>") # A new ignored config file
 
         http_get("http://localhost:9191/another.html")
 
@@ -230,23 +286,23 @@ def transom_serve():
         server.join()
 
 @test
-def transom_check_links():
+def command_check_links():
     run("transom check-links --help")
 
-    with empty_test_site():
+    with empty_test_site_dir():
         run("transom check-links --init-only --quiet")
         run("transom check-links --init-only --verbose")
 
-    with test_site():
+    with test_site_dir():
         call_transom_command(["render"])
         call_transom_command(["check-links"])
 
     # Not rendering before checking links
-    with empty_test_site():
+    with empty_test_site_dir():
         with expect_system_exit():
             call_transom_command(["check-links"])
 
-    with empty_test_site():
+    with empty_test_site_dir():
         write("input/test.md", "[Nope](no-such-file.html)")
 
         call_transom_command(["render"])
@@ -255,82 +311,27 @@ def transom_check_links():
             call_transom_command(["check-links"])
 
 @test
-def transom_check_files():
+def command_check_files():
     run("transom check-files --help")
 
-    with empty_test_site():
+    with empty_test_site_dir():
         run("transom check-files --init-only --quiet")
         run("transom check-files --init-only --verbose")
 
-    with test_site():
+    with test_site_dir():
         write("output/extra.html", "<html/>") # An extra output file
-        remove("output/test-cases-2.html") # A missing output file
+        remove("output/test-cases-2.html")    # A missing output file
 
         with expect_system_exit():
             call_transom_command(["check-files"])
 
-    with empty_test_site():
+    with empty_test_site_dir():
         with expect_system_exit():
             # Not rendering before
             call_transom_command(["check-files"])
 
 @test
-def plano_render():
-    with test_site():
-        call_plano_command(["render", "--force"])
-
-        result = read_json(result_file)
-        assert result["rendered"], result
-
-@test
-def plano_serve():
-    with test_site():
-        def run():
-            call_plano_command(["serve", "--port", "9191", "--force"])
-
-        server = threading.Thread(target=run)
-        server.start()
-
-        await_port(9191)
-
-        http_post("http://localhost:9191/STOP", "please")
-
-        server.join()
-
-        result = read_json(result_file)
-        assert result["served"], result
-
-@test
-def plano_check_links():
-    with test_site():
-        call_plano_command(["render"])
-        call_plano_command(["check-links"])
-
-        result = read_json(result_file)
-        assert result["links_checked"], result
-
-@test
-def plano_check_files():
-    with test_site():
-        call_plano_command(["render"])
-        call_plano_command(["check-files"])
-
-        result = read_json(result_file)
-        assert result["files_checked"], result
-
-@test
-def plano_clean():
-    with test_site():
-        call_plano_command(["clean"])
-
-@test
-def plano_modules():
-    with test_site():
-        with expect_system_exit():
-            call_plano_command(["modules", "--remote", "--recursive"])
-
-@test
-def lipsum_function():
+def function_lipsum():
     result = lipsum(0, end="")
     assert result == "", result
 
@@ -341,7 +342,7 @@ def lipsum_function():
     assert result
 
 @test
-def plural_function():
+def function_plural():
     result = plural(None)
     assert result == "", result
 
@@ -364,7 +365,7 @@ def plural_function():
     assert result == "termini", result
 
 @test
-def html_table_functions():
+def function_html_table():
     data = (
         (1, 2, 3),
         ("a", "b", "c"),
@@ -380,3 +381,52 @@ def html_table_functions():
             writer.writerows(data)
 
         XML(html_table_csv("test.csv"))
+
+@test
+def plano_render():
+    with test_site_dir():
+        call_plano_command(["render", "--force"])
+
+        result = read_json(result_file)
+        assert result["rendered"], result
+
+@test
+def plano_serve():
+    with test_site_dir():
+        def run():
+            call_plano_command(["serve", "--port", "9191", "--force"])
+
+        server = threading.Thread(target=run)
+        server.start()
+
+        await_port(9191)
+
+        http_post("http://localhost:9191/STOP", "please")
+
+        server.join()
+
+        result = read_json(result_file)
+        assert result["served"], result
+
+@test
+def plano_check_links():
+    with test_site_dir():
+        call_plano_command(["render"])
+        call_plano_command(["check-links"])
+
+        result = read_json(result_file)
+        assert result["links_checked"], result
+
+@test
+def plano_check_files():
+    with test_site_dir():
+        call_plano_command(["render"])
+        call_plano_command(["check-files"])
+
+        result = read_json(result_file)
+        assert result["files_checked"], result
+
+@test
+def plano_clean():
+    with test_site_dir():
+        call_plano_command(["clean"])
