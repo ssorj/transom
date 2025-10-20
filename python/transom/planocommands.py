@@ -29,8 +29,6 @@ def render(passthrough_args=[]):
     with project_env():
         TransomCommand().main(["render"] + passthrough_args)
 
-# https://stackoverflow.com/questions/22475849/node-js-what-is-enospc-error-and-how-to-solve
-# $ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
 @command(passthrough=True)
 def serve(passthrough_args=[]):
     """
@@ -40,20 +38,12 @@ def serve(passthrough_args=[]):
         TransomCommand().main(["serve"] + passthrough_args)
 
 @command(passthrough=True)
-def check_links(passthrough_args=[]):
+def check(passthrough_args=[]):
     """
-    Check for broken links
-    """
-    with project_env():
-        TransomCommand().main(["check-links"] + passthrough_args)
-
-@command(passthrough=True)
-def check_files(passthrough_args=[]):
-    """
-    Check for missing or extra files
+    Check for broken links and missing files
     """
     with project_env():
-        TransomCommand().main(["check-files"] + passthrough_args)
+        TransomCommand().main(["check"] + passthrough_args)
 
 @command
 def clean():

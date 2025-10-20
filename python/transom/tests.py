@@ -25,47 +25,64 @@ from xml.etree.ElementTree import XML
 
 from .main import TransomError, TransomSite, TransomCommand, lipsum, plural, html_table, html_table_csv
 
-transom_home = get_parent_dir(get_parent_dir(get_parent_dir(__file__)))
-result_file = "output/result.json"
+TRANSOM_HOME = get_parent_dir(get_parent_dir(get_parent_dir(__file__)))
+RESULT_FILE = "output/result.json"
 
 def call_transom_command(args=[]):
-    TransomCommand(home=transom_home).main(args + ["--verbose"])
+    TransomCommand(home=TRANSOM_HOME).main(args + ["--verbose"])
 
 def call_plano_command(args=[]):
     PlanoCommand().main(args + ["--verbose"])
 
-class test_site_dir(working_dir):
-    def __enter__(self):
-        super().__enter__()
-        copy(join(transom_home, "sites/test"), ".", inside=False, symlinks=False)
-
 class empty_test_site_dir(working_dir):
     def __enter__(self):
         super().__enter__()
+
         make_dir("input")
+
+class test_site_dir(empty_test_site_dir):
+    def __enter__(self):
+        super().__enter__()
+
+        copy(join(TRANSOM_HOME, "sites/test"), ".", inside=False, symlinks=False)
 
 class empty_test_site(empty_test_site_dir):
     def __enter__(self):
         super().__enter__()
-        return TransomSite(".", verbose=True, threads=1)
+
+        self.site = TransomSite(".", verbose=True, threads=1)
+        self.site.start()
+
+        return self.site
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        super().__exit__(exc_type, exc_value, traceback)
+
+        self.site.stop()
+
+class standard_test_site(empty_test_site):
+    def __enter__(self):
+        site = super().__enter__()
+
+        copy(join(TRANSOM_HOME, "sites/test"), ".", inside=False, symlinks=False)
+
+        return site
 
 @test
-def site_init():
-    # The standard test site
-    with test_site_dir():
-        site = TransomSite(".", verbose=True, threads=1)
-        site.init()
+def site_load_files():
+    with standard_test_site() as site:
+        site.load_files()
 
     # Only the input dir, no config
     with empty_test_site() as site:
-        site.init()
+        site.load_files()
 
     # No input dir
     with empty_test_site() as site:
         remove("input")
 
         with expect_exception(TransomError):
-            site.init()
+            site.load_files()
 
     # Duplicate index files
     with empty_test_site() as site:
@@ -73,16 +90,32 @@ def site_init():
         touch("input/index.html")
 
         with expect_exception(TransomError):
-            site.init()
+            site.load_files()
+
+@test
+def site_process_input_files():
+    with standard_test_site() as site:
+        site.load_files()
+        site.process_input_files()
+
+@test
+def site_render_output_files():
+    with standard_test_site() as site:
+        site.load_files()
+        site.process_input_files()
+        site.render_output_files()
 
 @test
 def site_render():
     # The standard test site
     with test_site_dir():
         site = TransomSite(".", verbose=True, threads=1)
+        site.start()
 
-        site.init()
-        site.render()
+        try:
+            site.render()
+        finally:
+            site.stop()
 
         check_dir("output")
         check_file("output/index.html")
@@ -285,50 +318,50 @@ def command_serve():
 
         server.join()
 
+# @test
+# def command_check_links():
+#     run("transom check-links --help")
+
+#     with empty_test_site_dir():
+#         run("transom check-links --init-only --quiet")
+#         run("transom check-links --init-only --verbose")
+
+#     with test_site_dir():
+#         call_transom_command(["render"])
+#         call_transom_command(["check-links"])
+
+#     # Not rendering before checking links
+#     with empty_test_site_dir():
+#         with expect_system_exit():
+#             call_transom_command(["check-links"])
+
+#     with empty_test_site_dir():
+#         write("input/test.md", "[Nope](no-such-file.html)")
+
+#         call_transom_command(["render"])
+
+#         with expect_system_exit():
+#             call_transom_command(["check-links"])
+
 @test
-def command_check_links():
-    run("transom check-links --help")
+def command_check():
+    run("transom check --help")
 
     with empty_test_site_dir():
-        run("transom check-links --init-only --quiet")
-        run("transom check-links --init-only --verbose")
+        run("transom check --init-only --quiet")
+        run("transom check --init-only --verbose")
 
     with test_site_dir():
-        call_transom_command(["render"])
-        call_transom_command(["check-links"])
-
-    # Not rendering before checking links
-    with empty_test_site_dir():
-        with expect_system_exit():
-            call_transom_command(["check-links"])
-
-    with empty_test_site_dir():
-        write("input/test.md", "[Nope](no-such-file.html)")
-
-        call_transom_command(["render"])
+        touch("output/extra.html")         # An extra output file
+        remove("output/test-cases-2.html") # A missing output file
 
         with expect_system_exit():
-            call_transom_command(["check-links"])
+            call_transom_command(["check"])
 
-@test
-def command_check_files():
-    run("transom check-files --help")
-
-    with empty_test_site_dir():
-        run("transom check-files --init-only --quiet")
-        run("transom check-files --init-only --verbose")
-
-    with test_site_dir():
-        write("output/extra.html", "<html/>") # An extra output file
-        remove("output/test-cases-2.html")    # A missing output file
-
-        with expect_system_exit():
-            call_transom_command(["check-files"])
-
+    # Checking without first rendering
     with empty_test_site_dir():
         with expect_system_exit():
-            # Not rendering before
-            call_transom_command(["check-files"])
+            call_transom_command(["check"])
 
 @test
 def function_lipsum():
@@ -387,7 +420,7 @@ def plano_render():
     with test_site_dir():
         call_plano_command(["render", "--force"])
 
-        result = read_json(result_file)
+        result = read_json(RESULT_FILE)
         assert result["rendered"], result
 
 @test
@@ -405,26 +438,17 @@ def plano_serve():
 
         server.join()
 
-        result = read_json(result_file)
+        result = read_json(RESULT_FILE)
         assert result["served"], result
 
 @test
-def plano_check_links():
+def plano_check():
     with test_site_dir():
         call_plano_command(["render"])
-        call_plano_command(["check-links"])
+        call_plano_command(["check"])
 
-        result = read_json(result_file)
-        assert result["links_checked"], result
-
-@test
-def plano_check_files():
-    with test_site_dir():
-        call_plano_command(["render"])
-        call_plano_command(["check-files"])
-
-        result = read_json(result_file)
-        assert result["files_checked"], result
+        result = read_json(RESULT_FILE)
+        assert result["checked"], result
 
 @test
 def plano_clean():

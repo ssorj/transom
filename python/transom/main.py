@@ -48,15 +48,14 @@ class TransomSite:
         "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>"
     FALLBACK_BODY_TEMPLATE = "<body>{{page.content}}</body>"
 
-    def __init__(self, project_dir, verbose=False, quiet=False, threads=8):
-        self.project_dir = Path(project_dir).resolve()
-        self.config_dir = (self.project_dir / "config").relative_to(Path.cwd())
-        self.input_dir = (self.project_dir / "input").relative_to(Path.cwd())
-        self.output_dir = (self.project_dir / "output").relative_to(Path.cwd())
+    def __init__(self, site_dir, verbose=False, quiet=False, threads=8):
+        self.site_dir = Path(site_dir).resolve()
+        self.config_dir = self.site_dir / "config"
+        self.input_dir = self.site_dir / "input"
+        self.output_dir = self.site_dir / "output"
 
         self.verbose = verbose
         self.quiet = quiet
-        self.threads = threads
 
         self.ignored_file_patterns = [".git", ".#*", "#*"]
         self.ignored_link_patterns = []
@@ -80,12 +79,34 @@ class TransomSite:
             "TransomError": TransomError,
         }
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}('{self.project_dir}')"
+        threading.current_thread().name = "main-thread"
 
-    def init(self):
-        if not self.input_dir.is_dir():
-            raise TransomError(f"Input directory not found: {self.input_dir}")
+        self.worker_threads = list()
+        self.worker_errors = Queue()
+
+        for i in range(threads):
+            self.worker_threads.append(WorkerThread(self, f"worker-thread-{i + 1:02}", self.worker_errors))
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}('{self.site_dir}')"
+
+    def start(self):
+        for thread in self.worker_threads:
+            thread.start()
+
+    def stop(self):
+        for thread in self.worker_threads:
+            thread.commands.put((None, None))
+            thread.join()
+
+    def load_files(self):
+        self.notice("Loading site files from '{}'", self.site_dir)
+
+        self.load_config_files()
+        self.load_input_files()
+
+    def load_config_files(self):
+        self.notice("Loading config files from '{}'", self.config_dir)
 
         page_template_path = self.config_dir / "page.html"
         body_template_path = self.config_dir / "body.html"
@@ -103,7 +124,7 @@ class TransomSite:
             self.body_template = self.load_template(body_template_path)
 
         if site_code_path.exists():
-            self.notice("Executing site code from '{}'", self.config_dir / "site.py")
+            self.notice("Executing site code in '{}'", self.config_dir / "site.py")
 
             try:
                 exec(site_code_path.read_text(), self.globals)
@@ -117,14 +138,15 @@ class TransomSite:
         self.ignored_link_re = re.compile \
             ("|".join([fnmatch.translate(x) for x in self.ignored_link_patterns] + ["(?!)"]))
 
-        self.init_files()
-
     def load_template(self, path):
         path = Path(path) if isinstance(path, str) else path
         return Template(path.read_text(), path)
 
-    def init_files(self):
-        self.debug("Initializing files in '{}'", self.input_dir)
+    def load_input_files(self):
+        self.notice("Loading input files from '{}'", self.input_dir)
+
+        if not self.input_dir.is_dir():
+            raise TransomError(f"Input directory not found: {self.input_dir}")
 
         self.files.clear()
         self.index_files.clear()
@@ -137,12 +159,20 @@ class TransomSite:
                 raise TransomError(f"Duplicate index files in '{root}'")
 
             for name in index_files:
-                self.files.append(self.init_file(root / name))
+                self.files.append(self.load_input_file(root / name))
 
             for name in files - index_files:
-                self.files.append(self.init_file(root / name))
+                self.files.append(self.load_input_file(root / name))
 
-    def init_file(self, input_path):
+        batch_size = (len(self.files) + len(self.worker_threads) - 1) // len(self.worker_threads)
+
+        for i, thread in enumerate(self.worker_threads):
+            start = i * batch_size
+            end = start + batch_size
+
+            thread.files = self.files[start:end]
+
+    def load_input_file(self, input_path):
         self.debug("Initializing '{}'", input_path)
 
         output_path = self.output_dir / relative_path(input_path, self.input_dir)
@@ -157,8 +187,29 @@ class TransomSite:
             case _:
                 return StaticFile(self, input_path, output_path)
 
+    def process_input_files(self):
+        for thread in self.worker_threads:
+            thread.commands.put((thread.process_input_files, ()))
+
+        for thread in self.worker_threads:
+            thread.commands.join()
+
+    def render_output_files(self, force=False):
+        render_counter = ThreadSafeCounter()
+
+        for thread in self.worker_threads:
+            thread.commands.put((thread.render_output_files, (force, render_counter)))
+
+        for thread in self.worker_threads:
+            thread.commands.join()
+
+        return render_counter.value()
+
+    # XXX Consider also rerender and render_one_file
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
+
+        self.load_files()
 
         if self.output_dir.exists():
             self.debug("Checking for config file changes")
@@ -166,41 +217,16 @@ class TransomSite:
 
         self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
 
-        batch_size = (len(self.files) + self.threads - 1) // self.threads
-        threads = list()
-        render_counter = ThreadSafeCounter()
-        errors = Queue()
+        self.process_input_files()
 
-        for i in range(self.threads):
-            start = i * batch_size
-            end = start + batch_size
-            files = self.files[start:end]
+        rendered_count = self.render_output_files(force=force)
 
-            threads.append(RenderThread(self, f"render-thread-{i + 1:02}", files, errors))
-
-        for thread in threads:
-            thread.start()
-
-        for thread in threads:
-            thread.commands.put((thread.process_input_files, ()))
-
-        for thread in threads:
-            thread.commands.join()
-
-        for thread in threads:
-            thread.commands.put((thread.render_output_files, (force, render_counter)))
-            thread.commands.put((None, None))
-
-        for thread in threads:
-            thread.join()
-
-        if not errors.empty():
-            raise errors.get()
+        if not self.worker_errors.empty():
+            raise self.worker_errors.get()
 
         if self.output_dir.exists():
             self.output_dir.touch()
 
-        rendered_count = render_counter.value()
         unchanged_count = len(self.files) - rendered_count
         unchanged_note = ""
 
@@ -237,10 +263,14 @@ class TransomSite:
             else: # pragma: nocover
                 raise
 
-    def check_files(self):
+    def check_output_files(self):
+        self.notice("Checking output files in '{}'", self.output_dir)
+
         if not self.output_dir.is_dir():
             raise TransomError(f"Output directory not found: {self.output_dir} "
                                "(render the site before checking files)")
+
+        self.load_files()
 
         expected_paths = set(x.output_path for x in self.files)
         found_paths = set()
@@ -264,29 +294,6 @@ class TransomSite:
                 print(f"  {path}")
 
         return len(missing_paths), len(extra_paths)
-
-    def check_links(self):
-        if not self.output_dir.is_dir():
-            raise TransomError(f"Output directory not found: {self.output_dir} "
-                               "(render the site before checking links)")
-
-        link_sources = defaultdict(set) # link => files
-        link_targets = set()
-        errors = 0
-
-        for file_ in self.files:
-            file_.collect_link_data(link_sources, link_targets)
-
-        for link in (x for x in link_sources.keys() if not self.ignored_link_re.match(x)):
-            if link not in link_targets:
-                errors += 1
-
-                print(f"Error: Link to '{link}' has no destination")
-
-                for source in link_sources[link]:
-                    print(f"  Source: {source.input_path}")
-
-        return errors
 
     def debug(self, message, *args):
         if self.verbose:
@@ -354,15 +361,6 @@ class File:
     def render_output(self):
         self.debug("Rendering output")
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    def collect_link_data(self, link_sources, link_targets):
-        link_targets.add(self.url)
-
-        if not self.url.endswith(".html"):
-            return
-
-        parser = LinkParser(self, link_sources, link_targets)
-        parser.feed(self.output_path.read_text())
 
     @property
     def ancestors(self):
@@ -612,14 +610,14 @@ class PageInterface(RestrictedInterface):
         super().__init__(obj, ("url", "title", "parent", "body", "content", "extra_headers", "page_template",
                                "body_template"))
 
-class RenderThread(threading.Thread):
-    def __init__(self, site, name, files, errors):
+class WorkerThread(threading.Thread):
+    def __init__(self, site, name, errors):
         super().__init__(name=name)
 
         self.site = site
-        self.files = files
         self.errors = errors
         self.commands = Queue()
+        self.files = ()
 
     def run(self):
         while True:
@@ -752,7 +750,7 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
         self.send_response(httpserver.HTTPStatus.OK)
         self.end_headers()
 
-    # Handles GET and HEAD
+    # Handles GET and HEAD requests
     def send_head(self):
         if self.path in ("/", "/index.html") and self.server.site.prefix:
             self.send_response(httpserver.HTTPStatus.TEMPORARY_REDIRECT)
@@ -767,7 +765,6 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
             file_ = self.server.files[url]
         except KeyError:
             # It might be a new file.  Render everything.
-            self.server.site.init()
             self.server.site.render()
             self.server.files = {x.url: x for x in self.server.site.files}
         else:
@@ -780,8 +777,6 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
 
 class TransomCommand:
     def __init__(self, home=None):
-        threading.current_thread().name = "main-thread"
-
         self.home = Path(home) if home is not None else None
         self.name = "transom"
 
@@ -804,12 +799,12 @@ class TransomCommand:
                             help=f"Use COUNT worker threads (default: 8)")
         common.add_argument("--output", metavar="OUTPUT-DIR",
                             help="The output directory (default: PROJECT-DIR/output)")
-        common.add_argument("project_dir", metavar="PROJECT-DIR", nargs="?", default=".",
-                            help="The project root directory (default: current directory)")
+        common.add_argument("site_dir", metavar="SITE-DIR", nargs="?", default=".",
+                            help="The site root directory (default: current directory)")
 
         init = subparsers.add_parser("init", parents=[common], add_help=False,
                                      help="Create files and directories for a new project")
-        init.set_defaults(command_fn=self.init_command)
+        init.set_defaults(command_fn=self.command_init)
         init.add_argument("--profile", metavar="PROFILE", choices=("website", "webapp"), default="website",
                           help="Select starter files for different scenarios (default: website)")
         init.add_argument("--github", action="store_true",
@@ -817,25 +812,21 @@ class TransomCommand:
 
         render = subparsers.add_parser("render", parents=[common], add_help=False,
                                        help="Generate output files")
-        render.set_defaults(command_fn=self.render_command)
+        render.set_defaults(command_fn=self.command_render)
         render.add_argument("-f", "--force", action="store_true",
                             help="Render all input files, including unchanged ones")
 
         render = subparsers.add_parser("serve", parents=[common], add_help=False,
                                        help="Generate output files and serve the site on a local port")
-        render.set_defaults(command_fn=self.serve_command)
+        render.set_defaults(command_fn=self.command_serve)
         render.add_argument("-p", "--port", type=int, metavar="PORT", default=8080,
                             help="Listen on PORT (default 8080)")
         render.add_argument("-f", "--force", action="store_true",
                             help="Render all input files, including unchanged ones")
 
-        check_links = subparsers.add_parser("check-links", parents=[common], add_help=False,
-                                            help="Check for broken links")
-        check_links.set_defaults(command_fn=self.check_links_command)
-
-        check_files = subparsers.add_parser("check-files", parents=[common], add_help=False,
-                                            help="Check for missing or extra files")
-        check_files.set_defaults(command_fn=self.check_files_command)
+        check = subparsers.add_parser("check", parents=[common], add_help=False,
+                                            help="Check for broken links and missing output files")
+        check.set_defaults(command_fn=self.command_check)
 
     def init(self, args=None):
         self.args = self.parser.parse_args(args)
@@ -844,14 +835,12 @@ class TransomCommand:
             self.parser.print_usage()
             sys.exit(1)
 
-        if self.args.command_fn != self.init_command:
-            self.site = TransomSite(self.args.project_dir, verbose=self.args.verbose, quiet=self.args.quiet,
+        if self.args.command_fn != self.command_init:
+            self.site = TransomSite(self.args.site_dir, verbose=self.args.verbose, quiet=self.args.quiet,
                                     threads=self.args.threads)
 
             if self.args.output:
                 self.site.output_dir = Path(self.args.output)
-
-            self.site.init()
 
     def main(self, args=None):
         try:
@@ -889,7 +878,7 @@ class TransomCommand:
         sys.stderr.write("{}\n".format(message))
         sys.stderr.flush()
 
-    def init_command(self):
+    def command_init(self):
         if self.home is None:
             self.fail("I can't find the default input files")
 
@@ -908,42 +897,45 @@ class TransomCommand:
             self.notice("Creating '{}'", to_path)
 
         profile_dir = self.home / "profiles" / self.args.profile
-        project_dir = Path(self.args.project_dir)
+        site_dir = Path(self.args.site_dir)
 
         assert profile_dir.exists(), profile_dir
 
         for name in (profile_dir / "config").iterdir():
-            copy(name, project_dir / "config" / name.name)
+            copy(name, site_dir / "config" / name.name)
 
         for name in (profile_dir / "input").iterdir():
-            copy(name, project_dir / "input" / name.name)
+            copy(name, site_dir / "input" / name.name)
 
         if self.args.github:
-            copy(profile_dir / ".github", project_dir / ".github")
-            copy(profile_dir / ".gitignore", project_dir / ".gitignore")
-            copy(profile_dir / ".plano.py", project_dir / ".plano.py")
-            copy(profile_dir / "plano", project_dir / "plano")
-            copy(self.home / "python/transom", project_dir / "python/transom")
-            copy(self.home / "python/mistune", project_dir / "python/mistune")
-            copy(self.home / "python/plano", project_dir / "python/plano")
+            copy(profile_dir / ".github", site_dir / ".github")
+            copy(profile_dir / ".gitignore", site_dir / ".gitignore")
+            copy(profile_dir / ".plano.py", site_dir / ".plano.py")
+            copy(profile_dir / "plano", site_dir / "plano")
+            copy(self.home / "python/transom", site_dir / "python/transom")
+            copy(self.home / "python/mistune", site_dir / "python/mistune")
+            copy(self.home / "python/plano", site_dir / "python/plano")
 
-    def render_command(self):
-        self.site.render(force=self.args.force)
+    def command_render(self):
+        self.site.start()
 
-    def serve_command(self):
-        self.site.render(force=self.args.force)
-        self.site.serve(port=self.args.port)
+        try:
+            self.site.render(force=self.args.force)
+        finally:
+            self.site.stop()
 
-    def check_links_command(self):
-        errors = self.site.check_links()
+    def command_serve(self):
+        self.site.start()
 
-        if errors == 0:
-            self.notice("PASSED")
-        else:
-            self.fail("FAILED")
+        try:
+            self.site.serve(port=self.args.port)
+        finally:
+            self.site.stop()
 
-    def check_files_command(self):
-        missing_files, extra_files = self.site.check_files()
+    def command_check(self):
+        # XXX Check links
+
+        missing_files, extra_files = self.site.check_output_files()
 
         if extra_files != 0:
             self.warning("{} extra {} in the output", extra_files, plural("file", extra_files))

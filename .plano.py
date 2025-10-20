@@ -44,6 +44,7 @@ def clean(*args, **kwargs):
     remove("sites/qpid/output")
     remove("htmlcov")
     remove(".coverage")
+    remove("README.html")
 
 @command
 def render_readme():

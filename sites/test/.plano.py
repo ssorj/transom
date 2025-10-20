@@ -19,35 +19,28 @@
 
 from transom.planocommands import *
 
-result_file = "output/result.json"
+RESULT_FILE = "output/result.json"
 
 @command(parent=render)
 def render(*args, **kwargs):
     render.parent.function(*args, **kwargs)
 
     data = {"rendered": True}
-    write_json(result_file, data)
+    write_json(RESULT_FILE, data)
 
 @command(parent=serve)
 def serve(*args, **kwargs):
     serve.parent.function(*args, **kwargs)
 
     data = {"served": True}
-    write_json(result_file, data)
+    write_json(RESULT_FILE, data)
 
-@command(parent=check_links)
-def check_links(*args, **kwargs):
-    check_links.parent.function(*args, **kwargs)
+@command(parent=check)
+def check(*args, **kwargs):
+    check.parent.function(*args, **kwargs)
 
-    data = {"links_checked": True}
-    write_json(result_file, data)
-
-@command(parent=check_files)
-def check_files(*args, **kwargs):
-    check_files.parent.function(*args, **kwargs)
-
-    data = {"files_checked": True}
-    write_json(result_file, data)
+    data = {"checked": True}
+    write_json(RESULT_FILE, data)
 
 @command
 def profile():
