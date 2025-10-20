@@ -13,14 +13,14 @@ Markdown input files into HTML output files.
 - Input files come from `input/`.  Corresponding output files go to
   `output/`.
 
-- `.md`, `.html.in`, `.html`, `.js`, and `.css` input files are
-  treated as templates, with `{{ }}` curly braces for template
-  placeholders.  All other files are copied as is.
+- `.md`, `.html.in`, `.html`, `.css`, `.csv`, `.js`, `.json`, `.svg`,
+  and `.txt` input files are treated as templates, with `{{ }}` curly
+  braces for template placeholders.  All other files are copied as is.
 
 - `.md` input files are converted to `.html` output files.  Transom
   uses [Mistune][mistune] for conversion.
 
-- `.md` and `.html.in` files are wrapped in page templates defined in
+- `.md` and `.html.in` files are wrapped in templates defined in
   `config/page.html` and `config/body.html`.
 
 - Template placeholders contain Python code, executed using `eval()`.

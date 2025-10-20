@@ -61,7 +61,7 @@ def clean():
     remove("output")
 
 @command
-def update_transom():
+def update_transom(): # pragma: nocover
     """
     Update the embedded Transom repo
     """

@@ -122,6 +122,7 @@ def transom_render():
         call_transom_command(["render", "--force"])
 
     with empty_test_site():
+        # Only the input dir, no config
         call_transom_command(["render"])
 
     with empty_test_site():
@@ -146,6 +147,19 @@ def transom_render():
 
     with empty_test_site():
         write("config/site.py", "raise TransomError()")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
+    with empty_test_site():
+        # Illegal write
+        write("config/site.py", "print(site.files)")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
+        # Illegal read
+        write("config/site.py", "site.files = []")
 
         with expect_system_exit():
             call_transom_command(["render"])

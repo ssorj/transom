@@ -634,7 +634,7 @@ class RenderThread(threading.Thread):
             except TransomError as e:
                 self.site.error(str(e))
                 self.errors.put(e)
-            except Exception as e:
+            except Exception as e: # pragma: nocover
                 traceback.print_exc()
                 self.errors.put(e)
             finally:
