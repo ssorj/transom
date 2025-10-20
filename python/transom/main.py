@@ -313,7 +313,7 @@ class File:
     def __init__(self, site, input_path, output_path):
         self.site = site
         self.input_path = input_path
-        self.input_mtime = self.input_path.stat().st_mtime
+        self.input_mtime = None
         self.output_path = output_path
         self.output_mtime = None
 
@@ -349,6 +349,7 @@ class File:
 
     def process_input(self):
         self.debug("Processing input")
+        self.input_mtime = self.input_path.stat().st_mtime
 
     def render_output(self):
         self.debug("Rendering output")
@@ -601,17 +602,15 @@ class SiteInterface(RestrictedInterface):
     __slots__ = ()
 
     def __init__(self, obj):
-        allowed = "prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns", \
-            "page_template", "body_template"
-        super().__init__(obj, allowed)
+        super().__init__(obj, ("prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns",
+                               "page_template", "body_template"))
 
 class PageInterface(RestrictedInterface):
     __slots__ = ()
 
     def __init__(self, obj):
-        allowed = "url", "title", "parent", "body", "content", "extra_headers", \
-            "page_template", "body_template"
-        super().__init__(obj, allowed)
+        super().__init__(obj, ("url", "title", "parent", "body", "content", "extra_headers", "page_template",
+                               "body_template"))
 
 class RenderThread(threading.Thread):
     def __init__(self, site, name, files, errors):
