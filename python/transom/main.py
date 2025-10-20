@@ -628,45 +628,6 @@ class ThreadSafeCounter:
         with self.lock:
             return self.counter
 
-class LinkParser(HTMLParser):
-    def __init__(self, file_, link_sources, link_targets):
-        super().__init__()
-
-        self.file = file_
-        self.link_sources = link_sources
-        self.link_targets = link_targets
-
-    def handle_starttag(self, tag, attrs):
-        attrs = dict(attrs)
-
-        for name in ("href", "src", "action"):
-            try:
-                url = attrs[name]
-            except KeyError:
-                continue
-
-            split_url = urlparse.urlsplit(url)
-
-            # Ignore off-site links
-            if split_url.scheme or split_url.netloc:
-                continue
-
-            # Treat somepath/ as somepath/index.html
-            if split_url.path.endswith("/"):
-                split_url = split_url._replace(path=f"{split_url.path}index.html")
-
-            normalized_url = urlparse.urljoin(self.file.url, urlparse.urlunsplit(split_url))
-
-            self.link_sources[normalized_url].add(self.file)
-
-        if "id" in attrs:
-            normalized_url = urlparse.urljoin(self.file.url, f"#{attrs['id']}")
-
-            if normalized_url in self.link_targets:
-                self.file.site.warning("Duplicate link target: {}", normalized_url)
-
-            self.link_targets.add(normalized_url)
-
 class HeadingParser(HTMLParser):
     def __init__(self):
         super().__init__()
