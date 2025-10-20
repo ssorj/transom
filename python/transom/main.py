@@ -228,16 +228,6 @@ class TransomSite:
         self.notice("Serving the site at http://localhost:{}", port)
 
         try:
-            watcher = WatcherThread(self)
-        except ImportError: # pragma: nocover
-            self.notice("Failed to import pyinotify, so I won't auto-render updated input files\n"
-                        "Try installing the Python inotify package\n"
-                        "On Fedora, use 'dnf install python-inotify'")
-            watcher = None
-        else:
-            watcher.start()
-
-        try:
             with Server(self, port) as server:
                 server.serve_forever()
         except OSError as e:
@@ -246,9 +236,6 @@ class TransomSite:
                 raise TransomError(f"Port {port} is already in use")
             else: # pragma: nocover
                 raise
-        finally:
-            if watcher is not None:
-                watcher.stop()
 
     def check_files(self):
         if not self.output_dir.is_dir():
@@ -747,67 +734,12 @@ class HeadingParser(HTMLParser):
             self.open_element_id = None
             self.open_element_text = list()
 
-# XXX Try using the unthreaded notifier
-class WatcherThread:
-    def __init__(self, site):
-        import pyinotify
-
-        self.site = site
-
-        watcher = pyinotify.WatchManager()
-
-        def render_file(event):
-            try:
-                input_path = Path(relative_path(event.pathname, Path.cwd()))
-
-                # XXX
-                # if input_path.is_dir():
-                #     return True
-
-                if self.site.ignored_file_re.match(input_path.name):
-                    return True
-
-                file_ = self.site.init_file(input_path)
-
-                self.site.debug("Input file changed: {}", input_path)
-
-                file_.process_input()
-                file_.render_output()
-
-                if self.site.output_dir.exists():
-                    self.site.output_dir.touch()
-            except: # pragma: nocover
-                traceback.print_exc()
-
-        def render_site(event):
-            self.site.debug("A config file changed")
-
-            try:
-                self.site.init()
-                self.site.render()
-            except: # pragma: nocover
-                traceback.print_exc()
-
-        watcher.add_watch(str(self.site.input_dir), pyinotify.IN_CLOSE_WRITE, render_file, rec=True, auto_add=True)
-
-        for config_dir in (x for x in self.site.config_dirs if x.exists()):
-            watcher.add_watch(str(config_dir), pyinotify.IN_CLOSE_WRITE, render_site, rec=True, auto_add=True)
-
-        self.notifier = pyinotify.ThreadedNotifier(watcher)
-        self.notifier.name = "watcher-thread"
-
-    def start(self):
-        self.site.notice("Watching for input and config file changes")
-        self.notifier.start()
-
-    def stop(self):
-        self.notifier.stop()
-
 class Server(httpserver.ThreadingHTTPServer):
     def __init__(self, site, port):
         super().__init__(("localhost", port), ServerRequestHandler)
 
         self.site = site
+        self.files = {x.url: x for x in self.site.files}
 
 class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
@@ -825,10 +757,23 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def send_head(self):
         if self.path in ("/", "/index.html") and self.server.site.prefix:
             self.send_response(httpserver.HTTPStatus.TEMPORARY_REDIRECT)
-            self.send_header("Location", self.server.site.prefix + "/")
+            self.send_header("Location", self.server.site.prefix + "/index.html")
             self.end_headers()
 
             return None
+
+        url = self.path + "index.html" if self.path.endswith("/") else self.path
+
+        try:
+            file_ = self.server.files[url]
+        except KeyError:
+            # It might be a new file.  Render everything.
+            self.server.site.init()
+            self.server.site.render()
+            self.server.files = {x.url: x for x in self.server.site.files}
+        else:
+            file_.process_input()
+            file_.render_output()
 
         self.path = self.path.removeprefix(self.server.site.prefix)
 

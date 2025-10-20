@@ -207,8 +207,6 @@ def transom_serve():
             write("config/another.html", "<html/>\n") # A new config file
             write("config/#ignore.html", "<html/>\n") # A new ignored config file
 
-            sleep(0.2)
-
             http_get("http://localhost:9191/another.html")
 
             with expect_error():
