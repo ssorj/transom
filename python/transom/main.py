@@ -315,6 +315,9 @@ class TransomSite:
     def warning(self, message, *args):
         print("Warning:", message.format(*args))
 
+    def error(self, message, *args):
+        print("Error!", message.format(*args))
+
 class File:
     __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title", "parent"
     INDEX_FILE_NAMES = "index.md", "index.html.in", "index.html"
@@ -550,7 +553,7 @@ class Template:
                 try:
                     piece = compile(token[2:-2], "<string>", "eval"), token
                 except Exception as e:
-                    raise TransomError(f"Error parsing template: {self.path}: {e}")
+                    raise TransomError(f"{self.path}: '{token}': {e}")
             else:
                 piece = token
 
@@ -566,7 +569,7 @@ class Template:
                 except TransomError:
                     raise
                 except Exception as e:
-                    raise TransomError(f"{self.path}: {token}: {e}")
+                    raise TransomError(f"{self.path}: '{token}': {e}")
 
                 if type(result) is types.GeneratorType:
                     yield from result
@@ -641,6 +644,9 @@ class RenderThread(threading.Thread):
 
             try:
                 fn(*args)
+            except TransomError as e:
+                self.site.error(str(e))
+                self.errors.put(e)
             except Exception as e:
                 traceback.print_exc()
                 self.errors.put(e)

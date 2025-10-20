@@ -163,6 +163,12 @@ def transom_render():
             call_transom_command(["render"])
 
     with empty_test_site():
+        write("input/test.md", "{{)(}}")
+
+        with expect_system_exit():
+            call_transom_command(["render"])
+
+    with empty_test_site():
         write("input/test.md", "{{1 / 0}}")
 
         with expect_system_exit():
