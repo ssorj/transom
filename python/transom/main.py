@@ -25,9 +25,9 @@ import mistune
 import re
 import shutil
 import sys
-import types
 import threading
 import traceback
+import types
 import unicodedata
 
 from collections import defaultdict
