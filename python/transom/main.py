@@ -253,11 +253,9 @@ class TransomSite:
         relative_path = input_path.relative_to(self.input_dir)
 
         for dir_path in reversed(relative_path.parents):
-            index_path = next(dir_path.glob("index.*"), None)
-
-            if index_path is not None:
-                index_file = self.load_input_file(self.input_dir / dir_path / index_path)
-                index_file.process_input()
+            for file_path in (self.input_dir / dir_path).glob("index.*"):
+                self.load_input_file(self.input_dir / dir_path / file_path).process_input()
+                break
 
         file_ = self.load_input_file(input_path)
         file_.process_input()
