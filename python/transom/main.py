@@ -168,6 +168,11 @@ class TransomSite:
             thread.files = files[start:end]
 
     def load_input_file(self, input_path):
+        try:
+            return self.files[input_path]
+        except KeyError:
+            pass
+
         self.debug("Loading '{}'", input_path)
 
         match "".join(input_path.suffixes):
@@ -243,30 +248,22 @@ class TransomSite:
 
     # XXX Reload config if modified?
     def render_one_file(self, input_path, force=False):
-        print(111, input_path)
-
         assert input_path.is_file(), input_path
 
-        try:
-            file_ = self.files[input_path]
-        except KeyError:
-            if input_path.name == "index.md":
-                parents = input_path.parent.parents
-            else:
-                parents = input_path.parents
+        relative_path = input_path.relative_to(self.input_dir)
 
-            for parent in parents:
-                index_path = parent / "index.md"
+        for dir_path in reversed(relative_path.parents):
+            index_path = next(dir_path.glob("index.*"), None)
 
-                if index_path.exists():
-                    self.render_one_file(index_path)
-                    break
+            if index_path is not None:
+                index_file = self.load_input_file(self.input_dir / dir_path / index_path)
+                index_file.process_input()
 
-            file_ = self.load_input_file(input_path)
-
+        file_ = self.load_input_file(input_path)
         file_.process_input()
         file_.render_output()
 
+    # Input files are loaded and rendered on demand
     def serve(self, port=8080):
         self.load_config_files()
 
@@ -311,7 +308,7 @@ class File:
         self.output_path = self.site.output_dir / relative_path(self.input_path, self.site.input_dir)
         self.output_mtime = None
 
-        match self.input_path.suffix:
+        match "".join(self.input_path.suffixes):
             case ".md":
                 self.output_path = self.output_path.with_suffix(".html")
             case ".html.in":
