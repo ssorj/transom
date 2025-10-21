@@ -69,39 +69,56 @@ class standard_test_site(empty_test_site):
         return site
 
 @test
-def site_load_files():
+def site_load_config_files():
     with standard_test_site() as site:
-        site.load_files()
+        site.load_config_files()
+
+    # No config dir
+    with empty_test_site() as site:
+        site.load_config_files()
+
+@test
+def site_load_input_files():
+    with standard_test_site() as site:
+        site.load_config_files()
+        site.load_input_files()
 
     # Only the input dir, no config
     with empty_test_site() as site:
-        site.load_files()
+        site.load_config_files()
+        site.load_input_files()
 
     # No input dir
     with empty_test_site() as site:
+        site.load_config_files()
+
         remove("input")
 
         with expect_exception(TransomError):
-            site.load_files()
+            site.load_input_files()
 
     # Duplicate index files
     with empty_test_site() as site:
+        site.load_config_files()
+
         touch("input/index.md")
         touch("input/index.html")
 
         with expect_exception(TransomError):
-            site.load_files()
+            site.load_input_files()
 
 @test
 def site_process_input_files():
     with standard_test_site() as site:
-        site.load_files()
+        site.load_config_files()
+        site.load_input_files()
         site.process_input_files()
 
 @test
 def site_render_output_files():
     with standard_test_site() as site:
-        site.load_files()
+        site.load_config_files()
+        site.load_input_files()
         site.process_input_files()
         site.render_output_files()
 
@@ -427,9 +444,9 @@ def plano_render():
 def plano_serve():
     with test_site_dir():
         def run():
-            call_plano_command(["serve", "--port", "9191", "--force"])
+            call_plano_command(["serve", "--port", "9191"])
 
-        server = threading.Thread(target=run)
+        server = threading.Thread(target=run, name="test-thread")
         server.start()
 
         await_port(9191)

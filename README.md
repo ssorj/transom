@@ -166,7 +166,7 @@ You can use `{{{` and `}}}` to produce literal `{{` and `}}` output.
 
 ~~~ python
 def get_page_info(page):
-    return page.url, page.title, page.parent, page.site
+    return page.url, page.title, page.parent
 ~~~
 
 `input/index.md`:
@@ -220,16 +220,20 @@ The default is loaded from `config/body.html`.
 
 ## Page properties
 
-`page.site` - The site object.
+`page.url` -
 
-`page.extra_headers` - A list of extra HTML headers to add to the HTML
-head element.  The default is `[]`, the empty list.
+`page.title` -
+
+`page.parent` -
 
 `page.body` - The body element of the page.  It is rendered from
 `page.body_template`.
 
 `page.content` - The primary page content.  It is rendered from
 `input/<file>.md` or `input/<file>.html.in`.
+
+`page.extra_headers` - A list of extra HTML headers to add to the HTML
+head element.  The default is `[]`, the empty list.
 
 `page.page_template` - The top-level template object for the page.
 The page template includes `{{page.body}}`.  The default is
@@ -258,8 +262,6 @@ template.  If `path` ends with `.md`, it is converted to HTML.
 `toc_nav()` - XXX inspects the page content and generates a table
 of contents from its headings.  This must be placed outside the page
 content, in a separate navigation element, such as an aside.
-
-`directory_nav()`
 
 #### HTML generation functions
 
