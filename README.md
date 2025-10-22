@@ -13,15 +13,15 @@ Markdown input files into HTML output files.
 - Input files come from `input/`.  Corresponding output files go to
   `output/`.
 
-- `.md`, `.html.in`, `.html`, `.css`, `.csv`, `.js`, `.json`, `.svg`,
-  and `.txt` input files are treated as templates, with `{{ }}` curly
-  braces for template placeholders.  All other files are copied as is.
+- `.md`, `.html`, `.css`, `.csv`, `.js`, `.json`, `.svg`, and `.txt`
+  input files are treated as templates, with `{{ }}` curly braces for
+  template placeholders.  All other files are copied as is.
 
 - `.md` input files are converted to `.html` output files.  Transom
   uses [Mistune][mistune] for conversion.
 
-- `.md` and `.html.in` files are wrapped in templates defined in
-  `config/page.html` and `config/body.html`.
+- `.md` files are wrapped in templates defined in `config/page.html`
+  and `config/body.html`.
 
 - Template placeholders contain Python code, executed using `eval()`.
   The Python environment is defined in `config/site.py`.
@@ -230,7 +230,7 @@ The default is loaded from `config/body.html`.
 `page.body_template`.
 
 `page.content` - The primary page content.  It is rendered from
-`input/<file>.md` or `input/<file>.html.in`.
+`input/<file>.md`.
 
 `page.extra_headers` - A list of extra HTML headers to add to the HTML
 head element.  The default is `[]`, the empty list.

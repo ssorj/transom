@@ -335,31 +335,6 @@ def command_serve():
 
         server.join()
 
-# @test
-# def command_check_links():
-#     run("transom check-links --help")
-
-#     with empty_test_site_dir():
-#         run("transom check-links --init-only --quiet")
-#         run("transom check-links --init-only --verbose")
-
-#     with test_site_dir():
-#         call_transom_command(["render"])
-#         call_transom_command(["check-links"])
-
-#     # Not rendering before checking links
-#     with empty_test_site_dir():
-#         with expect_system_exit():
-#             call_transom_command(["check-links"])
-
-#     with empty_test_site_dir():
-#         write("input/test.md", "[Nope](no-such-file.html)")
-
-#         call_transom_command(["render"])
-
-#         with expect_system_exit():
-#             call_transom_command(["check-links"])
-
 @test
 def command_check():
     run("transom check --help")

@@ -167,15 +167,15 @@ class TransomSite:
         file_extension = "".join(input_path.suffixes)
         parent = None
 
-        if file_extension in (".md", ".html.in", ".html"):
+        if file_extension in (".md", ".html"):
             for parent_dir in input_path.parents:
                 if parent_dir == self.input_dir.parent:
                     break
 
-                if input_path.stem in ("index", "index.html"):
+                if input_path.stem == "index":
                     continue
 
-                for index_name in ("index.md", "index.html.in", "index.html"):
+                for index_name in ("index.md", "index.html"):
                     index_path = parent_dir / index_name
 
                     if index_path.exists():
@@ -183,7 +183,7 @@ class TransomSite:
                         break
 
         match file_extension:
-            case ".md" | ".html.in":
+            case ".md":
                 file_ = HtmlPage(self, parent, input_path)
             case ".css" | ".csv" | ".html" | ".js" | ".json" | ".svg" | ".txt":
                 file_ = TemplateFile(self, parent, input_path)
@@ -313,11 +313,8 @@ class File:
         self.output_path = self.site.output_dir / relative_path(self.input_path, self.site.input_dir)
         self.output_mtime = None
 
-        match "".join(self.input_path.suffixes):
-            case ".md":
-                self.output_path = self.output_path.with_suffix(".html")
-            case ".html.in":
-                self.output_path = self.output_path.with_suffix("")
+        if self.input_path.suffix == ".md":
+            self.output_path = self.output_path.with_suffix(".html")
 
         self.url = f"{self.site.prefix}/{relative_path(self.output_path, self.site.output_dir)}"
         self.title = self.output_path.name
@@ -420,13 +417,10 @@ class HtmlPage(GeneratedFile):
         self.content_template = Template(text, self.input_path)
         self.extra_headers = ""
 
-        match "".join(self.input_path.suffixes):
-            case ".md":
-                m = HtmlPage.MARKDOWN_TITLE_RE.search(text)
-                self.title = m.group(1) if m else ""
-            case ".html.in":
-                m = HtmlPage.HTML_TITLE_RE.search(text)
-                self.title = m.group(1) if m else ""
+        m = HtmlPage.MARKDOWN_TITLE_RE.search(text)
+        self.title = m.group(1) if m else ""
+        m = HtmlPage.HTML_TITLE_RE.search(text)
+        self.title = m.group(1) if m else self.title
 
         self.locals = {
             "page": PageInterface(self),
@@ -451,19 +445,13 @@ class HtmlPage(GeneratedFile):
     def content(self):
         pieces = self.content_template.render(self)
 
-        if self.input_path.suffix == ".md":
-            return MarkdownLocal.INSTANCE.value("".join(pieces))
-
-        return pieces
+        return MarkdownLocal.INSTANCE.value("".join(pieces))
 
     def render_file(self, path):
         path = Path(path) if isinstance(path, str) else path
         pieces = self.site.load_template(path).render(self)
 
-        if path.suffix == ".md":
-            return MarkdownLocal.INSTANCE.value("".join(pieces))
-
-        return pieces
+        return MarkdownLocal.INSTANCE.value("".join(pieces))
 
     def path_nav(self, start=0, end=None, min=1):
         files = list(self.ancestors())
@@ -694,13 +682,8 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
 
         if input_path.is_file():
             self.server.site.render_one_file(input_path)
-        else:
-            for suffix in (".md", ".html.in"): # XXX glob it?
-                input_path_with_suffix = input_path.with_suffix(suffix)
-
-                if input_path_with_suffix.is_file():
-                    self.server.site.render_one_file(input_path_with_suffix)
-                    break
+        elif input_path.with_suffix(".md").exists():
+            self.server.site.render_one_file(input_path.with_suffix(".md"))
 
         return super().send_head()
 
