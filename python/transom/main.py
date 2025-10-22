@@ -64,8 +64,7 @@ class TransomSite:
         self.config_dirs = [self.config_dir]
         self.config_modified = False
 
-        self.files = dict()       # File.input_path => File
-        self.index_files = dict() # File.input_path.parent => File
+        self.files = dict() # File.input_path => File
 
         self.globals = {
             "site": SiteInterface(self),
@@ -142,20 +141,10 @@ class TransomSite:
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
 
-        self.files.clear()
-        self.index_files.clear()
+        self.files.clear() # XXX?
 
         for root, dirs, files in self.input_dir.walk():
-            files = {x for x in files if not self.ignored_file_re.match(x)}
-            index_files = {x for x in files if x in File.INDEX_FILE_NAMES}
-
-            if len(index_files) > 1:
-                raise TransomError(f"Duplicate index files in '{root}'")
-
-            for name in index_files:
-                self.load_input_file(root / name)
-
-            for name in files - index_files:
+            for name in (x for x in files if not self.ignored_file_re.match(x)):
                 self.load_input_file(root / name)
 
         batch_size = (len(self.files) + len(self.worker_threads) - 1) // len(self.worker_threads)
@@ -175,13 +164,34 @@ class TransomSite:
 
         self.debug("Loading '{}'", input_path)
 
-        match "".join(input_path.suffixes):
+        file_extension = "".join(input_path.suffixes)
+        parent = None
+
+        if file_extension in (".md", ".html.in", ".html"):
+            for parent_dir in input_path.parents:
+                if parent_dir == self.input_dir.parent:
+                    break
+
+                if input_path.stem == "index":
+                    continue
+
+                index_path = parent_dir / next(parent_dir.glob("index.*"), "XXX-DIRTY-HACK")
+
+                if index_path is not None and index_path.exists():
+                    parent = self.load_input_file(index_path)
+                    break
+
+        match file_extension:
             case ".md" | ".html.in":
-                return HtmlPage(self, input_path)
+                file_ = HtmlPage(self, parent, input_path)
             case ".css" | ".csv" | ".html" | ".js" | ".json" | ".svg" | ".txt":
-                return TemplateFile(self, input_path)
+                file_ = TemplateFile(self, parent, input_path)
             case _:
-                return StaticFile(self, input_path)
+                file_ = StaticFile(self, parent, input_path)
+
+        self.files[input_path] = file_
+
+        return file_
 
     def process_input_files(self):
         for thread in self.worker_threads:
@@ -250,14 +260,11 @@ class TransomSite:
     def render_one_file(self, input_path, force=False):
         assert input_path.is_file(), input_path
 
-        relative_path = input_path.relative_to(self.input_dir)
-
-        for dir_path in reversed(relative_path.parents):
-            for file_path in (self.input_dir / dir_path).glob("index.*"):
-                self.load_input_file(self.input_dir / dir_path / file_path).process_input()
-                break
-
         file_ = self.load_input_file(input_path)
+
+        for parent in file_.ancestors():
+            parent.process_input()
+
         file_.process_input()
         file_.render_output()
 
@@ -295,12 +302,11 @@ class TransomSite:
         print("Error!", message.format(*args))
 
 class File:
-    __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title", "parent"
-    INDEX_FILE_NAMES = "index.md", "index.html.in", "index.html"
-    ROOT_PATHS = Path("/"), Path(".")
+    __slots__ = "site", "parent", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title"
 
-    def __init__(self, site, input_path):
+    def __init__(self, site, parent, input_path):
         self.site = site
+        self.parent = parent
         self.input_path = input_path
         self.input_mtime = None
         self.output_path = self.site.output_dir / relative_path(self.input_path, self.site.input_dir)
@@ -314,26 +320,16 @@ class File:
 
         self.url = f"{self.site.prefix}/{relative_path(self.output_path, self.site.output_dir)}"
         self.title = self.output_path.name
-        self.parent = None
-
-        parent_dir = self.input_path.parent
-
-        if self.input_path.name in File.INDEX_FILE_NAMES:
-            self.site.index_files[parent_dir] = self
-            parent_dir = parent_dir.parent
-
-        while parent_dir not in File.ROOT_PATHS:
-            try:
-                self.parent = self.site.index_files[parent_dir]
-            except KeyError:
-                parent_dir = parent_dir.parent
-            else:
-                break
-
-        self.site.files[self.input_path] = self
 
     def __repr__(self):
         return f"{self.__class__.__name__}('{self.input_path}')"
+
+    def ancestors(self):
+        parent = self.parent
+
+        while parent is not None:
+            yield parent
+            parent = parent.parent
 
     def is_modified(self):
         if self.output_mtime is None:
@@ -469,16 +465,11 @@ class HtmlPage(GeneratedFile):
         return pieces
 
     def path_nav(self, start=0, end=None, min=1):
-        def ancestors():
-            file_ = self
+        files = list(self.ancestors())
+        files.reverse()
+        files.append(self)
 
-            while file_ is not None:
-                yield file_
-                file_ = file_.parent
-
-        files = reversed(tuple(ancestors()))
-        links = tuple(f"<a href=\"{x.url}\">{x.title}</a>" for x in files)
-        links = links[start:end]
+        links = tuple(f"<a href=\"{x.url}\">{x.title}</a>" for x in files[start:end])
 
         if len(links) < min:
             return ""
