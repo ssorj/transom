@@ -172,14 +172,15 @@ class TransomSite:
                 if parent_dir == self.input_dir.parent:
                     break
 
-                if input_path.stem == "index":
+                if input_path.stem in ("index", "index.html"):
                     continue
 
-                index_path = parent_dir / next(parent_dir.glob("index.*"), "XXX-DIRTY-HACK")
+                for index_name in ("index.md", "index.html.in", "index.html"):
+                    index_path = parent_dir / index_name
 
-                if index_path is not None and index_path.exists():
-                    parent = self.load_input_file(index_path)
-                    break
+                    if index_path.exists():
+                        parent = self.load_input_file(index_path)
+                        break
 
         match file_extension:
             case ".md" | ".html.in":
