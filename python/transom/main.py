@@ -164,10 +164,9 @@ class TransomSite:
 
         self.debug("Loading '{}'", input_path)
 
-        file_extension = "".join(input_path.suffixes)
         parent = None
 
-        if file_extension in (".md", ".html"):
+        if input_path.suffix in (".md", ".html"):
             for parent_dir in input_path.parents:
                 if parent_dir == self.input_dir.parent:
                     break
@@ -182,7 +181,7 @@ class TransomSite:
                         parent = self.load_input_file(index_path)
                         break
 
-        match file_extension:
+        match input_path.suffix:
             case ".md":
                 file_ = HtmlPage(self, parent, input_path)
             case ".css" | ".csv" | ".html" | ".js" | ".json" | ".svg" | ".txt":
