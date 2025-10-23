@@ -64,7 +64,8 @@ class TransomSite:
         self.config_dirs = [self.config_dir]
         self.config_modified = False
 
-        self.input_files = dict() # File.input_path => File
+        self.input_files = dict() # InputFile.input_path => InputFile
+        self.index_files = dict() # InputFile.input_path.parent => InputFile
 
         self.globals = {
             "site": SiteInterface(self),
@@ -155,8 +156,8 @@ class TransomSite:
 
         def get_files():
             for root, _, files in self.input_dir.walk():
-                for file_ in files:
-                    yield root / file_
+                for name in files:
+                    yield root / name
 
         batch_size = (count_files() + len(self.worker_threads) - 1) // len(self.worker_threads)
         batch_size = 1 if batch_size == 0 else batch_size # XXX
@@ -188,6 +189,9 @@ class TransomSite:
                 input_file = StaticFile(self, input_path)
 
         self.input_files[input_path] = input_file
+
+        if input_file.output_path.name == "index.html":
+            self.index_files[input_file.input_path.parent] = input_file
 
         return input_file
 
@@ -251,6 +255,7 @@ class TransomSite:
 
         self.notice("Rendered {:,} output {}{}", rendered_count, plural("file", rendered_count), unchanged_note)
 
+    # XXX Make this faster
     def compute_config_modified(self):
         output_mtime = self.output_dir.stat().st_mtime
 
@@ -270,15 +275,31 @@ class TransomSite:
     def render_one_file(self, input_path, force=False):
         assert input_path.is_file(), input_path
 
-        # XXX Need to reload all files in site, then render one file
+        parent_files = list()
 
-        file_ = self.load_input_file(input_path)
+        for parent_path in self.get_parent_input_paths(input_path):
+            parent_files.append(self.load_input_file(parent_path))
 
-        for parent in file_.ancestors():
-            parent.process_input()
+        for parent_file in parent_files:
+            parent_file.process_input()
 
-        file_.process_input()
-        file_.render_output()
+        input_file = self.load_input_file(input_path)
+
+        input_file.process_input()
+        input_file.render_output()
+
+    def get_parent_input_paths(self, input_path):
+        parent_dir = input_path.parent
+
+        if input_path.stem == "index":
+            parent_dir = parent_dir.parent
+
+        while parent_dir != self.input_dir.parent:
+            for index_path in (parent_dir / "index.md", parent_dir / "index.html"):
+                if index_path.exists():
+                    yield index_path
+
+            parent_dir = parent_dir.parent
 
     # Input files are loaded and rendered on demand
     def serve(self, port=8080):
@@ -387,12 +408,28 @@ class GeneratedFile(InputFile):
 
             while parent_dir != self.site.input_dir.parent:
                 try:
-                    self.parent = self.site.input_files[parent_dir / "index.md"]
+                    self.parent = self.site.index_files[parent_dir]
                 except KeyError:
                     parent_dir = parent_dir.parent
-                    continue
                 else:
                     break
+
+        # if self.output_path.suffix == ".html":
+        #     parent_dir = self.input_path.parent
+
+        #     if self.output_path.name == "index.html":
+        #         parent_dir = parent_dir.parent
+
+        #     while parent_dir != self.site.input_dir.parent:
+        #         self.parent = self.site.input_files.get(parent_dir / "index.md")
+
+        #         if self.parent is None:
+        #             self.parent = self.site.input_files.get(parent_dir / "index.html")
+
+        #         if self.parent is not None:
+        #             break
+
+        #         parent_dir = parent_dir.parent
 
     def is_modified(self):
         return super().is_modified() or self.site.config_modified
@@ -534,13 +571,13 @@ class Template:
 
             self.pieces.append(piece)
 
-    def render(self, file_):
+    def render(self, input_file):
         for piece in self.pieces:
             if type(piece) is tuple:
                 code, token = piece
 
                 try:
-                    result = eval(code, file_.site.globals, file_.locals)
+                    result = eval(code, input_file.site.globals, input_file.locals)
                 except TransomError:
                     raise
                 except Exception as e:
@@ -553,9 +590,9 @@ class Template:
             else:
                 yield piece
 
-    def write(self, file_):
-        text = "".join(self.render(file_))
-        file_.output_path.write_text(text)
+    def write(self, input_file):
+        text = "".join(self.render(input_file))
+        input_file.output_path.write_text(text)
 
 class RestrictedInterface:
     __slots__ = "_object", "_allowed"
@@ -634,14 +671,14 @@ class WorkerThread(threading.Thread):
             counter.increment()
 
     def process_input_files(self, counter):
-        for file_ in self.input_files:
-            file_.process_input()
+        for input_file in self.input_files:
+            input_file.process_input()
             counter.increment()
 
     def render_output_files(self, force, counter):
-        for file_ in self.input_files:
-            if force or file_.is_modified():
-                file_.render_output()
+        for input_file in self.input_files:
+            if force or input_file.is_modified():
+                input_file.render_output()
                 counter.increment()
 
 class ThreadSafeCounter:
