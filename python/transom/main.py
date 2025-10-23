@@ -21,6 +21,7 @@ import argparse
 import fnmatch
 import functools
 import http.server as httpserver
+import itertools
 import mistune
 import re
 import shutil
@@ -64,7 +65,7 @@ class TransomSite:
         self.config_dirs = [self.config_dir]
         self.config_modified = False
 
-        self.files = dict() # File.input_path => File
+        self.input_files = dict() # File.input_path => File
 
         self.globals = {
             "site": SiteInterface(self),
@@ -84,7 +85,7 @@ class TransomSite:
         self.worker_errors = Queue()
 
         for i in range(threads):
-            self.worker_threads.append(WorkerThread(self, f"worker-thread-{i + 1:02}", self.worker_errors))
+            self.worker_threads.append(WorkerThread(self, f"worker-thread-{i + 1}", self.worker_errors))
 
     def __repr__(self):
         return f"{self.__class__.__name__}('{self.site_dir}')"
@@ -99,7 +100,7 @@ class TransomSite:
             thread.join()
 
     def load_config_files(self):
-        self.notice("Loading config files in '{}'", self.config_dir)
+        self.debug("Loading config files in '{}'", self.config_dir)
 
         page_template_path = self.config_dir / "page.html"
         body_template_path = self.config_dir / "body.html"
@@ -109,15 +110,15 @@ class TransomSite:
         self.body_template = Template(TransomSite.FALLBACK_BODY_TEMPLATE, "[fallback]")
 
         if page_template_path.exists():
-            self.notice("Loading page template from '{}'", page_template_path)
+            self.debug("Loading page template from '{}'", page_template_path)
             self.page_template = self.load_template(page_template_path)
 
         if body_template_path.exists():
-            self.notice("Loading body template from '{}'", body_template_path)
+            self.debug("Loading body template from '{}'", body_template_path)
             self.body_template = self.load_template(body_template_path)
 
         if site_code_path.exists():
-            self.notice("Executing site code in '{}'", self.config_dir / "site.py")
+            self.debug("Executing site code in '{}'", self.config_dir / "site.py")
 
             try:
                 exec(site_code_path.read_text(), self.globals)
@@ -136,104 +137,110 @@ class TransomSite:
         return Template(path.read_text(), path)
 
     def load_input_files(self):
-        self.notice("Loading input files in '{}'", self.input_dir)
+        self.debug("Loading input files in '{}'", self.input_dir)
 
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
 
-        self.files.clear() # XXX?
+        self.input_files.clear() # XXX support efficient reloading?
 
-        for root, dirs, files in self.input_dir.walk():
-            for name in (x for x in files if not self.ignored_file_re.match(x)):
-                self.load_input_file(root / name)
+        def count_files():
+            count = 0
+            for root, _, files in self.input_dir.walk():
+                count += len(files)
+            return count
 
-        batch_size = (len(self.files) + len(self.worker_threads) - 1) // len(self.worker_threads)
-        files = tuple(self.files.values())
+        def find_files():
+            for root, _, files in self.input_dir.walk():
+                for file_ in files:
+                    yield root / file_
 
-        for i, thread in enumerate(self.worker_threads):
-            start = i * batch_size
-            end = start + batch_size
+        batch_size = (count_files() + len(self.worker_threads) - 1) // len(self.worker_threads)
+        batch_size = 1 if batch_size == 0 else batch_size # XXX
+        batches = itertools.batched(find_files(), batch_size)
+        counter = ThreadSafeCounter()
 
-            thread.files = files[start:end]
+        for thread, input_files in zip(self.worker_threads, batches):
+            thread.commands.put((thread.load_input_files, (input_files, counter)))
+
+        for thread in self.worker_threads:
+            thread.commands.join()
+
+        return counter.value()
 
     def load_input_file(self, input_path):
         try:
-            return self.files[input_path]
+            return self.input_files[input_path]
         except KeyError:
             pass
 
         self.debug("Loading '{}'", input_path)
 
-        parent = None
-
-        if input_path.suffix in (".md", ".html"):
-            for parent_dir in input_path.parents:
-                if parent_dir == self.input_dir.parent:
-                    break
-
-                if input_path.stem == "index":
-                    continue
-
-                for index_name in ("index.md", "index.html"):
-                    index_path = parent_dir / index_name
-
-                    if index_path.exists():
-                        parent = self.load_input_file(index_path)
-                        break
-
         match input_path.suffix:
             case ".md":
-                file_ = HtmlPage(self, parent, input_path)
+                input_file = MarkdownFile(self, input_path)
             case ".css" | ".csv" | ".html" | ".js" | ".json" | ".svg" | ".txt":
-                file_ = TemplateFile(self, parent, input_path)
+                input_file = TemplateFile(self, input_path)
             case _:
-                file_ = StaticFile(self, parent, input_path)
+                input_file = StaticFile(self, input_path)
 
-        self.files[input_path] = file_
+        self.input_files[input_path] = input_file
 
-        return file_
+        return input_file
 
     def process_input_files(self):
+        self.debug("Processing input files in '{}'", self.input_dir)
+
+        counter = ThreadSafeCounter()
+
         for thread in self.worker_threads:
-            thread.commands.put((thread.process_input_files, ()))
+            thread.commands.put((thread.process_input_files, (counter,)))
 
         for thread in self.worker_threads:
             thread.commands.join()
+
+        return counter.value()
 
     def render_output_files(self, force=False):
-        render_counter = ThreadSafeCounter()
+        self.debug("Rendering output files to '{}'", self.output_dir)
+
+        counter = ThreadSafeCounter()
 
         for thread in self.worker_threads:
-            thread.commands.put((thread.render_output_files, (force, render_counter)))
+            thread.commands.put((thread.render_output_files, (force, counter)))
 
         for thread in self.worker_threads:
             thread.commands.join()
 
-        return render_counter.value()
+        return counter.value()
 
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
 
         self.load_config_files()
-        self.load_input_files()
 
         # XXX?
         if self.output_dir.exists():
             self.debug("Checking for config file changes")
             self.config_modified = self.compute_config_modified()
 
-        self.notice("Found {:,} input {}", len(self.files), plural("file", len(self.files)))
+        loaded_count = self.load_input_files()
 
-        self.process_input_files()
+        self.notice("Loaded {:,} input {}", loaded_count, plural("file", loaded_count))
+
+        processed_count = self.process_input_files()
+
+        self.notice("Processed {:,} input {}", processed_count, plural("file", processed_count))
 
         rendered_count = self.render_output_files(force=force)
 
         if not self.worker_errors.empty():
             raise self.worker_errors.get()
 
-        self.output_dir.touch()
+        if self.output_dir.is_dir():
+            self.output_dir.touch()
 
-        unchanged_count = len(self.files) - rendered_count
+        unchanged_count = loaded_count - rendered_count
         unchanged_note = ""
 
         if unchanged_count > 0:
@@ -259,6 +266,8 @@ class TransomSite:
     # XXX Reload config if modified?
     def render_one_file(self, input_path, force=False):
         assert input_path.is_file(), input_path
+
+        # XXX Need to reload all files in site, then render one file
 
         file_ = self.load_input_file(input_path)
 
@@ -301,12 +310,11 @@ class TransomSite:
     def error(self, message, *args):
         print("Error!", message.format(*args))
 
-class File:
-    __slots__ = "site", "parent", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title"
+class InputFile:
+    __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title", "parent"
 
-    def __init__(self, site, parent, input_path):
+    def __init__(self, site, input_path):
         self.site = site
-        self.parent = parent
         self.input_path = input_path
         self.input_mtime = None
         self.output_path = self.site.output_dir / relative_path(self.input_path, self.site.input_dir)
@@ -317,6 +325,7 @@ class File:
 
         self.url = f"{self.site.prefix}/{relative_path(self.output_path, self.site.output_dir)}"
         self.title = self.output_path.name
+        self.parent = None
 
     def __repr__(self):
         return f"{self.__class__.__name__}('{self.input_path}')"
@@ -346,17 +355,16 @@ class File:
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
     def debug(self, message, *args):
-        message = f"{self.input_path}: {message}"
-        self.site.debug(message, *args)
+        self.site.debug(f"{self.input_path}: {message}", *args)
 
-class StaticFile(File):
+class StaticFile(InputFile):
     __slots__ = ()
 
     def render_output(self):
         super().render_output()
         shutil.copy(self.input_path, self.output_path)
 
-class GeneratedFile(File):
+class GeneratedFile(InputFile):
     __slots__ = ()
     HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
 
@@ -387,6 +395,41 @@ class TemplateFile(GeneratedFile):
     def process_input(self):
         super().process_input()
 
+        # XXX here, only for .html output files
+
+        # parent = None
+
+        # if input_path.suffix in (".md", ".html"):
+        #     for parent_dir in input_path.parents:
+        #         if parent_dir == self.input_dir.parent:
+        #             break
+
+        #         if input_path.stem == "index":
+        #             continue
+
+        #         for index_name in ("index.md", "index.html"):
+        #             index_path = parent_dir / index_name
+
+        #             if index_path.exists():
+        #                 parent = self.load_input_file(index_path)
+        #                 break
+
+        # ---
+
+        # parent_dir = self.input_path.parent
+
+        # if self.input_path.name in File.INDEX_FILE_NAMES:
+        #     self.site.index_files[parent_dir] = self
+        #     parent_dir = parent_dir.parent
+
+        # while parent_dir not in File.ROOT_PATHS:
+        #     try:
+        #         self.parent = self.site.index_files[parent_dir]
+        #     except KeyError:
+        #         parent_dir = parent_dir.parent
+        #     else:
+        #         break
+
         text = self.input_path.read_text()
         text, header_code = self.extract_header_code(text)
 
@@ -400,7 +443,7 @@ class TemplateFile(GeneratedFile):
         super().render_output()
         self.template.write(self)
 
-class HtmlPage(GeneratedFile):
+class MarkdownFile(GeneratedFile):
     __slots__ = "page_template", "body_template", "content_template", "extra_headers", "locals"
     MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
     HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
@@ -416,16 +459,16 @@ class HtmlPage(GeneratedFile):
         self.content_template = Template(text, self.input_path)
         self.extra_headers = ""
 
-        m = HtmlPage.MARKDOWN_TITLE_RE.search(text)
+        m = MarkdownFile.MARKDOWN_TITLE_RE.search(text)
         self.title = m.group(1) if m else ""
-        m = HtmlPage.HTML_TITLE_RE.search(text)
+        m = MarkdownFile.HTML_TITLE_RE.search(text)
         self.title = m.group(1) if m else self.title
 
         self.locals = {
             "page": PageInterface(self),
-            "render": functools.partial(HtmlPage.render_file, self),
-            "path_nav": functools.partial(HtmlPage.path_nav, self),
-            "toc_nav": functools.partial(HtmlPage.toc_nav, self),
+            "render": functools.partial(MarkdownFile.render_file, self),
+            "path_nav": functools.partial(MarkdownFile.path_nav, self),
+            "toc_nav": functools.partial(MarkdownFile.toc_nav, self),
         }
 
         if header_code:
@@ -572,7 +615,7 @@ class WorkerThread(threading.Thread):
         self.site = site
         self.errors = errors
         self.commands = Queue()
-        self.files = ()
+        self.input_files = list()
 
     def run(self):
         while True:
@@ -592,15 +635,23 @@ class WorkerThread(threading.Thread):
             finally:
                 self.commands.task_done()
 
-    def process_input_files(self):
-        for file_ in self.files:
-            file_.process_input()
+    def load_input_files(self, input_paths, counter):
+        self.input_files.clear()
 
-    def render_output_files(self, force, render_counter):
-        for file_ in self.files:
+        for input_path in (x for x in input_paths if not self.site.ignored_file_re.match(x.name)):
+            self.input_files.append(self.site.load_input_file(input_path))
+            counter.increment()
+
+    def process_input_files(self, counter):
+        for file_ in self.input_files:
+            file_.process_input()
+            counter.increment()
+
+    def render_output_files(self, force, counter):
+        for file_ in self.input_files:
             if force or file_.is_modified():
                 file_.render_output()
-                render_counter.increment()
+                counter.increment()
 
 class ThreadSafeCounter:
     def __init__(self):
@@ -849,10 +900,16 @@ class TransomCommand:
         if not self.site.output_dir.is_dir():
             self.fail("Output directory not found: {} (render the site before checking files)", self.site.output_dir)
 
-        self.site.load_config_files()
-        self.site.load_input_files()
 
-        expected_paths = set(x.output_path for x in self.site.files.values())
+        self.site.start()
+
+        try:
+            self.site.load_config_files()
+            self.site.load_input_files()
+        finally:
+            self.site.stop()
+
+        expected_paths = set(x.output_path for x in self.site.input_files.values())
         found_paths = set()
 
         for root, dirs, files in self.site.output_dir.walk():

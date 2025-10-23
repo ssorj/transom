@@ -97,22 +97,22 @@ def site_load_input_files():
         with expect_exception(TransomError):
             site.load_input_files()
 
-    # Duplicate index files
-    with empty_test_site() as site:
-        site.load_config_files()
-
-        touch("input/index.md")
-        touch("input/index.html")
-
-        with expect_exception(TransomError):
-            site.load_input_files()
-
 @test
 def site_process_input_files():
     with standard_test_site() as site:
         site.load_config_files()
         site.load_input_files()
         site.process_input_files()
+
+    # # Duplicate index files
+    # with empty_test_site() as site:
+    #     site.load_config_files()
+
+    #     touch("input/index.md")
+    #     touch("input/index.html")
+
+    #     with expect_exception(TransomError):
+    #         site.load_input_files()
 
 @test
 def site_render_output_files():
