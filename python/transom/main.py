@@ -153,14 +153,14 @@ class TransomSite:
                 count += len(files)
             return count
 
-        def find_files():
+        def get_files():
             for root, _, files in self.input_dir.walk():
                 for file_ in files:
                     yield root / file_
 
         batch_size = (count_files() + len(self.worker_threads) - 1) // len(self.worker_threads)
         batch_size = 1 if batch_size == 0 else batch_size # XXX
-        batches = itertools.batched(find_files(), batch_size)
+        batches = itertools.batched(get_files(), batch_size)
         counter = ThreadSafeCounter()
 
         for thread, input_files in zip(self.worker_threads, batches):
@@ -181,7 +181,7 @@ class TransomSite:
 
         match input_path.suffix:
             case ".md":
-                input_file = MarkdownFile(self, input_path)
+                input_file = MarkdownPage(self, input_path)
             case ".css" | ".csv" | ".html" | ".js" | ".json" | ".svg" | ".txt":
                 input_file = TemplateFile(self, input_path)
             case _:
@@ -321,7 +321,8 @@ class InputFile:
         self.input_path = input_path
         self.input_mtime = None
 
-        # Path.relative_to is surprisingly slow in Python 3.12
+        # Path.relative_to is surprisingly slow in Python 3.12, so we
+        # avoid it here
         output_path = str(self.input_path)[len(str(self.site.input_dir)) + 1:]
 
         if output_path.endswith(".md"):
@@ -375,6 +376,24 @@ class GeneratedFile(InputFile):
     __slots__ = ()
     HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
 
+    def process_input(self):
+        super().process_input()
+
+        if self.output_path.suffix == ".html":
+            parent_dir = self.input_path.parent
+
+            if self.output_path.name == "index.html":
+                parent_dir = parent_dir.parent
+
+            while parent_dir != self.site.input_dir.parent:
+                try:
+                    self.parent = self.site.input_files[parent_dir / "index.md"]
+                except KeyError:
+                    parent_dir = parent_dir.parent
+                    continue
+                else:
+                    break
+
     def is_modified(self):
         return super().is_modified() or self.site.config_modified
 
@@ -402,41 +421,6 @@ class TemplateFile(GeneratedFile):
     def process_input(self):
         super().process_input()
 
-        # XXX here, only for .html output files
-
-        # parent = None
-
-        # if input_path.suffix in (".md", ".html"):
-        #     for parent_dir in input_path.parents:
-        #         if parent_dir == self.input_dir.parent:
-        #             break
-
-        #         if input_path.stem == "index":
-        #             continue
-
-        #         for index_name in ("index.md", "index.html"):
-        #             index_path = parent_dir / index_name
-
-        #             if index_path.exists():
-        #                 parent = self.load_input_file(index_path)
-        #                 break
-
-        # ---
-
-        # parent_dir = self.input_path.parent
-
-        # if self.input_path.name in File.INDEX_FILE_NAMES:
-        #     self.site.index_files[parent_dir] = self
-        #     parent_dir = parent_dir.parent
-
-        # while parent_dir not in File.ROOT_PATHS:
-        #     try:
-        #         self.parent = self.site.index_files[parent_dir]
-        #     except KeyError:
-        #         parent_dir = parent_dir.parent
-        #     else:
-        #         break
-
         text = self.input_path.read_text()
         text, header_code = self.extract_header_code(text)
 
@@ -450,7 +434,7 @@ class TemplateFile(GeneratedFile):
         super().render_output()
         self.template.write(self)
 
-class MarkdownFile(GeneratedFile):
+class MarkdownPage(GeneratedFile):
     __slots__ = "page_template", "body_template", "content_template", "extra_headers", "locals"
     MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
     HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
@@ -466,16 +450,16 @@ class MarkdownFile(GeneratedFile):
         self.content_template = Template(text, self.input_path)
         self.extra_headers = ""
 
-        m = MarkdownFile.MARKDOWN_TITLE_RE.search(text)
+        m = MarkdownPage.MARKDOWN_TITLE_RE.search(text)
         self.title = m.group(1) if m else ""
-        m = MarkdownFile.HTML_TITLE_RE.search(text)
+        m = MarkdownPage.HTML_TITLE_RE.search(text)
         self.title = m.group(1) if m else self.title
 
         self.locals = {
             "page": PageInterface(self),
-            "render": functools.partial(MarkdownFile.render_file, self),
-            "path_nav": functools.partial(MarkdownFile.path_nav, self),
-            "toc_nav": functools.partial(MarkdownFile.toc_nav, self),
+            "render": functools.partial(MarkdownPage.render_file, self),
+            "path_nav": functools.partial(MarkdownPage.path_nav, self),
+            "toc_nav": functools.partial(MarkdownPage.toc_nav, self),
         }
 
         if header_code:
