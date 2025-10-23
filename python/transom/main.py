@@ -91,10 +91,14 @@ class TransomSite:
         return f"{self.__class__.__name__}('{self.site_dir}')"
 
     def start(self):
+        self.debug("Starting {} worker {}", len(self.worker_threads), plural("thread", len(self.worker_threads)))
+
         for thread in self.worker_threads:
             thread.start()
 
     def stop(self):
+        self.debug("Stopping worker threads")
+
         for thread in self.worker_threads:
             thread.commands.put((None, None))
             thread.join()
