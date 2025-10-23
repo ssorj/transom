@@ -34,7 +34,6 @@ import unicodedata
 from collections import defaultdict
 from html import escape as html_escape
 from html.parser import HTMLParser
-from os.path import relpath as relative_path # os.path.relpath is a lot faster than Path.relative_to in Python 3.12
 from pathlib import Path
 from queue import Queue
 from urllib import parse as urlparse
@@ -321,13 +320,17 @@ class InputFile:
         self.site = site
         self.input_path = input_path
         self.input_mtime = None
-        self.output_path = self.site.output_dir / relative_path(self.input_path, self.site.input_dir)
+
+        # Path.relative_to is surprisingly slow in Python 3.12
+        output_path = str(self.input_path)[len(str(self.site.input_dir)) + 1:]
+
+        if output_path.endswith(".md"):
+            output_path = output_path[:-3] + ".html"
+
+        self.output_path = self.site.output_dir / output_path
         self.output_mtime = None
 
-        if self.input_path.suffix == ".md":
-            self.output_path = self.output_path.with_suffix(".html")
-
-        self.url = f"{self.site.prefix}/{relative_path(self.output_path, self.site.output_dir)}"
+        self.url = f"{self.site.prefix}/{output_path}"
         self.title = self.output_path.name
         self.parent = None
 
