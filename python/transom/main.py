@@ -139,6 +139,12 @@ class TransomSite:
         path = Path(path) if isinstance(path, str) else path
         return Template(path.read_text(), path)
 
+    def clear_input_files(self):
+        self.input_files.clear()
+
+        for thread in self.worker_threads:
+            thread.input_files.clear()
+
     def load_input_files(self):
         self.debug("Loading input files in '{}'", self.input_dir)
 
@@ -181,12 +187,6 @@ class TransomSite:
         self.input_files[input_path] = input_file
 
         return input_file
-
-    def clear_input_files(self):
-        self.input_files.clear()
-
-        for thread in self.worker_threads:
-            thread.input_files.clear()
 
     def process_input_files(self):
         self.debug("Processing input files in '{}'", self.input_dir)
