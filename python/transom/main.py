@@ -188,13 +188,26 @@ class TransomSite:
 
         return input_file
 
-    def process_input_files(self):
+    def link_input_files(self):
+        self.debug("Linking input files in '{}'", self.input_dir)
+
+        counter = ThreadSafeCounter()
+
+        for thread in self.worker_threads:
+            thread.commands.put((thread.link_input_files, (counter,)))
+
+        for thread in self.worker_threads:
+            thread.commands.join()
+
+        return counter.value()
+
+    def process_input_files(self, force=False):
         self.debug("Processing input files in '{}'", self.input_dir)
 
         counter = ThreadSafeCounter()
 
         for thread in self.worker_threads:
-            thread.commands.put((thread.process_input_files, (counter,)))
+            thread.commands.put((thread.process_input_files, (force, counter)))
 
         for thread in self.worker_threads:
             thread.commands.join()
@@ -228,7 +241,11 @@ class TransomSite:
 
         self.notice("Loaded {:,} input {}", loaded_count, plural("file", loaded_count))
 
-        processed_count = self.process_input_files()
+        linked_count = self.link_input_files()
+
+        self.notice("Linked {:,} input {}", linked_count, plural("file", linked_count))
+
+        processed_count = self.process_input_files(force=force)
 
         self.notice("Processed {:,} input {}", processed_count, plural("file", processed_count))
 
@@ -333,7 +350,7 @@ class InputFile:
     def __init__(self, site, input_path):
         self.site = site
         self.input_path = input_path
-        self.input_mtime = None
+        self.input_mtime = self.input_path.stat().st_mtime
 
         # Path.relative_to is surprisingly slow in Python 3.12, so we
         # avoid it here
@@ -370,7 +387,6 @@ class InputFile:
 
     def process_input(self):
         self.debug("Processing input")
-        self.input_mtime = self.input_path.stat().st_mtime
 
     def render_output(self):
         self.debug("Rendering output")
@@ -390,10 +406,10 @@ class GeneratedFile(InputFile):
     __slots__ = ()
     HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
 
-    def process_input(self):
-        super().process_input()
-
+    def link(self):
         if self.output_path.suffix == ".html":
+            self.debug("Linking parent file")
+
             self.parent = self.get_parent_file()
 
     def get_parent_file(self):
@@ -650,10 +666,17 @@ class WorkerThread(threading.Thread):
             self.input_files.append(self.site.load_input_file(input_path))
             counter.increment()
 
-    def process_input_files(self, counter):
+    def link_input_files(self, counter):
         for input_file in self.input_files:
-            input_file.process_input()
-            counter.increment()
+            if isinstance(input_file, GeneratedFile):
+                input_file.link()
+                counter.increment()
+
+    def process_input_files(self, force, counter):
+        for input_file in self.input_files:
+            if force or input_file.is_modified():
+                input_file.process_input()
+                counter.increment()
 
     def render_output_files(self, force, counter):
         for input_file in self.input_files:
