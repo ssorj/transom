@@ -152,10 +152,9 @@ class TransomSite:
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
 
-        # What if the path is already in site.input_files?
         def gather_input_path_data(start_path, path_data, parent_path):
             with os.scandir(start_path) as entries:
-                entries = tuple(entries)
+                entries = tuple(x for x in entries if not self.ignored_file_re.match(x.name))
 
                 for entry in entries:
                     if entry.name in ("index.md", "index.html"):
@@ -183,9 +182,8 @@ class TransomSite:
         batches = itertools.batched((x[0] for x in path_data), batch_size)
         counter = ThreadSafeCounter()
 
-        for i, input_paths in enumerate(batches):
-            thread = self.worker_threads[i % len(self.worker_threads)]
-            thread.commands.put((thread.load_input_files, (input_paths, counter)))
+        for thread, batch in zip(self.worker_threads, batches):
+            thread.commands.put((thread.load_input_files, (batch, counter)))
 
         for thread in self.worker_threads:
             thread.commands.join()
@@ -622,7 +620,7 @@ class WorkerThread(threading.Thread):
                 self.commands.task_done()
 
     def load_input_files(self, input_paths, counter):
-        for input_path in (x for x in input_paths if not self.site.ignored_file_re.match(x.name)):
+        for input_path in input_paths:
             self.input_files.append(self.site.load_input_file(input_path))
             counter.increment()
 
