@@ -65,7 +65,6 @@ class TransomSite:
         self.config_modified = False
 
         self.input_files = dict() # InputFile.input_path => InputFile
-        self.index_files = dict() # InputFile.input_path.parent => InputFile
 
         self.globals = {
             "site": SiteInterface(self),
@@ -190,9 +189,6 @@ class TransomSite:
 
         self.input_files[input_path] = input_file
 
-        if input_file.output_path.name == "index.html":
-            self.index_files[input_file.input_path.parent] = input_file
-
         return input_file
 
     def process_input_files(self):
@@ -272,12 +268,25 @@ class TransomSite:
         return False
 
     # XXX Reload config if modified?
-    def render_one_file(self, input_path, force=False):
+    def render_one_file(self, input_path):
         assert input_path.is_file(), input_path
+
+        def get_parent_paths():
+            parent_dir = input_path.parent
+
+            if input_path.stem == "index":
+                parent_dir = parent_dir.parent
+
+            while parent_dir != self.input_dir.parent:
+                for index_path in (parent_dir / "index.md", parent_dir / "index.html"):
+                    if index_path.exists():
+                        yield index_path
+
+                parent_dir = parent_dir.parent
 
         parent_files = list()
 
-        for parent_path in self.get_parent_input_paths(input_path):
+        for parent_path in get_parent_paths():
             parent_files.append(self.load_input_file(parent_path))
 
         for parent_file in parent_files:
@@ -287,19 +296,6 @@ class TransomSite:
 
         input_file.process_input()
         input_file.render_output()
-
-    def get_parent_input_paths(self, input_path):
-        parent_dir = input_path.parent
-
-        if input_path.stem == "index":
-            parent_dir = parent_dir.parent
-
-        while parent_dir != self.input_dir.parent:
-            for index_path in (parent_dir / "index.md", parent_dir / "index.html"):
-                if index_path.exists():
-                    yield index_path
-
-            parent_dir = parent_dir.parent
 
     # Input files are loaded and rendered on demand
     def serve(self, port=8080):
@@ -401,35 +397,24 @@ class GeneratedFile(InputFile):
         super().process_input()
 
         if self.output_path.suffix == ".html":
-            parent_dir = self.input_path.parent
+            self.parent = self.get_parent_file()
 
-            if self.output_path.name == "index.html":
-                parent_dir = parent_dir.parent
+    def get_parent_file(self):
+        parent_dir = self.input_path.parent
 
-            while parent_dir != self.site.input_dir.parent:
-                try:
-                    self.parent = self.site.index_files[parent_dir]
-                except KeyError:
-                    parent_dir = parent_dir.parent
-                else:
-                    break
+        if self.output_path.name == "index.html":
+            parent_dir = parent_dir.parent
 
-        # if self.output_path.suffix == ".html":
-        #     parent_dir = self.input_path.parent
+        while parent_dir != self.site.input_dir.parent:
+            index_file = self.site.input_files.get(parent_dir / "index.md")
 
-        #     if self.output_path.name == "index.html":
-        #         parent_dir = parent_dir.parent
+            if index_file is None:
+                index_file = self.site.input_files.get(parent_dir / "index.html")
 
-        #     while parent_dir != self.site.input_dir.parent:
-        #         self.parent = self.site.input_files.get(parent_dir / "index.md")
+            if index_file is not None:
+                return index_file
 
-        #         if self.parent is None:
-        #             self.parent = self.site.input_files.get(parent_dir / "index.html")
-
-        #         if self.parent is not None:
-        #             break
-
-        #         parent_dir = parent_dir.parent
+            parent_dir = parent_dir.parent
 
     def is_modified(self):
         return super().is_modified() or self.site.config_modified
