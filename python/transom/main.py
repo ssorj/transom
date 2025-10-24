@@ -23,6 +23,7 @@ import functools
 import http.server as httpserver
 import itertools
 import mistune
+import os
 import re
 import shutil
 import sys
@@ -151,7 +152,35 @@ class TransomSite:
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
 
-        batches = itertools.batched(self.get_input_paths(), 100)
+        # What if the path is already in site.input_files?
+        def gather_input_path_data(start_path, path_data, parent_path):
+            with os.scandir(start_path) as entries:
+                entries = tuple(entries)
+
+                for entry in entries:
+                    if entry.name in ("index.md", "index.html"):
+                        path = Path(entry.path)
+                        path_data.append((path, parent_path))
+                        parent_path = path
+                        break
+
+                for entry in entries:
+                    if entry.name in ("index.md", "index.html"):
+                        continue
+
+                    path = Path(entry.path)
+
+                    if entry.is_file():
+                        path_data.append((path, parent_path))
+                    elif entry.is_dir():
+                        gather_input_path_data(path, path_data, parent_path)
+
+        path_data = list()
+
+        gather_input_path_data(self.input_dir, path_data, None)
+
+        batch_size = (len(path_data) + len(self.worker_threads)) // len(self.worker_threads)
+        batches = itertools.batched((x[0] for x in path_data), batch_size)
         counter = ThreadSafeCounter()
 
         for i, input_paths in enumerate(batches):
@@ -161,12 +190,13 @@ class TransomSite:
         for thread in self.worker_threads:
             thread.commands.join()
 
-        return counter.value()
+        for input_path, parent_path in path_data:
+            input_file = self.input_files[input_path]
+            parent_file = self.input_files.get(parent_path)
 
-    def get_input_paths(self):
-        for root, _, files in self.input_dir.walk():
-            for name in files:
-                yield root / name
+            input_file.parent = parent_file
+
+        return counter.value()
 
     def load_input_file(self, input_path):
         try:
@@ -187,19 +217,6 @@ class TransomSite:
         self.input_files[input_path] = input_file
 
         return input_file
-
-    def link_input_files(self):
-        self.debug("Linking input files in '{}'", self.input_dir)
-
-        counter = ThreadSafeCounter()
-
-        for thread in self.worker_threads:
-            thread.commands.put((thread.link_input_files, (counter,)))
-
-        for thread in self.worker_threads:
-            thread.commands.join()
-
-        return counter.value()
 
     def process_input_files(self, force=False):
         self.debug("Processing input files in '{}'", self.input_dir)
@@ -239,15 +256,11 @@ class TransomSite:
 
         loaded_count = self.load_input_files()
 
-        self.notice("Loaded {:,} input {}", loaded_count, plural("file", loaded_count))
-
-        linked_count = self.link_input_files()
-
-        self.notice("Linked {:,} input {}", linked_count, plural("file", linked_count))
+        self.debug("Loaded {:,} input {}", loaded_count, plural("file", loaded_count))
 
         processed_count = self.process_input_files(force=force)
 
-        self.notice("Processed {:,} input {}", processed_count, plural("file", processed_count))
+        self.debug("Processed {:,} input {}", processed_count, plural("file", processed_count))
 
         rendered_count = self.render_output_files(force=force)
 
@@ -265,7 +278,7 @@ class TransomSite:
 
         self.notice("Rendered {:,} output {}{}", rendered_count, plural("file", rendered_count), unchanged_note)
 
-    # XXX Make this faster
+    # XXX Make this faster - Don't use rglob
     def compute_config_modified(self):
         output_mtime = self.output_dir.stat().st_mtime
 
@@ -281,39 +294,9 @@ class TransomSite:
 
         return False
 
-    # XXX Reload config if modified?
-    def render_one_file(self, input_path):
-        assert input_path.is_file(), input_path
-
-        def get_parent_paths():
-            parent_dir = input_path.parent
-
-            if input_path.stem == "index":
-                parent_dir = parent_dir.parent
-
-            while parent_dir != self.input_dir.parent:
-                for index_path in (parent_dir / "index.md", parent_dir / "index.html"):
-                    if index_path.exists():
-                        yield index_path
-
-                parent_dir = parent_dir.parent
-
-        parent_files = list()
-
-        for parent_path in get_parent_paths():
-            parent_files.append(self.load_input_file(parent_path))
-
-        for parent_file in parent_files:
-            parent_file.process_input()
-
-        input_file = self.load_input_file(input_path)
-
-        input_file.process_input()
-        input_file.render_output()
-
     # Input files are loaded and rendered on demand
     def serve(self, port=8080):
-        self.load_config_files()
+        self.render()
 
         self.notice("Serving the site at http://localhost:{}", port)
 
@@ -405,29 +388,6 @@ class StaticFile(InputFile):
 class GeneratedFile(InputFile):
     __slots__ = ()
     HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
-
-    def link(self):
-        if self.output_path.suffix == ".html":
-            self.debug("Linking parent file")
-
-            self.parent = self.get_parent_file()
-
-    def get_parent_file(self):
-        parent_dir = self.input_path.parent
-
-        if self.output_path.name == "index.html":
-            parent_dir = parent_dir.parent
-
-        while parent_dir != self.site.input_dir.parent:
-            index_file = self.site.input_files.get(parent_dir / "index.md")
-
-            if index_file is None:
-                index_file = self.site.input_files.get(parent_dir / "index.html")
-
-            if index_file is not None:
-                return index_file
-
-            parent_dir = parent_dir.parent
 
     def is_modified(self):
         return super().is_modified() or self.site.config_modified
@@ -666,12 +626,6 @@ class WorkerThread(threading.Thread):
             self.input_files.append(self.site.load_input_file(input_path))
             counter.increment()
 
-    def link_input_files(self, counter):
-        for input_file in self.input_files:
-            if isinstance(input_file, GeneratedFile):
-                input_file.link()
-                counter.increment()
-
     def process_input_files(self, force, counter):
         for input_file in self.input_files:
             if force or input_file.is_modified():
@@ -759,12 +713,7 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
         self.path = self.path + "index.html" if self.path.endswith("/") else self.path
         self.path = self.path.removeprefix(self.server.site.prefix).removeprefix("/")
 
-        input_path = self.server.site.input_dir / self.path
-
-        if input_path.is_file():
-            self.server.site.render_one_file(input_path)
-        elif input_path.with_suffix(".md").exists():
-            self.server.site.render_one_file(input_path.with_suffix(".md"))
+        self.server.site.render()
 
         return super().send_head()
 

@@ -1,7 +1,4 @@
 # A file in a nested directory
 
-R
-
-B
-
-C
+123
+456
