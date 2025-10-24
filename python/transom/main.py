@@ -145,31 +145,22 @@ class TransomSite:
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
 
-        self.input_files.clear() # XXX support efficient reloading?
-
-        def count_files():
-            count = 0
-            for root, _, files in self.input_dir.walk():
-                count += len(files)
-            return count
-
-        def get_files():
-            for root, _, files in self.input_dir.walk():
-                for name in files:
-                    yield root / name
-
-        batch_size = (count_files() + len(self.worker_threads) - 1) // len(self.worker_threads)
-        batch_size = 1 if batch_size == 0 else batch_size # XXX
-        batches = itertools.batched(get_files(), batch_size)
+        batches = itertools.batched(self.get_input_paths(), 100)
         counter = ThreadSafeCounter()
 
-        for thread, input_files in zip(self.worker_threads, batches):
-            thread.commands.put((thread.load_input_files, (input_files, counter)))
+        for i, input_paths in enumerate(batches):
+            thread = self.worker_threads[i % len(self.worker_threads)]
+            thread.commands.put((thread.load_input_files, (input_paths, counter)))
 
         for thread in self.worker_threads:
             thread.commands.join()
 
         return counter.value()
+
+    def get_input_paths(self):
+        for root, _, files in self.input_dir.walk():
+            for name in files:
+                yield root / name
 
     def load_input_file(self, input_path):
         try:
@@ -190,6 +181,12 @@ class TransomSite:
         self.input_files[input_path] = input_file
 
         return input_file
+
+    def clear_input_files(self):
+        self.input_files.clear()
+
+        for thread in self.worker_threads:
+            thread.input_files.clear()
 
     def process_input_files(self):
         self.debug("Processing input files in '{}'", self.input_dir)
@@ -649,8 +646,6 @@ class WorkerThread(threading.Thread):
                 self.commands.task_done()
 
     def load_input_files(self, input_paths, counter):
-        self.input_files.clear()
-
         for input_path in (x for x in input_paths if not self.site.ignored_file_re.match(x.name)):
             self.input_files.append(self.site.load_input_file(input_path))
             counter.increment()
