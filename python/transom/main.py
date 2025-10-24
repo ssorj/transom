@@ -152,6 +152,7 @@ class TransomSite:
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
 
+        # XXX The internet says entry.stat() is faster then os.stat()...
         def gather_input_path_data(start_path, path_data, parent_path):
             with os.scandir(start_path) as entries:
                 entries = tuple(x for x in entries if not self.ignored_file_re.match(x.name))
@@ -190,9 +191,11 @@ class TransomSite:
 
         for input_path, parent_path in path_data:
             input_file = self.input_files[input_path]
-            parent_file = self.input_files.get(parent_path)
+            parent_file = self.input_files[parent_path] if parent_path is not None else None
 
             input_file.parent = parent_file
+
+        # XXX Sweep through and refresh output_mtimes?
 
         return counter.value()
 
