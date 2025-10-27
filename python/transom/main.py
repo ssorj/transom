@@ -295,9 +295,10 @@ class TransomSite:
 
         return False
 
-    # Input files are loaded and rendered on demand
     def serve(self, port=8080):
-        self.render()
+        # Input files are processed and rendered on demand
+        self.load_config_files()
+        self.load_input_files()
 
         self.notice("Serving the site at http://localhost:{}", port)
 
@@ -470,7 +471,6 @@ class MarkdownPage(GeneratedFile):
         return self.body_template.render(self)
 
     @property
-    @functools.cache
     def content(self):
         pieces = self.content_template.render(self)
 
@@ -714,9 +714,24 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
         self.path = self.path + "index.html" if self.path.endswith("/") else self.path
         self.path = self.path.removeprefix(self.server.site.prefix).removeprefix("/")
 
-        self.server.site.render()
+        input_path = self.server.site.input_dir / self.path
+
+        if input_path.is_file():
+            self.render(input_path)
+        elif input_path.with_suffix(".md").exists():
+            self.render(input_path.with_suffix(".md"))
 
         return super().send_head()
+
+    def render(self, input_path):
+        input_file = self.server.site.load_input_file(input_path)
+
+        if input_path.suffix in (".md", ".html"):
+            for parent in input_file.ancestors():
+                parent.process_input()
+
+        input_file.process_input()
+        input_file.render_output()
 
 class TransomCommand:
     def __init__(self, home=None):
