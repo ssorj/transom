@@ -181,10 +181,9 @@ class TransomSite:
 
         batch_size = (len(path_data) + len(self.worker_threads)) // len(self.worker_threads)
         batches = itertools.batched((x[0] for x in path_data), batch_size)
-        counter = ThreadSafeCounter()
 
         for thread, batch in zip(self.worker_threads, batches):
-            thread.commands.put((thread.load_input_files, (batch, counter)))
+            thread.commands.put((thread.load_input_files, (batch,)))
 
         for thread in self.worker_threads:
             thread.commands.join()
@@ -195,9 +194,7 @@ class TransomSite:
 
             input_file.parent = parent_file
 
-        # XXX Sweep through and refresh output_mtimes?
-
-        return counter.value()
+        return sum(len(x.loaded_files) for x in self.worker_threads)
 
     def load_input_file(self, input_path):
         try:
@@ -219,65 +216,58 @@ class TransomSite:
 
         return input_file
 
-    def process_input_files(self, force=False):
+    def process_input_files(self, last_render_time=0):
         self.debug("Processing input files in '{}'", self.input_dir)
 
-        counter = ThreadSafeCounter()
-
         for thread in self.worker_threads:
-            thread.commands.put((thread.process_input_files, (force, counter)))
+            thread.commands.put((thread.process_input_files, (last_render_time,)))
 
         for thread in self.worker_threads:
             thread.commands.join()
 
-        return counter.value()
+        return sum(len(x.modified_files) for x in self.worker_threads)
 
-    def render_output_files(self, force=False):
+    def render_output_files(self):
         self.debug("Rendering output files to '{}'", self.output_dir)
 
-        counter = ThreadSafeCounter()
-
         for thread in self.worker_threads:
-            thread.commands.put((thread.render_output_files, (force, counter)))
+            thread.commands.put((thread.render_output_files, ()))
 
         for thread in self.worker_threads:
             thread.commands.join()
-
-        return counter.value()
 
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
 
+        # XXX Get a mod time from this
         self.load_config_files()
 
-        # XXX?
         if self.output_dir.exists():
+            last_render_time = self.output_dir.stat().st_mtime
+
             self.debug("Checking for config file changes")
             self.config_modified = self.compute_config_modified()
+        else:
+            last_render_time = 0
 
         loaded_count = self.load_input_files()
+        modified_count = self.process_input_files(last_render_time)
 
-        self.debug("Loaded {:,} input {}", loaded_count, plural("file", loaded_count))
-
-        processed_count = self.process_input_files(force=force)
-
-        self.debug("Processed {:,} input {}", processed_count, plural("file", processed_count))
-
-        rendered_count = self.render_output_files(force=force)
+        self.render_output_files()
 
         if not self.worker_errors.empty():
             raise self.worker_errors.get()
 
-        if self.output_dir.is_dir():
+        if self.output_dir.exists():
             self.output_dir.touch()
 
-        unchanged_count = loaded_count - rendered_count
-        unchanged_note = ""
+        unmodified_count = loaded_count - modified_count
+        unmodified_note = ""
 
-        if unchanged_count > 0:
-            unchanged_note = " ({:,} unchanged)".format(unchanged_count)
+        if unmodified_count > 0:
+            unmodified_note = " ({:,} unchanged)".format(unmodified_count)
 
-        self.notice("Rendered {:,} output {}{}", rendered_count, plural("file", rendered_count), unchanged_note)
+        self.notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
 
     # XXX Make this faster - Don't use rglob
     def compute_config_modified(self):
@@ -330,12 +320,12 @@ class TransomSite:
         print("Error!", message.format(*args))
 
 class InputFile:
-    __slots__ = "site", "input_path", "input_mtime", "output_path", "output_mtime", "url", "title", "parent"
+    __slots__ = "site", "input_path", "input_mtime", "output_path", "url", "title", "parent"
 
     def __init__(self, site, input_path):
         self.site = site
         self.input_path = input_path
-        self.input_mtime = self.input_path.stat().st_mtime
+        self.input_mtime = None
 
         # Path.relative_to is surprisingly slow in Python 3.12, so we
         # avoid it here
@@ -345,7 +335,6 @@ class InputFile:
             output_path = output_path[:-3] + ".html"
 
         self.output_path = self.site.output_dir / output_path
-        self.output_mtime = None
 
         self.url = f"{self.site.prefix}/{output_path}"
         self.title = self.output_path.name
@@ -361,17 +350,12 @@ class InputFile:
             yield parent
             parent = parent.parent
 
-    def is_modified(self):
-        if self.output_mtime is None:
-            try:
-                self.output_mtime = self.output_path.stat().st_mtime
-            except FileNotFoundError:
-                return True
-
-        return self.input_mtime > self.output_mtime
-
-    def process_input(self):
+    def process_input(self, last_render_time=0):
         self.debug("Processing input")
+
+        self.input_mtime = self.input_path.stat().st_mtime
+
+        return self.input_mtime > last_render_time
 
     def render_output(self):
         self.debug("Rendering output")
@@ -390,9 +374,6 @@ class StaticFile(InputFile):
 class GeneratedFile(InputFile):
     __slots__ = ()
     HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
-
-    def is_modified(self):
-        return super().is_modified() or self.site.config_modified
 
     def extract_header_code(self, text):
         match_ = GeneratedFile.HEADER_RE.match(text)
@@ -415,17 +396,20 @@ class GeneratedFile(InputFile):
 class TemplateFile(GeneratedFile):
     __slots__ = "template", "locals"
 
-    def process_input(self):
-        super().process_input()
+    def process_input(self, last_render_time=0):
+        modified = super().process_input(last_render_time)
 
-        text = self.input_path.read_text()
-        text, header_code = self.extract_header_code(text)
+        if modified:
+            text = self.input_path.read_text()
+            text, header_code = self.extract_header_code(text)
 
-        self.template = Template(text, self.input_path)
-        self.locals = None
+            self.template = Template(text, self.input_path)
+            self.locals = None
 
-        if header_code:
-            self.exec_header_code(header_code)
+            if header_code:
+                self.exec_header_code(header_code)
+
+        return modified
 
     def render_output(self):
         super().render_output()
@@ -436,31 +420,34 @@ class MarkdownPage(GeneratedFile):
     MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
     HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
-    def process_input(self):
-        super().process_input()
+    def process_input(self, last_render_time=0):
+        modified = super().process_input(last_render_time)
 
-        text = self.input_path.read_text()
-        text, header_code = self.extract_header_code(text)
+        if modified:
+            text = self.input_path.read_text()
+            text, header_code = self.extract_header_code(text)
 
-        self.page_template = self.site.page_template
-        self.body_template = self.site.body_template
-        self.content_template = Template(text, self.input_path)
-        self.extra_headers = ""
+            self.page_template = self.site.page_template
+            self.body_template = self.site.body_template
+            self.content_template = Template(text, self.input_path)
+            self.extra_headers = ""
 
-        m = MarkdownPage.MARKDOWN_TITLE_RE.search(text)
-        self.title = m.group(1) if m else ""
-        m = MarkdownPage.HTML_TITLE_RE.search(text)
-        self.title = m.group(1) if m else self.title
+            m = MarkdownPage.MARKDOWN_TITLE_RE.search(text)
+            self.title = m.group(1) if m else ""
+            m = MarkdownPage.HTML_TITLE_RE.search(text)
+            self.title = m.group(1) if m else self.title
 
-        self.locals = {
-            "page": PageInterface(self),
-            "render": functools.partial(MarkdownPage.render_file, self),
-            "path_nav": functools.partial(MarkdownPage.path_nav, self),
-            "toc_nav": functools.partial(MarkdownPage.toc_nav, self),
-        }
+            self.locals = {
+                "page": PageInterface(self),
+                "render": functools.partial(MarkdownPage.render_file, self),
+                "path_nav": functools.partial(MarkdownPage.path_nav, self),
+                "toc_nav": functools.partial(MarkdownPage.toc_nav, self),
+            }
 
-        if header_code:
-            self.exec_header_code(header_code)
+            if header_code:
+                self.exec_header_code(header_code)
+
+        return modified
 
     def render_output(self):
         super().render_output()
@@ -602,7 +589,8 @@ class WorkerThread(threading.Thread):
         self.site = site
         self.errors = errors
         self.commands = Queue()
-        self.input_files = list()
+        self.loaded_files = list()
+        self.modified_files = list()
 
     def run(self):
         while True:
@@ -622,35 +610,24 @@ class WorkerThread(threading.Thread):
             finally:
                 self.commands.task_done()
 
-    def load_input_files(self, input_paths, counter):
+    def load_input_files(self, input_paths):
+        self.loaded_files.clear()
+
         for input_path in input_paths:
-            self.input_files.append(self.site.load_input_file(input_path))
-            counter.increment()
+            self.loaded_files.append(self.site.load_input_file(input_path))
 
-    def process_input_files(self, force, counter):
-        for input_file in self.input_files:
-            if force or input_file.is_modified():
-                input_file.process_input()
-                counter.increment()
+    def process_input_files(self, last_render_time):
+        self.modified_files.clear()
 
-    def render_output_files(self, force, counter):
-        for input_file in self.input_files:
-            if force or input_file.is_modified():
-                input_file.render_output()
-                counter.increment()
+        for input_file in self.loaded_files:
+            modified = input_file.process_input(last_render_time)
 
-class ThreadSafeCounter:
-    def __init__(self):
-        self.counter = 0
-        self.lock = threading.Lock()
+            if modified:
+                self.modified_files.append(input_file)
 
-    def increment(self):
-        with self.lock:
-            self.counter += 1
-
-    def value(self):
-        with self.lock:
-            return self.counter
+    def render_output_files(self):
+        for input_file in self.modified_files:
+            input_file.render_output()
 
 class HeadingParser(HTMLParser):
     def __init__(self):
