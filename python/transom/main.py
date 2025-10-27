@@ -22,6 +22,7 @@ import fnmatch
 import functools
 import http.server as httpserver
 import itertools
+import math
 import mistune
 import os
 import re
@@ -179,7 +180,7 @@ class TransomSite:
 
         gather_input_path_data(self.input_dir, path_data, None)
 
-        batch_size = (len(path_data) + len(self.worker_threads)) // len(self.worker_threads)
+        batch_size = max((1, math.ceil(len(path_data) / len(self.worker_threads))))
         batches = itertools.batched((x[0] for x in path_data), batch_size)
 
         for thread, batch in zip(self.worker_threads, batches):
