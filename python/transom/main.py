@@ -179,7 +179,10 @@ class TransomSite:
 
         gather_input_path_data(self.input_dir, path_data, None)
 
-        batch_size = max((1, math.ceil(len(path_data) / len(self.worker_threads))))
+        if len(path_data) == 0:
+            return 0
+
+        batch_size = math.ceil(len(path_data) / len(self.worker_threads))
         batches = itertools.batched((x[0] for x in path_data), batch_size)
 
         for thread, batch in zip(self.worker_threads, batches):
@@ -197,11 +200,6 @@ class TransomSite:
         return sum(len(x.loaded_files) for x in self.worker_threads)
 
     def load_input_file(self, input_path):
-        try:
-            return self.input_files[input_path]
-        except KeyError:
-            pass
-
         self.debug("Loading '{}'", input_path)
 
         match input_path.suffix:
