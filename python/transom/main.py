@@ -153,7 +153,6 @@ class TransomSite:
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
 
-        # XXX The internet says entry.stat() is faster then os.stat()...
         def gather_input_path_data(start_path, path_data, parent_path):
             with os.scandir(start_path) as entries:
                 entries = tuple(x for x in entries if not self.ignored_file_re.match(x.name))
@@ -240,18 +239,18 @@ class TransomSite:
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
 
-        # XXX Get a mod time from this
         self.load_config_files()
 
-        if self.output_dir.exists():
+        loaded_count = self.load_input_files()
+
+        if not force and self.output_dir.exists():
             last_render_time = self.output_dir.stat().st_mtime
 
-            self.debug("Checking for config file changes")
-            self.config_modified = self.compute_config_modified()
+            if self.find_config_modified(last_render_time):
+                last_render_time = 0
         else:
             last_render_time = 0
 
-        loaded_count = self.load_input_files()
         modified_count = self.process_input_files(last_render_time)
 
         self.render_output_files()
@@ -270,21 +269,21 @@ class TransomSite:
 
         self.notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
 
-    # XXX Make this faster - Don't use rglob
-    def compute_config_modified(self):
-        output_mtime = self.output_dir.stat().st_mtime
+    def find_config_modified(self, last_render_time):
+        def find_modified_file(start_path, last_render_time):
+            with os.scandir(start_path) as entries:
+                for entry in (x for x in entries if not self.ignored_file_re.match(x.name)):
+                    if entry.is_file():
+                        if entry.stat().st_mtime > last_render_time:
+                            return True
+                    elif entry.is_dir():
+                        return find_modified_file(entry.path, last_render_time)
+
+                return False
 
         for config_dir in self.config_dirs:
-            for path in (x for x in Path(config_dir).rglob("*") if not self.ignored_file_re.match(str(x))):
-                try:
-                    config_mtime = path.stat().st_mtime
-                except (FileNotFoundError, PermissionError): # pragma: nocover
-                    continue
-
-                if config_mtime > output_mtime:
-                    return True
-
-        return False
+            if find_modified_file(config_dir, last_render_time):
+                return True
 
     def serve(self, port=8080):
         # Input files are processed and rendered on demand
