@@ -139,15 +139,8 @@ class TransomSite:
         path = Path(path) if isinstance(path, str) else path
         return Template(path.read_text(), path)
 
-    def clear_input_files(self):
-        self.input_files.clear()
-
-        for thread in self.worker_threads:
-            thread.input_files.clear()
-
-    # Also try unbatched?
-    def load_input_files(self):
-        self.debug("Loading input files in '{}'", self.input_dir)
+    def find_input_paths(self):
+        self.debug("Finding input paths in '{}'", self.input_dir)
 
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
@@ -178,28 +171,9 @@ class TransomSite:
 
         gather_input_path_data(self.input_dir, input_path_data, None)
 
-        if len(input_path_data) == 0:
-            return ()
+        self.debug("Found {:,} input paths", len(input_path_data))
 
-        batch_size = math.ceil(len(input_path_data) / len(self.worker_threads))
-        input_path_batches = itertools.batched(input_path_data.keys(), batch_size)
-
-        for thread, input_paths in zip(self.worker_threads, input_path_batches):
-            thread.commands.put((thread.load_input_files, (input_paths,)))
-
-        for thread in self.worker_threads:
-            thread.commands.join()
-
-        input_files = (x.loaded_files for x in self.worker_threads)
-        input_files = {x.input_path: x for x in itertools.chain.from_iterable(input_files)}
-
-        for input_file in input_files.values():
-            parent_path = input_path_data[input_file.input_path]
-
-            if parent_path is not None:
-                input_file.parent = input_files[parent_path]
-
-        return input_files.values()
+        return input_path_data
 
     def load_input_file(self, input_path):
         self.debug("Loading '{}'", input_path)
@@ -213,59 +187,6 @@ class TransomSite:
                 input_file = StaticFile(self, input_path)
 
         return input_file
-
-    def process_input_files(self, last_render_time=0):
-        self.debug("Processing input files in '{}'", self.input_dir)
-
-        for thread in self.worker_threads:
-            thread.commands.put((thread.process_input_files, (last_render_time,)))
-
-        for thread in self.worker_threads:
-            thread.commands.join()
-
-        return sum(len(x.modified_files) for x in self.worker_threads)
-
-    def render_output_files(self):
-        self.debug("Rendering output files to '{}'", self.output_dir)
-
-        for thread in self.worker_threads:
-            thread.commands.put((thread.render_output_files, ()))
-
-        for thread in self.worker_threads:
-            thread.commands.join()
-
-    def render(self, force=False):
-        self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
-
-        self.load_config_files()
-
-        input_files = self.load_input_files()
-
-        if not force and self.output_dir.exists():
-            last_render_time = self.output_dir.stat().st_mtime
-
-            if self.find_config_modified(last_render_time):
-                last_render_time = 0
-        else:
-            last_render_time = 0
-
-        modified_count = self.process_input_files(last_render_time)
-
-        self.render_output_files()
-
-        if not self.worker_errors.empty():
-            raise self.worker_errors.get()
-
-        if self.output_dir.exists():
-            self.output_dir.touch()
-
-        unmodified_count = len(input_files) - modified_count
-        unmodified_note = ""
-
-        if unmodified_count > 0:
-            unmodified_note = " ({:,} unchanged)".format(unmodified_count)
-
-        self.notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
 
     def find_config_modified(self, last_render_time):
         def find_modified_file(start_path, last_render_time):
@@ -283,10 +204,76 @@ class TransomSite:
             if find_modified_file(config_dir, last_render_time):
                 return True
 
-    def serve(self, port=8080):
-        # Input files are processed and rendered on demand
+    def render(self, force=False):
+        self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
+
         self.load_config_files()
-        self.load_input_files()
+
+        input_paths = self.find_input_paths()
+
+        input_path_batches = itertools.batched(input_paths, math.ceil(len(input_paths) / len(self.worker_threads)))
+        input_file_batches = tuple([] for x in self.worker_threads)
+        modified_file_batches = tuple([] for x in self.worker_threads)
+
+        self.debug("Loading input files in '{}'", self.input_dir)
+
+        for thread, paths, files in zip(self.worker_threads, input_path_batches, input_file_batches):
+            thread.commands.put((thread.load_input_files, (paths, files)))
+
+        for thread in self.worker_threads:
+            thread.commands.join()
+
+        self.debug("Loaded {} input files", sum(len(x) for x in input_file_batches))
+
+        input_files = {x.input_path: x for x in itertools.chain(*input_file_batches)}
+
+        for input_file in input_files.values():
+            parent_path = input_paths[input_file.input_path]
+
+            if parent_path is not None:
+                input_file.parent = input_files[parent_path]
+
+        if not force and self.output_dir.exists():
+            last_render_time = self.output_dir.stat().st_mtime
+
+            if self.find_config_modified(last_render_time):
+                last_render_time = 0
+        else:
+            last_render_time = 0
+
+        self.debug("Processing input files in '{}'", self.input_dir)
+
+        for thread, files, modified_files in zip(self.worker_threads, input_file_batches, modified_file_batches):
+            thread.commands.put((thread.process_input_files, (files, last_render_time, modified_files)))
+
+        for thread in self.worker_threads:
+            thread.commands.join()
+
+        self.debug("Rendering output files to '{}'", self.output_dir)
+
+        for thread, files in zip(self.worker_threads, modified_file_batches):
+            thread.commands.put((thread.render_output_files, (files,)))
+
+        for thread in self.worker_threads:
+            thread.commands.join()
+
+        if not self.worker_errors.empty():
+            raise self.worker_errors.get()
+
+        if self.output_dir.exists():
+            self.output_dir.touch()
+
+        modified_count = sum(len(x) for x in modified_file_batches)
+        unmodified_count = len(input_files) - modified_count
+        unmodified_note = ""
+
+        if unmodified_count > 0:
+            unmodified_note = " ({:,} unchanged)".format(unmodified_count)
+
+        self.notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
+
+    def serve(self, port=8080):
+        self.render()
 
         self.notice("Serving the site at http://localhost:{}", port)
 
@@ -587,8 +574,6 @@ class WorkerThread(threading.Thread):
         self.site = site
         self.errors = errors
         self.commands = Queue()
-        self.loaded_files = list()
-        self.modified_files = list()
 
     def run(self):
         while True:
@@ -608,23 +593,19 @@ class WorkerThread(threading.Thread):
             finally:
                 self.commands.task_done()
 
-    def load_input_files(self, input_paths):
-        self.loaded_files.clear()
-
+    def load_input_files(self, input_paths, input_files):
         for input_path in input_paths:
-            self.loaded_files.append(self.site.load_input_file(input_path))
+            input_files.append(self.site.load_input_file(input_path))
 
-    def process_input_files(self, last_render_time):
-        self.modified_files.clear()
-
-        for input_file in self.loaded_files:
+    def process_input_files(self, input_files, last_render_time, modified_files):
+        for input_file in input_files:
             modified = input_file.process_input(last_render_time)
 
             if modified:
-                self.modified_files.append(input_file)
+                modified_files.append(input_file)
 
-    def render_output_files(self):
-        for input_file in self.modified_files:
+    def render_output_files(self, modified_files):
+        for input_file in modified_files:
             input_file.render_output()
 
 class HeadingParser(HTMLParser):
