@@ -66,8 +66,6 @@ class TransomSite:
         self.config_dirs = [self.config_dir]
         self.config_modified = False
 
-        self.input_files = dict() # InputFile.input_path => InputFile
-
         self.globals = {
             "site": SiteInterface(self),
             "include": include,
@@ -175,29 +173,32 @@ class TransomSite:
                     elif entry.is_dir():
                         gather_input_path_data(path, path_data, parent_path)
 
-        path_data = list()
+        input_path_data = list()
 
-        gather_input_path_data(self.input_dir, path_data, None)
+        gather_input_path_data(self.input_dir, input_path_data, None)
 
-        if len(path_data) == 0:
-            return 0
+        if len(input_path_data) == 0:
+            return {} # XXX
 
-        batch_size = math.ceil(len(path_data) / len(self.worker_threads))
-        batches = itertools.batched((x[0] for x in path_data), batch_size)
+        batch_size = math.ceil(len(input_path_data) / len(self.worker_threads))
+        input_path_batches = itertools.batched((x[0] for x in input_path_data), batch_size)
 
-        for thread, batch in zip(self.worker_threads, batches):
-            thread.commands.put((thread.load_input_files, (batch,)))
+        for thread, input_paths in zip(self.worker_threads, input_path_batches):
+            thread.commands.put((thread.load_input_files, (input_paths,)))
 
         for thread in self.worker_threads:
             thread.commands.join()
 
-        for input_path, parent_path in path_data:
-            input_file = self.input_files[input_path]
-            parent_file = self.input_files[parent_path] if parent_path is not None else None
+        input_files = (x.loaded_files for x in self.worker_threads)
+        input_files = {x.input_path: x for x in itertools.chain.from_iterable(input_files)}
+
+        for input_path, parent_path in input_path_data:
+            input_file = input_files[input_path] # XXX
+            parent_file = input_files[parent_path] if parent_path is not None else None
 
             input_file.parent = parent_file
 
-        return sum(len(x.loaded_files) for x in self.worker_threads)
+        return input_files
 
     def load_input_file(self, input_path):
         self.debug("Loading '{}'", input_path)
@@ -209,8 +210,6 @@ class TransomSite:
                 input_file = TemplateFile(self, input_path)
             case _:
                 input_file = StaticFile(self, input_path)
-
-        self.input_files[input_path] = input_file
 
         return input_file
 
@@ -239,7 +238,7 @@ class TransomSite:
 
         self.load_config_files()
 
-        loaded_count = self.load_input_files()
+        input_files = self.load_input_files()
 
         if not force and self.output_dir.exists():
             last_render_time = self.output_dir.stat().st_mtime
@@ -259,7 +258,7 @@ class TransomSite:
         if self.output_dir.exists():
             self.output_dir.touch()
 
-        unmodified_count = loaded_count - modified_count
+        unmodified_count = len(input_files) - modified_count
         unmodified_note = ""
 
         if unmodified_count > 0:
@@ -876,11 +875,11 @@ class TransomCommand:
 
         try:
             self.site.load_config_files()
-            self.site.load_input_files()
+            input_files = self.site.load_input_files()
         finally:
             self.site.stop()
 
-        expected_paths = set(x.output_path for x in self.site.input_files.values())
+        expected_paths = set(x.output_path for x in input_files.values())
         found_paths = set()
 
         for root, dirs, files in self.site.output_dir.walk():
