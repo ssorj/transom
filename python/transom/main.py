@@ -145,20 +145,21 @@ class TransomSite:
         for thread in self.worker_threads:
             thread.input_files.clear()
 
+    # Also try unbatched?
     def load_input_files(self):
         self.debug("Loading input files in '{}'", self.input_dir)
 
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
 
-        def gather_input_path_data(start_path, path_data, parent_path):
+        def gather_input_path_data(start_path, input_path_data, parent_path):
             with os.scandir(start_path) as entries:
                 entries = tuple(x for x in entries if not self.ignored_file_re.match(x.name))
 
                 for entry in entries:
                     if entry.name in ("index.md", "index.html"):
                         path = Path(entry.path)
-                        path_data.append((path, parent_path))
+                        input_path_data[path] = parent_path
                         parent_path = path
                         break
 
@@ -169,19 +170,19 @@ class TransomSite:
                     path = Path(entry.path)
 
                     if entry.is_file():
-                        path_data.append((path, parent_path))
+                        input_path_data[path] = parent_path
                     elif entry.is_dir():
-                        gather_input_path_data(path, path_data, parent_path)
+                        gather_input_path_data(path, input_path_data, parent_path)
 
-        input_path_data = list()
+        input_path_data = dict()
 
         gather_input_path_data(self.input_dir, input_path_data, None)
 
         if len(input_path_data) == 0:
-            return {} # XXX
+            return ()
 
         batch_size = math.ceil(len(input_path_data) / len(self.worker_threads))
-        input_path_batches = itertools.batched((x[0] for x in input_path_data), batch_size)
+        input_path_batches = itertools.batched(input_path_data.keys(), batch_size)
 
         for thread, input_paths in zip(self.worker_threads, input_path_batches):
             thread.commands.put((thread.load_input_files, (input_paths,)))
@@ -192,13 +193,13 @@ class TransomSite:
         input_files = (x.loaded_files for x in self.worker_threads)
         input_files = {x.input_path: x for x in itertools.chain.from_iterable(input_files)}
 
-        for input_path, parent_path in input_path_data:
-            input_file = input_files[input_path] # XXX
-            parent_file = input_files[parent_path] if parent_path is not None else None
+        for input_file in input_files.values():
+            parent_path = input_path_data[input_file.input_path]
 
-            input_file.parent = parent_file
+            if parent_path is not None:
+                input_file.parent = input_files[parent_path]
 
-        return input_files
+        return input_files.values()
 
     def load_input_file(self, input_path):
         self.debug("Loading '{}'", input_path)
@@ -879,7 +880,7 @@ class TransomCommand:
         finally:
             self.site.stop()
 
-        expected_paths = set(x.output_path for x in input_files.values())
+        expected_paths = set(x.output_path for x in input_files)
         found_paths = set()
 
         for root, dirs, files in self.site.output_dir.walk():
