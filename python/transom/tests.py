@@ -40,12 +40,6 @@ class empty_test_site_dir(working_dir):
 
         make_dir("input")
 
-class test_site_dir(empty_test_site_dir):
-    def __enter__(self):
-        super().__enter__()
-
-        copy(join(TRANSOM_HOME, "sites/test"), ".", inside=False, symlinks=False)
-
 class empty_test_site(empty_test_site_dir):
     def __enter__(self):
         super().__enter__()
@@ -60,22 +54,47 @@ class empty_test_site(empty_test_site_dir):
 
         self.site.stop()
 
-class standard_test_site(empty_test_site):
+class standard_test_site_dir(working_dir):
     def __enter__(self):
-        site = super().__enter__()
+        super().__enter__()
 
         copy(join(TRANSOM_HOME, "sites/test"), ".", inside=False, symlinks=False)
 
-        return site
+class standard_test_site(standard_test_site_dir):
+    def __enter__(self):
+        super().__enter__()
+
+        self.site = TransomSite(".", verbose=True, threads=1)
+        self.site.start()
+
+        return self.site
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        super().__exit__(exc_type, exc_value, traceback)
+
+        self.site.stop()
 
 @test
 def site_load_config_files():
+    with empty_test_site() as site:
+        site.load_config_files()
+
     with standard_test_site() as site:
         site.load_config_files()
 
-    # No config dir
+@test
+def site_load_input_files():
     with empty_test_site() as site:
         site.load_config_files()
+        input_files = site.load_input_files()
+
+        assert len(input_files) == 0, len(input_files)
+
+    with standard_test_site() as site:
+        site.load_config_files()
+        input_files = site.load_input_files()
+
+        assert len(input_files) > 0, len(input_files)
 
 @test
 def site_render():
@@ -103,6 +122,22 @@ def site_render():
         result = read("output/index.html")
         assert "<title>Transom</title>" in result, result
         assert "<h1 id=\"transom\">Transom</h1>" in result, result
+
+    # Re-render after config file change
+    with standard_test_site() as site:
+        site.render()
+
+        touch("config/outer/inner/nested.html")
+
+        site.render()
+
+    # Re-render after input file change
+    with standard_test_site() as site:
+        site.render()
+
+        touch("input/outer/inner/nested.md")
+
+        site.render()
 
     # # Duplicate index files
     # with empty_test_site() as site:
@@ -174,7 +209,9 @@ def command_render():
         run("transom render --init-only --quiet")
         run("transom render --init-only --verbose")
 
-    with test_site_dir():
+    with empty_test_site_dir():
+        copy(join(TRANSOM_HOME, "sites/test"), ".", inside=False, symlinks=False)
+
         call_transom_command(["render"])
 
         check_dir("output")
@@ -310,7 +347,7 @@ def command_check():
         run("transom check --init-only --quiet")
         run("transom check --init-only --verbose")
 
-    with test_site_dir():
+    with standard_test_site_dir():
         touch("output/extra.html")         # An extra output file
         remove("output/test-cases-2.html") # A missing output file
 
@@ -376,7 +413,7 @@ def function_html_table():
 
 @test
 def plano_render():
-    with test_site_dir():
+    with standard_test_site_dir():
         call_plano_command(["render", "--force"])
 
         result = read_json(RESULT_FILE)
@@ -384,7 +421,7 @@ def plano_render():
 
 @test
 def plano_serve():
-    with test_site_dir():
+    with standard_test_site_dir():
         def run():
             call_plano_command(["serve", "--port", "9191"])
 
@@ -402,7 +439,7 @@ def plano_serve():
 
 @test
 def plano_check():
-    with test_site_dir():
+    with standard_test_site_dir():
         call_plano_command(["render"])
         call_plano_command(["check"])
 
@@ -411,5 +448,5 @@ def plano_check():
 
 @test
 def plano_clean():
-    with test_site_dir():
+    with standard_test_site_dir():
         call_plano_command(["clean"])

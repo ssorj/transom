@@ -192,7 +192,7 @@ class TransomSite:
             with os.scandir(start_path) as entries:
                 for entry in (x for x in entries if not self.ignored_file_re.match(x.name)):
                     if entry.is_file():
-                        if entry.stat().st_mtime > last_render_time:
+                        if entry.stat().st_mtime >= last_render_time:
                             return True
                     elif entry.is_dir():
                         return find_modified_file(entry.path, last_render_time)
@@ -254,8 +254,6 @@ class TransomSite:
         self.notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
 
     def serve(self, port=8080):
-        self.render()
-
         self.notice("Serving the site at http://localhost:{}", port)
 
         try:
@@ -278,9 +276,6 @@ class TransomSite:
             if self.verbose:
                 print("{}: ".format(threading.current_thread().name), end="")
             print(message.format(*args))
-
-    def warning(self, message, *args):
-        print("Warning:", message.format(*args))
 
     def error(self, message, *args):
         print("Error!", message.format(*args))
@@ -321,7 +316,7 @@ class InputFile:
 
         self.input_mtime = self.input_path.stat().st_mtime
 
-        return self.input_mtime > last_render_time
+        return self.input_mtime >= last_render_time
 
     def render_output(self):
         self.debug("Rendering output")
@@ -622,6 +617,12 @@ class Server(httpserver.ThreadingHTTPServer):
         super().__init__(("localhost", port), ServerRequestHandler)
 
         self.site = site
+        self.input_files = {}
+        self.lock = threading.Lock()
+
+    def render(self):
+        self.site.load_config_files()
+        self.input_files = {x.input_path: x for x in self.site.load_input_files()}
 
 class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
@@ -657,16 +658,22 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
         return super().send_head()
 
     def render(self, input_path):
-        # XXX Need to use my own cache of input files
-        input_file = self.server.site.load_input_file(input_path, None)
+        with self.server.lock:
+            try:
+                input_file = self.server.input_files[input_path]
+            except KeyError:
+                self.server.render()
 
-        # XXX This doesn't work
-        if input_path.suffix in (".md", ".html"):
-            for parent in input_file.ancestors():
-                parent.process_input()
+                try:
+                    input_file = self.server.input_files[input_path]
+                except KeyError:
+                    return
 
-        input_file.process_input()
-        input_file.render_output()
+            for ancestor in input_file.ancestors():
+                ancestor.process_input()
+
+            input_file.process_input()
+            input_file.render_output()
 
 class TransomCommand:
     def __init__(self, home=None):
@@ -808,7 +815,7 @@ class TransomCommand:
             copy(self.home / "python/plano", site_dir / "python/plano")
 
     def command_render(self):
-        self.site.start()
+        self.site.start() # XXX Inside render?
 
         try:
             self.site.render(force=self.args.force)
@@ -816,12 +823,7 @@ class TransomCommand:
             self.site.stop()
 
     def command_serve(self):
-        self.site.start()
-
-        try:
-            self.site.serve(port=self.args.port)
-        finally:
-            self.site.stop()
+        self.site.serve(port=self.args.port)
 
     def command_check(self):
         # XXX Check links
