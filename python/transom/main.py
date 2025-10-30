@@ -160,13 +160,11 @@ class TransomSite:
                     if entry.name in ("index.md", "index.html"):
                         continue
 
-                    input_path = Path(entry.path)
-
                     if entry.is_file():
-                        input_file = self.load_input_file(input_path, parent_file)
+                        input_file = self.load_input_file(Path(entry.path), parent_file)
                         input_files.append(input_file)
                     elif entry.is_dir():
-                        find_input_files(input_path, input_files, parent_file)
+                        find_input_files(entry.path, input_files, parent_file)
 
         input_files = list()
 
