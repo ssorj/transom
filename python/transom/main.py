@@ -139,11 +139,25 @@ class TransomSite:
         path = Path(path) if isinstance(path, str) else path
         return Template(path.read_text(), path)
 
-    def find_input_paths(self):
-        self.debug("Finding input paths in '{}'", self.input_dir)
+    def load_input_files(self):
+        self.debug("Loading input files in '{}'", self.input_dir)
 
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
+
+        input_paths = self.find_input_paths()
+        input_files = {x: self.load_input_file(x) for x in input_paths}
+
+        for input_file in input_files.values():
+            parent_path = input_paths[input_file.input_path]
+
+            if parent_path is not None:
+                input_file.parent = input_files[parent_path]
+
+        return input_files.values()
+
+    def find_input_paths(self):
+        self.debug("Finding input paths in '{}'", self.input_dir)
 
         def gather_input_path_data(start_path, input_path_data, parent_path):
             with os.scandir(start_path) as entries:
@@ -198,8 +212,6 @@ class TransomSite:
                     elif entry.is_dir():
                         return find_modified_file(entry.path, last_render_time)
 
-                return False
-
         for config_dir in self.config_dirs:
             if find_modified_file(config_dir, last_render_time):
                 return True
@@ -209,32 +221,10 @@ class TransomSite:
 
         self.load_config_files()
 
-        input_paths = self.find_input_paths()
+        input_files = self.load_input_files()
 
-        if not input_paths:
+        if not input_files:
             return
-
-        input_path_batches = itertools.batched(input_paths, math.ceil(len(input_paths) / len(self.worker_threads)))
-        input_file_batches = tuple([] for x in self.worker_threads)
-        modified_file_batches = tuple([] for x in self.worker_threads)
-
-        self.debug("Loading input files in '{}'", self.input_dir)
-
-        for thread, paths, files in zip(self.worker_threads, input_path_batches, input_file_batches):
-            thread.commands.put((thread.load_input_files, (paths, files)))
-
-        for thread in self.worker_threads:
-            thread.commands.join()
-
-        self.debug("Loaded {} input files", sum(len(x) for x in input_file_batches))
-
-        input_files = {x.input_path: x for x in itertools.chain(*input_file_batches)}
-
-        for input_file in input_files.values():
-            parent_path = input_paths[input_file.input_path]
-
-            if parent_path is not None:
-                input_file.parent = input_files[parent_path]
 
         if not force and self.output_dir.exists():
             last_render_time = self.output_dir.stat().st_mtime
@@ -245,6 +235,9 @@ class TransomSite:
             last_render_time = 0
 
         self.debug("Processing input files in '{}'", self.input_dir)
+
+        input_file_batches = itertools.batched(input_files, math.ceil(len(input_files) / len(self.worker_threads)))
+        modified_file_batches = tuple([] for x in self.worker_threads)
 
         for thread, files, modified_files in zip(self.worker_threads, input_file_batches, modified_file_batches):
             thread.commands.put((thread.process_input_files, (files, last_render_time, modified_files)))
