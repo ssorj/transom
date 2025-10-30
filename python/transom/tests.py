@@ -78,61 +78,20 @@ def site_load_config_files():
         site.load_config_files()
 
 @test
-def site_load_input_files():
-    with standard_test_site() as site:
-        site.load_config_files()
-        site.load_input_files()
-
+def site_render():
     # Only the input dir, no config
     with empty_test_site() as site:
-        site.load_config_files()
-        site.load_input_files()
+        site.render()
 
     # No input dir
     with empty_test_site() as site:
-        site.load_config_files()
-
         remove("input")
 
         with expect_exception(TransomError):
-            site.load_input_files()
-
-@test
-def site_process_input_files():
-    with standard_test_site() as site:
-        site.load_config_files()
-        site.load_input_files()
-        site.process_input_files()
-
-    # # Duplicate index files
-    # with empty_test_site() as site:
-    #     site.load_config_files()
-
-    #     touch("input/index.md")
-    #     touch("input/index.html")
-
-    #     with expect_exception(TransomError):
-    #         site.load_input_files()
-
-@test
-def site_render_output_files():
-    with standard_test_site() as site:
-        site.load_config_files()
-        site.load_input_files()
-        site.process_input_files()
-        site.render_output_files()
-
-@test
-def site_render():
-    # The standard test site
-    with test_site_dir():
-        site = TransomSite(".", verbose=True, threads=1)
-        site.start()
-
-        try:
             site.render()
-        finally:
-            site.stop()
+
+    with standard_test_site() as site:
+        site.render()
 
         check_dir("output")
         check_file("output/index.html")
@@ -145,7 +104,15 @@ def site_render():
         assert "<title>Transom</title>" in result, result
         assert "<h1 id=\"transom\">Transom</h1>" in result, result
 
+    # # Duplicate index files
     # with empty_test_site() as site:
+    #     site.load_config_files()
+
+    #     touch("input/index.md")
+    #     touch("input/index.html")
+
+    #     with expect_exception(TransomError):
+    #         site.load_input_files()
 
 @test
 def command_options():

@@ -211,6 +211,9 @@ class TransomSite:
 
         input_paths = self.find_input_paths()
 
+        if not input_paths:
+            return
+
         input_path_batches = itertools.batched(input_paths, math.ceil(len(input_paths) / len(self.worker_threads)))
         input_file_batches = tuple([] for x in self.worker_threads)
         modified_file_batches = tuple([] for x in self.worker_threads)
@@ -852,12 +855,12 @@ class TransomCommand:
         if not self.site.output_dir.is_dir():
             self.fail("Output directory not found: {} (render the site before checking files)", self.site.output_dir)
 
-
         self.site.start()
 
         try:
             self.site.load_config_files()
-            input_files = self.site.load_input_files()
+
+            input_files = (self.site.load_input_file(x) for x in self.site.find_input_paths())
         finally:
             self.site.stop()
 
