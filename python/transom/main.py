@@ -253,6 +253,8 @@ class TransomSite:
 
         self.notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
 
+        return input_files
+
     def serve(self, port=8080):
         self.notice("Serving the site at http://localhost:{}", port)
 
@@ -620,10 +622,6 @@ class Server(httpserver.ThreadingHTTPServer):
         self.input_files = {}
         self.lock = threading.Lock()
 
-    def render(self):
-        self.site.load_config_files()
-        self.input_files = {x.input_path: x for x in self.site.load_input_files()}
-
 class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
         super().__init__(request, client_address, server, directory=server.site.output_dir)
@@ -662,7 +660,7 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
             try:
                 input_file = self.server.input_files[input_path]
             except KeyError:
-                self.server.render()
+                self.input_files = {x.input_path: x for x in self.server.site.render()}
 
                 try:
                     input_file = self.server.input_files[input_path]
@@ -815,7 +813,7 @@ class TransomCommand:
             copy(self.home / "python/plano", site_dir / "python/plano")
 
     def command_render(self):
-        self.site.start() # XXX Inside render?
+        self.site.start()
 
         try:
             self.site.render(force=self.args.force)
@@ -823,7 +821,13 @@ class TransomCommand:
             self.site.stop()
 
     def command_serve(self):
-        self.site.serve(port=self.args.port)
+        self.site.start()
+
+        try:
+            self.site.render()
+            self.site.serve(port=self.args.port)
+        finally:
+            self.site.stop()
 
     def command_check(self):
         # XXX Check links
