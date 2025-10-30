@@ -145,60 +145,47 @@ class TransomSite:
         if not self.input_dir.is_dir():
             raise TransomError(f"Input directory not found: {self.input_dir}")
 
-        input_paths = self.find_input_paths()
-        input_files = {x: self.load_input_file(x) for x in input_paths}
-
-        for input_file in input_files.values():
-            parent_path = input_paths[input_file.input_path]
-
-            if parent_path is not None:
-                input_file.parent = input_files[parent_path]
-
-        return input_files.values()
-
-    def find_input_paths(self):
-        self.debug("Finding input paths in '{}'", self.input_dir)
-
-        def gather_input_path_data(start_path, input_path_data, parent_path):
+        def find_input_files(start_path, input_files, parent_file):
             with os.scandir(start_path) as entries:
                 entries = tuple(x for x in entries if not self.ignored_file_re.match(x.name))
 
                 for entry in entries:
                     if entry.name in ("index.md", "index.html"):
-                        path = Path(entry.path)
-                        input_path_data[path] = parent_path
-                        parent_path = path
+                        input_file = self.load_input_file(Path(entry.path), parent_file)
+                        input_files.append(input_file)
+                        parent_file = input_file
                         break
 
                 for entry in entries:
                     if entry.name in ("index.md", "index.html"):
                         continue
 
-                    path = Path(entry.path)
+                    input_path = Path(entry.path)
 
                     if entry.is_file():
-                        input_path_data[path] = parent_path
+                        input_file = self.load_input_file(input_path, parent_file)
+                        input_files.append(input_file)
                     elif entry.is_dir():
-                        gather_input_path_data(path, input_path_data, parent_path)
+                        find_input_files(input_path, input_files, parent_file)
 
-        input_path_data = dict()
+        input_files = list()
 
-        gather_input_path_data(self.input_dir, input_path_data, None)
+        find_input_files(self.input_dir, input_files, None)
 
-        self.debug("Found {:,} input paths", len(input_path_data))
+        self.debug("Found {:,} input files", len(input_files))
 
-        return input_path_data
+        return input_files
 
-    def load_input_file(self, input_path):
+    def load_input_file(self, input_path, parent):
         self.debug("Loading '{}'", input_path)
 
         match input_path.suffix:
             case ".md":
-                input_file = MarkdownPage(self, input_path)
+                input_file = MarkdownPage(self, input_path, parent)
             case ".css" | ".csv" | ".html" | ".js" | ".json" | ".svg" | ".txt":
-                input_file = TemplateFile(self, input_path)
+                input_file = TemplateFile(self, input_path, parent)
             case _:
-                input_file = StaticFile(self, input_path)
+                input_file = StaticFile(self, input_path, parent)
 
         return input_file
 
@@ -303,7 +290,7 @@ class TransomSite:
 class InputFile:
     __slots__ = "site", "input_path", "input_mtime", "output_path", "url", "title", "parent"
 
-    def __init__(self, site, input_path):
+    def __init__(self, site, input_path, parent):
         self.site = site
         self.input_path = input_path
         self.input_mtime = None
@@ -319,7 +306,7 @@ class InputFile:
 
         self.url = f"{self.site.prefix}/{output_path}"
         self.title = self.output_path.name
-        self.parent = None
+        self.parent = parent
 
     def __repr__(self):
         return f"{self.__class__.__name__}('{self.input_path}')"
@@ -589,10 +576,6 @@ class WorkerThread(threading.Thread):
             finally:
                 self.commands.task_done()
 
-    def load_input_files(self, input_paths, input_files):
-        for input_path in input_paths:
-            input_files.append(self.site.load_input_file(input_path))
-
     def process_input_files(self, input_files, last_render_time, modified_files):
         for input_file in input_files:
             modified = input_file.process_input(last_render_time)
@@ -676,8 +659,10 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
         return super().send_head()
 
     def render(self, input_path):
-        input_file = self.server.site.load_input_file(input_path)
+        # XXX Need to use my own cache of input files
+        input_file = self.server.site.load_input_file(input_path, None)
 
+        # XXX This doesn't work
         if input_path.suffix in (".md", ".html"):
             for parent in input_file.ancestors():
                 parent.process_input()
@@ -853,7 +838,7 @@ class TransomCommand:
         try:
             self.site.load_config_files()
 
-            input_files = (self.site.load_input_file(x) for x in self.site.find_input_paths())
+            input_files = self.site.load_input_files()
         finally:
             self.site.stop()
 
