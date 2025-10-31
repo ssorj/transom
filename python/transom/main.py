@@ -142,9 +142,6 @@ class TransomSite:
     def load_input_files(self):
         self.debug("Loading input files in '{}'", self.input_dir)
 
-        if not self.input_dir.is_dir():
-            raise TransomError(f"Input directory not found: {self.input_dir}")
-
         def find_input_files(start_path, input_files, parent_file):
             with os.scandir(start_path) as entries:
                 entries = tuple(x for x in entries if not self.ignored_file_re.match(x.name))
@@ -166,9 +163,12 @@ class TransomSite:
                     elif entry.is_dir():
                         find_input_files(entry.path, input_files, parent_file)
 
-        input_files = list()
+        input_files = []
 
-        find_input_files(self.input_dir, input_files, None)
+        try:
+            find_input_files(self.input_dir, input_files, None)
+        except FileNotFoundError:
+            self.notice("Input directory not found: {}", self.input_dir)
 
         self.debug("Found {:,} input files", len(input_files))
 
@@ -209,7 +209,7 @@ class TransomSite:
         input_files = self.load_input_files()
 
         if not input_files:
-            return
+            return input_files
 
         if not force and self.output_dir.exists():
             last_render_time = self.output_dir.stat().st_mtime
@@ -619,8 +619,12 @@ class Server(httpserver.ThreadingHTTPServer):
         super().__init__(("localhost", port), ServerRequestHandler)
 
         self.site = site
-        self.input_files = {}
         self.lock = threading.Lock()
+
+        self.render()
+
+    def render(self):
+        self.input_files = {x.input_path: x for x in self.site.render()}
 
 class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
@@ -660,12 +664,8 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
             try:
                 input_file = self.server.input_files[input_path]
             except KeyError:
-                self.input_files = {x.input_path: x for x in self.server.site.render()}
-
-                try:
-                    input_file = self.server.input_files[input_path]
-                except KeyError:
-                    return
+                self.server.render()
+                return
 
             for ancestor in input_file.ancestors():
                 ancestor.process_input()

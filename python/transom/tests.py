@@ -35,10 +35,7 @@ def call_plano_command(args=[]):
     PlanoCommand().main(args + ["--verbose"])
 
 class empty_test_site_dir(working_dir):
-    def __enter__(self):
-        super().__enter__()
-
-        make_dir("input")
+    pass
 
 class empty_test_site(empty_test_site_dir):
     def __enter__(self):
@@ -74,6 +71,25 @@ class standard_test_site(standard_test_site_dir):
 
         self.site.stop()
 
+class test_server:
+    def __init__(self, site):
+        def run_():
+            site.serve(port=9191)
+
+        self.server = threading.Thread(target=run_, name="test-server-thread")
+
+    def __enter__(self):
+        self.server.start()
+
+        await_port(9191)
+
+        return self.server
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        http_post("http://localhost:9191/STOP", "please")
+
+        self.server.join()
+
 @test
 def site_load_config_files():
     with empty_test_site() as site:
@@ -97,17 +113,46 @@ def site_load_input_files():
         assert len(input_files) > 0, len(input_files)
 
 @test
-def site_render():
-    # Only the input dir, no config
+def site_code_execution():
+    # Broken code
     with empty_test_site() as site:
-        site.render()
-
-    # No input dir
-    with empty_test_site() as site:
-        remove("input")
+        write("config/site.py", "1 / 0")
 
         with expect_exception(TransomError):
-            site.render()
+            site.load_config_files()
+
+    # Transom error handling
+    with empty_test_site() as site:
+        write("config/site.py", "raise TransomError()")
+
+        with expect_exception(TransomError):
+            site.load_config_files()
+
+    # Syntax error handling
+    with empty_test_site() as site:
+        write("config/site.py", ")(")
+
+        with expect_exception(TransomError):
+            site.load_config_files()
+
+    # Illegal site attribute access
+    with empty_test_site() as site:
+        write("config/site.py", "site.site_dir = \"/nope\"")
+
+        with expect_exception(TransomError):
+            site.load_config_files()
+
+    # Illegal site attribute access
+    with empty_test_site() as site:
+        write("config/site.py", "print(site.site_dir)")
+
+        with expect_exception(TransomError):
+            site.load_config_files()
+
+@test
+def site_render():
+    with empty_test_site() as site:
+        site.render()
 
     with standard_test_site() as site:
         site.render()
@@ -122,6 +167,16 @@ def site_render():
         result = read("output/index.html")
         assert "<title>Transom</title>" in result, result
         assert "<h1 id=\"transom\">Transom</h1>" in result, result
+
+    with empty_test_site() as site:
+        write("config/site.py", "site.prefix = \"/prefix\"\n")
+        write("input/index.md", "# Top\n")
+        write("input/test.md", "{{path_nav()}}\n")
+
+        site.render()
+
+        result = read("output/test.html")
+        assert "href=\"/prefix/index.html\"" in result, result
 
     # Re-render after config file change
     with standard_test_site() as site:
@@ -148,6 +203,105 @@ def site_render():
 
     #     with expect_exception(TransomError):
     #         site.load_input_files()
+
+@test
+def site_serve():
+    with empty_test_site() as site:
+        with test_server(site):
+            with expect_exception():
+                http_get("http://localhost:9191/")
+
+    with standard_test_site() as site:
+        with test_server(site):
+            http_get("http://localhost:9191/")
+            http_get("http://localhost:9191/site.css")
+            http_get("http://localhost:9191/outer/inner/nested.html")
+
+            write("input/outer/inner/new-file.html", "<html/>")
+
+            http_get("http://localhost:9191/outer/inner/new-file.html")
+
+    with empty_test_site() as site:
+        write("config/site.py", "site.prefix = \"/prefix\"\n")
+        write("input/index.md", "# Test\n")
+
+        with test_server(site):
+            http_get("http://localhost:9191/")
+            http_get("http://localhost:9191/prefix/")
+
+@test
+def page_code_execution():
+    # Broken code
+    with empty_test_site() as site:
+        write("input/test.md", "---\n1 / 0\n---\n")
+
+        with expect_exception(TransomError):
+            site.render()
+
+    # Transom error handling
+    with empty_test_site() as site:
+        write("input/test.md", "---\nraise TransomError()\n---\n")
+
+        with expect_exception(TransomError):
+            site.render()
+
+    # Syntax error handling
+    with empty_test_site() as site:
+        write("input/test.md", "---\n)(\n---\n")
+
+        with expect_exception(TransomError):
+            site.render()
+
+    # Illegal site attribute access
+    with empty_test_site() as site:
+        write("input/test.md", "---\npage.input_path = \"/nope\"\n---\n")
+
+        with expect_exception(TransomError):
+            site.render()
+
+    # Illegal site attribute access
+    with empty_test_site() as site:
+        write("input/test.md", "---\nprint(page.input_path)\n---\n")
+
+        with expect_exception(TransomError):
+            site.render()
+
+@test
+def template_code_execution():
+    # Broken code
+    with empty_test_site() as site:
+        write("input/test.md", "{{1 / 0}}")
+
+        with expect_exception(TransomError):
+            site.render()
+
+    # Transom error handling
+    with empty_test_site() as site:
+        write("input/test.md", "{{raise TransomError()}}")
+
+        with expect_exception(TransomError):
+            site.render()
+
+    # Syntax error handling
+    with empty_test_site() as site:
+        write("input/test.md", "{{)(}}")
+
+        with expect_exception(TransomError):
+            site.render()
+
+    # Illegal site attribute access
+    with empty_test_site() as site:
+        write("input/test.md", "{{page.input_path = \"/nope\"}}")
+
+        with expect_exception(TransomError):
+            site.render()
+
+    # Illegal site attribute access
+    with empty_test_site() as site:
+        write("input/test.md", "{{page.input_path}}")
+
+        with expect_exception(TransomError):
+            site.render()
 
 @test
 def command_options():
@@ -228,76 +382,6 @@ def command_render():
         call_transom_command(["render", "--quiet"])
         call_transom_command(["render", "--force"])
 
-    # Broken site code
-    with empty_test_site_dir():
-        write("config/site.py", "1 / 0")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    # Transom error handling in site code
-    with empty_test_site_dir():
-        write("config/site.py", "raise TransomError()")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    # Syntax error in site code
-    with empty_test_site_dir():
-        write("config/site.py", ")(")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    # Illegal site attribute access
-    with empty_test_site_dir():
-        write("config/site.py", "print(site.files)")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    # Illegal site attribute access
-    with empty_test_site_dir():
-        write("input/test.md", "{{page.input_path = '/nope'}}")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    # Broken header code
-    with empty_test_site_dir():
-        write("input/test.md", "---\n1 / 0\n---\n")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    # Transom error handling in header code
-    with empty_test_site_dir():
-        write("input/test.md", "---\nraise TransomError()\n---\n")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    # Syntax error in header code
-    with empty_test_site_dir():
-        write("input/test.md", "---\n)(\n---\n")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    # Broken template code
-    with empty_test_site_dir():
-        write("input/test.md", "{{1 / 0}}")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
-    # Syntax error in template code
-    with empty_test_site_dir():
-        write("input/test.md", "{{)(}}")
-
-        with expect_system_exit():
-            call_transom_command(["render"])
-
 @test
 def command_serve():
     run("transom serve --help")
@@ -307,9 +391,6 @@ def command_serve():
         run("transom serve --init-only --port 9191 --verbose")
 
     with empty_test_site_dir():
-        write("config/site.py", "site.prefix = '/prefix'\n")
-        write("input/index.md", "# Test\n")
-
         def run_():
             call_transom_command(["serve", "--port", "9191"])
 
@@ -317,19 +398,6 @@ def command_serve():
         server.start()
 
         await_port(9191)
-
-        http_get("http://localhost:9191/")
-        http_get("http://localhost:9191/prefix/")
-
-        write("input/another.md", "# Another")  # A new input file
-        write("input/#ignore.md", "# Ignore")   # A new ignored input file
-        write("config/another.html", "<html/>") # A new config file
-        write("config/#ignore.html", "<html/>") # A new ignored config file
-
-        http_get("http://localhost:9191/another.html")
-
-        with expect_error():
-            http_get("http://localhost:9191/ignore.html")
 
         # Another server on the same port
         with expect_system_exit():
