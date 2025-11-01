@@ -209,6 +209,7 @@ class TransomSite:
         self.load_config_files()
 
         input_files = self.load_input_files()
+        last_render_time = 0
 
         if not input_files:
             return input_files
@@ -218,8 +219,6 @@ class TransomSite:
 
             if self.find_config_modified(last_render_time):
                 last_render_time = 0
-        else:
-            last_render_time = 0
 
         self.debug("Processing input files in '{}'", self.input_dir)
 
