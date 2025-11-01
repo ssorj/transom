@@ -168,6 +168,7 @@ def site_render():
         assert "<title>Transom</title>" in result, result
         assert "<h1 id=\"transom\">Transom</h1>" in result, result
 
+    # Site prefix
     with empty_test_site() as site:
         write("config/site.py", "site.prefix = \"/prefix\"\n")
         write("input/index.md", "# Top\n")
@@ -177,6 +178,14 @@ def site_render():
 
         result = read("output/test.html")
         assert "href=\"/prefix/index.html\"" in result, result
+
+    # Find config modified when there is no config dir
+    with empty_test_site() as site:
+        write("input/test.md", "# Test")
+
+        make_dir("output")
+
+        site.render()
 
     # Re-render after config file change
     with standard_test_site() as site:

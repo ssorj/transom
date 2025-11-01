@@ -33,7 +33,6 @@ import traceback
 import types
 import unicodedata
 
-from collections import defaultdict
 from html import escape as html_escape
 from html.parser import HTMLParser
 from pathlib import Path
@@ -80,7 +79,7 @@ class TransomSite:
 
         threading.current_thread().name = "main-thread"
 
-        self.worker_threads = list()
+        self.worker_threads = []
         self.worker_errors = Queue()
 
         for i in range(threads):
@@ -198,8 +197,11 @@ class TransomSite:
                         return find_modified_file(entry.path, last_render_time)
 
         for config_dir in self.config_dirs:
-            if find_modified_file(config_dir, last_render_time):
-                return True
+            try:
+                if find_modified_file(config_dir, last_render_time):
+                    return True
+            except FileNotFoundError:
+                self.notice("Config directory not found: {}", config_dir)
 
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
@@ -458,7 +460,7 @@ class Template:
     VARIABLE_RE = re.compile(r"({{{.+?}}}|{{.+?}})")
 
     def __init__(self, text, path):
-        self.pieces = list()
+        self.pieces = []
         self.path = path
 
         self.parse(text)
@@ -586,10 +588,10 @@ class HeadingParser(HTMLParser):
     def __init__(self):
         super().__init__()
 
-        self.headings = list()
+        self.headings = []
         self.open_element_tag = None
         self.open_element_id = None
-        self.open_element_text = list()
+        self.open_element_text = []
 
     def handle_starttag(self, tag, attrs):
         if tag not in ("h1", "h2", "h3"):
@@ -612,7 +614,7 @@ class HeadingParser(HTMLParser):
 
             self.open_element_tag = None
             self.open_element_id = None
-            self.open_element_text = list()
+            self.open_element_text = []
 
 class Server(httpserver.ThreadingHTTPServer):
     def __init__(self, site, port):
