@@ -274,22 +274,24 @@ class TransomSite:
             else: # pragma: nocover
                 raise
 
-    def print(self, *objs):
-        print(*objs, file=sys.stderr, flush=True)
+    def log(self, message, *args):
+        if self.verbose:
+            message = f"{colorize(threading.current_thread().name, '90')} {message}"
+
+        print(message.format(*args), file=sys.stderr, flush=True)
 
     def debug(self, message, *args):
         if self.verbose:
-            self.print("{}: {}".format(threading.current_thread().name, message.format(*args)))
+            self.log(colorize(f"debug: {message}", "37"), *args)
 
     def notice(self, message, *args):
         if not self.quiet:
-            if self.verbose:
-                self.print("{}: {}".format(threading.current_thread().name, message.format(*args)))
-            else:
-                self.print(message.format(*args))
+            message = f"{colorize('notice:', '36')} {message}" if self.verbose else message
+
+            self.log(message, *args)
 
     def error(self, message, *args):
-        self.print("Error!", message.format(*args))
+        self.log(f"{colorize('error:', '31;1')} {message}", *args)
 
 class InputFile:
     __slots__ = "site", "input_path", "input_mtime", "output_path", "url", "title", "parent"
@@ -896,6 +898,9 @@ def plural(noun, count=0, plural=None):
             plural = "{}s".format(noun)
 
     return plural
+
+def colorize(text, code):
+    return text if "NO_COLOR" in os.environ else f"\u001b[{code}m{text}\u001b[0m"
 
 def html_table_csv(path, **attrs):
     import csv
