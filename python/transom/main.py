@@ -88,6 +88,12 @@ class TransomSite:
     def __repr__(self):
         return f"{self.__class__.__name__}('{self.site_dir}')"
 
+    def __enter__(self):
+        self.start()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.stop()
+
     def start(self):
         self.debug("Starting {} worker {}", len(self.worker_threads), plural("thread", len(self.worker_threads)))
 
@@ -814,21 +820,12 @@ class TransomCommand:
             copy(self.home / "python/plano", site_dir / "python/plano")
 
     def command_render(self):
-        self.site.start()
-
-        try:
+        with self.site:
             self.site.render(force=self.args.force)
-        finally:
-            self.site.stop()
 
     def command_serve(self):
-        self.site.start()
-
-        try:
-            self.site.render()
+        with self.site:
             self.site.serve(port=self.args.port)
-        finally:
-            self.site.stop()
 
     def command_check(self):
         # XXX Check links
@@ -838,14 +835,9 @@ class TransomCommand:
         if not self.site.output_dir.is_dir():
             self.fail("Output directory not found: {} (render the site before checking files)", self.site.output_dir)
 
-        self.site.start()
-
-        try:
+        with self.site:
             self.site.load_config_files()
-
             input_files = self.site.load_input_files()
-        finally:
-            self.site.stop()
 
         expected_paths = set(x.output_path for x in input_files)
         found_paths = set()
