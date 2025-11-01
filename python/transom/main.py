@@ -175,8 +175,6 @@ class TransomSite:
         except FileNotFoundError:
             self.notice("Input directory not found: {}", self.input_dir)
 
-        self.debug("Found {:,} input files", len(input_files))
-
         return input_files
 
     def load_input_file(self, input_path, parent):
@@ -226,7 +224,7 @@ class TransomSite:
             if self.find_config_modified(last_render_time):
                 last_render_time = 0
 
-        self.debug("Processing input files in '{}'", self.input_dir)
+        self.debug("Processing {:,} input {}", len(input_files), plural("file", len(input_files)))
 
         input_file_batches = itertools.batched(input_files, math.ceil(len(input_files) / len(self.worker_threads)))
         modified_file_batches = tuple([] for x in self.worker_threads)
@@ -237,7 +235,9 @@ class TransomSite:
         for thread in self.worker_threads:
             thread.commands.join()
 
-        self.debug("Rendering output files to '{}'", self.output_dir)
+        modified_count = sum(len(x) for x in modified_file_batches)
+
+        self.debug("Rendering {:,} output {} to '{}'", modified_count, plural("file", modified_count), self.output_dir)
 
         for thread, files in zip(self.worker_threads, modified_file_batches):
             thread.commands.put((thread.render_output_files, (files,)))
@@ -251,7 +251,6 @@ class TransomSite:
         if self.output_dir.exists():
             self.output_dir.touch()
 
-        modified_count = sum(len(x) for x in modified_file_batches)
         unmodified_count = len(input_files) - modified_count
         unmodified_note = ""
 
@@ -275,19 +274,22 @@ class TransomSite:
             else: # pragma: nocover
                 raise
 
+    def print(self, *objs):
+        print(*objs, file=sys.stderr, flush=True)
+
     def debug(self, message, *args):
         if self.verbose:
-            print("{}: ".format(threading.current_thread().name), end="")
-            print(message.format(*args))
+            self.print("{}: {}".format(threading.current_thread().name, message.format(*args)))
 
     def notice(self, message, *args):
         if not self.quiet:
             if self.verbose:
-                print("{}: ".format(threading.current_thread().name), end="")
-            print(message.format(*args))
+                self.print("{}: {}".format(threading.current_thread().name, message.format(*args)))
+            else:
+                self.print(message.format(*args))
 
     def error(self, message, *args):
-        print("Error!", message.format(*args))
+        self.print("Error!", message.format(*args))
 
 class InputFile:
     __slots__ = "site", "input_path", "input_mtime", "output_path", "url", "title", "parent"
@@ -689,8 +691,6 @@ class TransomCommand:
         self.parser.description = "Generate static websites from Markdown and Python"
         self.parser.formatter_class = argparse.RawDescriptionHelpFormatter
 
-        self.args = None
-
         subparsers = self.parser.add_subparsers(title="subcommands")
 
         common = argparse.ArgumentParser()
@@ -721,11 +721,11 @@ class TransomCommand:
         render.add_argument("-f", "--force", action="store_true",
                             help="Render all input files, including unchanged ones")
 
-        render = subparsers.add_parser("serve", parents=[common], add_help=False,
+        serve = subparsers.add_parser("serve", parents=[common], add_help=False,
                                        help="Generate output files and serve the site on a local port")
-        render.set_defaults(command_fn=self.command_serve)
-        render.add_argument("-p", "--port", type=int, metavar="PORT", default=8080,
-                            help="Listen on PORT (default 8080)")
+        serve.set_defaults(command_fn=self.command_serve)
+        serve.add_argument("-p", "--port", type=int, metavar="PORT", default=8080,
+                           help="Listen on PORT (default 8080)")
 
         check = subparsers.add_parser("check", parents=[common], add_help=False,
                                             help="Check for broken links and missing output files")
@@ -738,12 +738,11 @@ class TransomCommand:
             self.parser.print_usage()
             sys.exit(1)
 
-        if self.args.command_fn != self.command_init:
-            self.site = TransomSite(self.args.site_dir, verbose=self.args.verbose, quiet=self.args.quiet,
-                                    threads=self.args.threads)
+        self.site = TransomSite(self.args.site_dir, verbose=self.args.verbose, quiet=self.args.quiet,
+                                threads=self.args.threads)
 
-            if self.args.output:
-                self.site.output_dir = Path(self.args.output)
+        if self.args.output:
+            self.site.output_dir = Path(self.args.output)
 
     def main(self, args=None):
         try:
@@ -761,25 +760,11 @@ class TransomCommand:
             pass
 
     def notice(self, message, *args):
-        if not self.args.quiet:
-            self.print_message(message, *args)
-
-    def warning(self, message, *args):
-        message = "Warning: {}".format(message)
-        self.print_message(message, *args)
+        self.site.notice(message, *args)
 
     def fail(self, message, *args):
-        message = "Error! {}".format(message)
-        self.print_message(message, *args)
+        self.site.error(message, *args)
         sys.exit(1)
-
-    def print_message(self, message, *args):
-        message = message[0].upper() + message[1:]
-        message = message.format(*args)
-        message = "{}: {}".format(self.name, message)
-
-        sys.stderr.write("{}\n".format(message))
-        sys.stderr.flush()
 
     def command_init(self):
         if self.home is None:
@@ -863,7 +848,7 @@ class TransomCommand:
         missing_files, extra_files = len(missing_paths), len(extra_paths)
 
         if extra_files != 0:
-            self.warning("{} extra {} in the output", extra_files, plural("file", extra_files))
+            self.notice("Warning: {} extra {} in the output", extra_files, plural("file", extra_files))
 
         if missing_files == 0:
             self.notice("PASSED")
