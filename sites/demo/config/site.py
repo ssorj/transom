@@ -2,7 +2,7 @@ def interface_object_properties(obj_name, obj):
     yield "<dl>"
     yield f"<dt>{obj_name}</dt><dd><code>{repr(obj)}</code></dd>"
 
-    for attr_name in (x for x in dir(obj) if not x.startswith("__")):
+    for attr_name in (x for x in dir(obj) if not x.startswith("_")):
         attr_value = getattr(obj, attr_name)
 
         yield f"<dt>{obj_name}.{attr_name}</dt><dd><code>"
