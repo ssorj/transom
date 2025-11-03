@@ -37,14 +37,6 @@ def serve(passthrough_args=[]):
     with project_env():
         TransomCommand().main(["serve"] + passthrough_args)
 
-@command(passthrough=True)
-def check(passthrough_args=[]):
-    """
-    Check for broken links and missing files
-    """
-    with project_env():
-        TransomCommand().main(["check"] + passthrough_args)
-
 @command
 def clean():
     remove(find(".", "__pycache__"))

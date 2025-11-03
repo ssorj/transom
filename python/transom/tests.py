@@ -417,26 +417,6 @@ def command_serve():
         server.join()
 
 @test
-def command_check():
-    run("transom check --help")
-
-    with empty_test_site_dir():
-        run("transom check --init-only --quiet")
-        run("transom check --init-only --verbose")
-
-    with standard_test_site_dir():
-        touch("output/extra.html")         # An extra output file
-        remove("output/test-cases-2.html") # A missing output file
-
-        with expect_system_exit():
-            call_transom_command(["check"])
-
-    # Checking without first rendering
-    with empty_test_site_dir():
-        with expect_system_exit():
-            call_transom_command(["check"])
-
-@test
 def function_lipsum():
     result = lipsum(0, end="")
     assert result == "", result
@@ -513,15 +493,6 @@ def plano_serve():
 
         result = read_json(RESULT_FILE)
         assert result["served"], result
-
-@test
-def plano_check():
-    with standard_test_site_dir():
-        call_plano_command(["render"])
-        call_plano_command(["check"])
-
-        result = read_json(RESULT_FILE)
-        assert result["checked"], result
 
 @test
 def plano_clean():

@@ -35,13 +35,6 @@ def serve(*args, **kwargs):
     data = {"served": True}
     write_json(RESULT_FILE, data)
 
-@command(parent=check)
-def check(*args, **kwargs):
-    check.parent.function(*args, **kwargs)
-
-    data = {"checked": True}
-    write_json(RESULT_FILE, data)
-
 @command
 def profile():
     """

@@ -59,7 +59,6 @@ class TransomSite:
         self.quiet = quiet
 
         self.ignored_file_patterns = [".git", ".#*", "#*"]
-        self.ignored_link_patterns = []
 
         self.prefix = ""
         self.config_dirs = [self.config_dir]
@@ -137,8 +136,6 @@ class TransomSite:
 
         self.ignored_file_re = re.compile \
             ("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns] + ["(?!)"]))
-        self.ignored_link_re = re.compile \
-            ("|".join([fnmatch.translate(x) for x in self.ignored_link_patterns] + ["(?!)"]))
 
     def load_template(self, path):
         path = Path(path) if isinstance(path, str) else path
@@ -378,7 +375,7 @@ class TemplateFile(GeneratedFile):
             text, header_code = self.extract_header_code(text)
 
             self.template = Template(text, self.input_path)
-            self.locals = None
+            self.locals = {"file": FileInterface(self)}
 
             if header_code:
                 self.exec_header_code(header_code)
@@ -501,7 +498,7 @@ class Template:
                 except TransomError:
                     raise
                 except Exception as e:
-                    raise TransomError(f"{self.path}: '{token}': {e}")
+                    raise TransomError(f"{self.path}: '{{{{{token}}}}}': {e}")
 
                 if type(result) is types.GeneratorType:
                     yield from result
@@ -514,47 +511,53 @@ class Template:
         text = "".join(self.render(input_file))
         input_file.output_path.write_text(text)
 
-class RestrictedInterface:
-    __slots__ = "_object", "_allowed"
+def interface_property(name, readonly=False):
+    def get(obj):
+        return getattr(obj._obj, name)
 
-    def __init__(self, obj, allowed):
-        object.__setattr__(self, "_object", obj)
-        object.__setattr__(self, "_allowed", allowed)
+    def set_(obj, value):
+        setattr(obj._obj, name, value)
+
+    if readonly:
+        return property(get)
+    else:
+        return property(get, set_)
+
+class RestrictedInterface:
+    __slots__ = "_obj",
+
+    def __init__(self, obj):
+        assert obj is not None
+        self._obj = obj
 
     def __repr__(self):
-        return getattr(self._object, "__repr__")()
-
-    def __getattribute__(self, name):
-        if name in RestrictedInterface.__slots__:
-            return object.__getattribute__(self, name)
-
-        if name in self._allowed:
-            return getattr(self._object, name)
-
-        raise AttributeError(f"Accessing '{name}' is not allowed")
-
-    def __setattr__(self, name, value):
-        assert name not in RestrictedInterface.__slots__
-
-        if name in self._allowed:
-            setattr(self._object, name, value)
-            return
-
-        raise AttributeError(f"Accessing '{name}' is not allowed")
+        return f"{self.__class__.__name__}({self._obj.__repr__()})"
 
 class SiteInterface(RestrictedInterface):
     __slots__ = ()
+    prefix = interface_property("prefix")
+    config_dirs = interface_property("config_dirs")
+    ignored_file_patterns = interface_property("ignored_file_patterns")
+    page_template = interface_property("page_template")
+    body_template = interface_property("body_template")
 
-    def __init__(self, obj):
-        super().__init__(obj, ("prefix", "config_dirs", "ignored_file_patterns", "ignored_link_patterns",
-                               "page_template", "body_template"))
-
-class PageInterface(RestrictedInterface):
+class FileInterface(RestrictedInterface):
     __slots__ = ()
+    url = interface_property("url", readonly=True)
+    title = interface_property("title")
 
-    def __init__(self, obj):
-        super().__init__(obj, ("url", "title", "parent", "body", "content", "extra_headers", "page_template",
-                               "body_template"))
+    @property
+    def parent(self):
+        if self._obj.parent is not None:
+            return FileInterface(self._obj.parent)
+
+class PageInterface(FileInterface):
+    __slots__ = ()
+    body = interface_property("body", readonly=True)
+    content = interface_property("content", readonly=True)
+    extra_headers = interface_property("extra_headers")
+    page_template = interface_property("page_template")
+    body_template = interface_property("body_template")
 
 class WorkerThread(threading.Thread):
     def __init__(self, site, name, errors):
@@ -663,10 +666,14 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
 
         input_path = self.server.site.input_dir / self.path
 
-        if input_path.is_file():
-            self.render(input_path)
-        elif input_path.with_suffix(".md").exists():
-            self.render(input_path.with_suffix(".md"))
+        try:
+            if input_path.is_file():
+                self.render(input_path)
+            elif input_path.with_suffix(".md").exists():
+                self.render(input_path.with_suffix(".md"))
+        except TransomError as e:
+            self.send_error(httpserver.HTTPStatus.INTERNAL_SERVER_ERROR, str(e))
+            return
 
         return super().send_head()
 
@@ -728,10 +735,6 @@ class TransomCommand:
         serve.set_defaults(command_fn=self.command_serve)
         serve.add_argument("-p", "--port", type=int, metavar="PORT", default=8080,
                            help="Listen on PORT (default 8080)")
-
-        check = subparsers.add_parser("check", parents=[common], add_help=False,
-                                            help="Check for broken links and missing output files")
-        check.set_defaults(command_fn=self.command_check)
 
     def init(self, args=None):
         self.args = self.parser.parse_args(args)
@@ -813,49 +816,6 @@ class TransomCommand:
     def command_serve(self):
         with self.site:
             self.site.serve(port=self.args.port)
-
-    def command_check(self):
-        # XXX Check links
-
-        self.notice("Checking output files in '{}'", self.site.output_dir)
-
-        if not self.site.output_dir.is_dir():
-            self.fail("Output directory not found: {} (render the site before checking files)", self.site.output_dir)
-
-        with self.site:
-            self.site.load_config_files()
-            input_files = self.site.load_input_files()
-
-        expected_paths = set(x.output_path for x in input_files)
-        found_paths = set()
-
-        for root, dirs, files in self.site.output_dir.walk():
-            found_paths.update(root / x for x in files)
-
-        missing_paths = expected_paths - found_paths
-        extra_paths = found_paths - expected_paths
-
-        if missing_paths:
-            print("Missing output files:")
-
-            for path in sorted(missing_paths):
-                print(f"  {path}")
-
-        if extra_paths:
-            print("Extra output files:")
-
-            for path in sorted(extra_paths):
-                print(f"  {path}")
-
-        missing_files, extra_files = len(missing_paths), len(extra_paths)
-
-        if extra_files != 0:
-            self.notice("Warning: {} extra {} in the output", extra_files, plural("file", extra_files))
-
-        if missing_files == 0:
-            self.notice("PASSED")
-        else:
-            self.fail("FAILED")
 
 class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
     def heading(self, text, level, **attrs):
