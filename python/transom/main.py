@@ -58,11 +58,8 @@ class TransomSite:
         self.verbose = verbose
         self.quiet = quiet
 
-        self.ignored_file_patterns = [".git", ".#*", "#*"]
-
         self.prefix = ""
-        self.config_dirs = [self.config_dir]
-        self.config_modified = False
+        self.ignored_file_patterns = [".git", ".#*", "#*"]
 
         self.globals = {
             "site": SiteInterface(self),
@@ -197,12 +194,11 @@ class TransomSite:
                     elif entry.is_dir():
                         return find_modified_file(entry.path, last_render_time)
 
-        for config_dir in self.config_dirs:
-            try:
-                if find_modified_file(config_dir, last_render_time):
-                    return True
-            except FileNotFoundError:
-                self.notice("Config directory not found: {}", config_dir)
+        try:
+            if find_modified_file(self.config_dir, last_render_time):
+                return True
+        except FileNotFoundError:
+            self.notice("Config directory not found: {}", self.config_dir)
 
     def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
@@ -511,18 +507,6 @@ class Template:
         text = "".join(self.render(input_file))
         input_file.output_path.write_text(text)
 
-def interface_property(name, readonly=False):
-    def get(obj):
-        return getattr(obj._obj, name)
-
-    def set_(obj, value):
-        setattr(obj._obj, name, value)
-
-    if readonly:
-        return property(get)
-    else:
-        return property(get, set_)
-
 class RestrictedInterface:
     __slots__ = "_obj",
 
@@ -533,18 +517,30 @@ class RestrictedInterface:
     def __repr__(self):
         return f"{self.__class__.__name__}({self._obj.__repr__()})"
 
+    @staticmethod
+    def property(name, readonly=False):
+        def get(obj):
+            return getattr(obj._obj, name)
+
+        def set_(obj, value):
+            setattr(obj._obj, name, value)
+
+        if readonly:
+            return property(get)
+        else:
+            return property(get, set_)
+
 class SiteInterface(RestrictedInterface):
     __slots__ = ()
-    prefix = interface_property("prefix")
-    config_dirs = interface_property("config_dirs")
-    ignored_file_patterns = interface_property("ignored_file_patterns")
-    page_template = interface_property("page_template")
-    body_template = interface_property("body_template")
+    prefix = RestrictedInterface.property("prefix")
+    ignored_file_patterns = RestrictedInterface.property("ignored_file_patterns")
+    page_template = RestrictedInterface.property("page_template")
+    body_template = RestrictedInterface.property("body_template")
 
 class FileInterface(RestrictedInterface):
     __slots__ = ()
-    url = interface_property("url", readonly=True)
-    title = interface_property("title")
+    url = RestrictedInterface.property("url", readonly=True)
+    title = RestrictedInterface.property("title")
 
     @property
     def parent(self):
@@ -553,11 +549,11 @@ class FileInterface(RestrictedInterface):
 
 class PageInterface(FileInterface):
     __slots__ = ()
-    body = interface_property("body", readonly=True)
-    content = interface_property("content", readonly=True)
-    extra_headers = interface_property("extra_headers")
-    page_template = interface_property("page_template")
-    body_template = interface_property("body_template")
+    body = RestrictedInterface.property("body", readonly=True)
+    content = RestrictedInterface.property("content", readonly=True)
+    extra_headers = RestrictedInterface.property("extra_headers")
+    page_template = RestrictedInterface.property("page_template")
+    body_template = RestrictedInterface.property("body_template")
 
 class WorkerThread(threading.Thread):
     def __init__(self, site, name, errors):
