@@ -783,7 +783,7 @@ class TransomCommand:
             to_path.parent.mkdir(parents=True, exist_ok=True)
 
             if from_path.is_dir():
-                shutil.copytree(from_path, to_path)
+                shutil.copytree(from_path, to_path, copy_function=shutil.copy)
             else:
                 shutil.copy(from_path, to_path)
 
