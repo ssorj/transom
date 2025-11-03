@@ -280,7 +280,6 @@ class TransomSite:
     def notice(self, message, *args):
         if not self.quiet:
             message = f"{colorize('notice:', '36')} {message}" if self.verbose else message
-
             self.log(message, *args)
 
     def error(self, message, *args):
@@ -518,7 +517,7 @@ class RestrictedInterface:
         return f"{self.__class__.__name__}({self._obj.__repr__()})"
 
     @staticmethod
-    def property(name, readonly=False):
+    def _property(name, readonly=False):
         def get(obj):
             return getattr(obj._obj, name)
 
@@ -532,15 +531,17 @@ class RestrictedInterface:
 
 class SiteInterface(RestrictedInterface):
     __slots__ = ()
-    prefix = RestrictedInterface.property("prefix")
-    ignored_file_patterns = RestrictedInterface.property("ignored_file_patterns")
-    page_template = RestrictedInterface.property("page_template")
-    body_template = RestrictedInterface.property("body_template")
+    prefix = RestrictedInterface._property("prefix")
+    ignored_file_patterns = RestrictedInterface._property("ignored_file_patterns")
+    page_template = RestrictedInterface._property("page_template")
+    body_template = RestrictedInterface._property("body_template")
 
 class FileInterface(RestrictedInterface):
     __slots__ = ()
-    url = RestrictedInterface.property("url", readonly=True)
-    title = RestrictedInterface.property("title")
+    input_path = RestrictedInterface._property("input_path", readonly=True)
+    output_path = RestrictedInterface._property("output_path", readonly=True)
+    url = RestrictedInterface._property("url", readonly=True)
+    title = RestrictedInterface._property("title")
 
     @property
     def parent(self):
@@ -549,11 +550,11 @@ class FileInterface(RestrictedInterface):
 
 class PageInterface(FileInterface):
     __slots__ = ()
-    body = RestrictedInterface.property("body", readonly=True)
-    content = RestrictedInterface.property("content", readonly=True)
-    extra_headers = RestrictedInterface.property("extra_headers")
-    page_template = RestrictedInterface.property("page_template")
-    body_template = RestrictedInterface.property("body_template")
+    body = RestrictedInterface._property("body", readonly=True)
+    content = RestrictedInterface._property("content", readonly=True)
+    extra_headers = RestrictedInterface._property("extra_headers")
+    page_template = RestrictedInterface._property("page_template")
+    body_template = RestrictedInterface._property("body_template")
 
 class WorkerThread(threading.Thread):
     def __init__(self, site, name, errors):

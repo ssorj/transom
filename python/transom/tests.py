@@ -270,7 +270,7 @@ def page_code_execution():
 
     # Illegal site attribute access
     with empty_test_site() as site:
-        write("input/test.md", "---\nprint(page.input_path)\n---\n")
+        write("input/test.md", "---\nprint(page.input_mtime)\n---\n")
 
         with expect_exception(TransomError):
             site.render()
@@ -307,7 +307,7 @@ def template_code_execution():
 
     # Illegal site attribute access
     with empty_test_site() as site:
-        write("input/test.md", "{{page.input_path}}")
+        write("input/test.md", "{{page.input_mtime}}")
 
         with expect_exception(TransomError):
             site.render()
