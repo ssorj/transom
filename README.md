@@ -227,7 +227,7 @@ mutable when the page header is executed -->
 `page.body_template`.
 
 `page.content` - The primary page content.  It is rendered from
-`input/<file>.md`.
+`page.content_template`, which corresponds to `input/<file>.md`.
 
 `page.extra_headers` - A list of extra HTML headers to add to the HTML
 head element.  The default is `[]`, the empty list.
@@ -239,6 +239,9 @@ The page template includes `{{page.body}}`.  The default is
 `page.body_template` - The template object for the body element of the
 page.  The body element includes `{{page.content}}`.  The default is
 `site.body_template`.
+
+`page.content_template` - The template object for the main content of the
+page.  It is loaded from the page input path, `input/<file>.md`.
 
 ## Functions
 

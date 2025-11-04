@@ -45,9 +45,9 @@ class TransomError(Exception):
     pass
 
 class TransomSite:
-    FALLBACK_PAGE_TEMPLATE = "<!doctype html>" \
+    _FALLBACK_PAGE_TEMPLATE = "<!doctype html>" \
         "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>"
-    FALLBACK_BODY_TEMPLATE = "<body>{{page.content}}</body>"
+    _FALLBACK_BODY_TEMPLATE = "<body>{{page.content}}</body>"
 
     def __init__(self, site_dir, verbose=False, quiet=False, threads=8):
         self.site_dir = Path(site_dir).resolve()
@@ -75,11 +75,11 @@ class TransomSite:
 
         threading.current_thread().name = "main-thread"
 
-        self.worker_threads = []
-        self.worker_errors = Queue()
+        self._worker_threads = []
+        self._worker_errors = Queue()
 
         for i in range(threads):
-            self.worker_threads.append(WorkerThread(self, f"worker-thread-{i + 1}", self.worker_errors))
+            self._worker_threads.append(WorkerThread(self, f"worker-thread-{i + 1}", self._worker_errors))
 
     def __repr__(self):
         return f"{self.__class__.__name__}('{self.site_dir}')"
@@ -91,15 +91,15 @@ class TransomSite:
         self.stop()
 
     def start(self):
-        self.debug("Starting {} worker {}", len(self.worker_threads), plural("thread", len(self.worker_threads)))
+        self.debug("Starting {} worker {}", len(self._worker_threads), plural("thread", len(self._worker_threads)))
 
-        for thread in self.worker_threads:
+        for thread in self._worker_threads:
             thread.start()
 
     def stop(self):
         self.debug("Stopping worker threads")
 
-        for thread in self.worker_threads:
+        for thread in self._worker_threads:
             thread.commands.put((None, None))
             thread.join()
 
@@ -110,8 +110,8 @@ class TransomSite:
         body_template_path = self.config_dir / "body.html"
         site_code_path = self.config_dir / "site.py"
 
-        self.page_template = Template(TransomSite.FALLBACK_PAGE_TEMPLATE, "[fallback]")
-        self.body_template = Template(TransomSite.FALLBACK_BODY_TEMPLATE, "[fallback]")
+        self.page_template = Template(TransomSite._FALLBACK_PAGE_TEMPLATE, "[fallback]")
+        self.body_template = Template(TransomSite._FALLBACK_BODY_TEMPLATE, "[fallback]")
 
         if page_template_path.exists():
             self.debug("Loading page template from '{}'", page_template_path)
@@ -131,7 +131,7 @@ class TransomSite:
             except Exception as e:
                 raise TransomError(f"{site_code_path}: {e}")
 
-        self.ignored_file_re = re.compile \
+        self._ignored_file_re = re.compile \
             ("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns] + ["(?!)"]))
 
     def load_template(self, path):
@@ -143,7 +143,7 @@ class TransomSite:
 
         def find_input_files(start_path, input_files, parent_file):
             with os.scandir(start_path) as entries:
-                entries = tuple(x for x in entries if not self.ignored_file_re.match(x.name))
+                entries = tuple(x for x in entries if not self._ignored_file_re.match(x.name))
 
                 for entry in entries:
                     if entry.name in ("index.md", "index.html"):
@@ -187,7 +187,7 @@ class TransomSite:
     def find_config_modified(self, last_render_time):
         def find_modified_file(start_path, last_render_time):
             with os.scandir(start_path) as entries:
-                for entry in (x for x in entries if not self.ignored_file_re.match(x.name)):
+                for entry in (x for x in entries if not self._ignored_file_re.match(x.name)):
                     if entry.is_file():
                         if entry.stat().st_mtime >= last_render_time:
                             return True
@@ -219,27 +219,27 @@ class TransomSite:
 
         self.debug("Processing {:,} input {}", len(input_files), plural("file", len(input_files)))
 
-        input_file_batches = itertools.batched(input_files, math.ceil(len(input_files) / len(self.worker_threads)))
-        modified_file_batches = tuple([] for x in self.worker_threads)
+        input_file_batches = itertools.batched(input_files, math.ceil(len(input_files) / len(self._worker_threads)))
+        modified_file_batches = tuple([] for x in self._worker_threads)
 
-        for thread, files, modified_files in zip(self.worker_threads, input_file_batches, modified_file_batches):
+        for thread, files, modified_files in zip(self._worker_threads, input_file_batches, modified_file_batches):
             thread.commands.put((thread.process_input_files, (files, last_render_time, modified_files)))
 
-        for thread in self.worker_threads:
+        for thread in self._worker_threads:
             thread.commands.join()
 
         modified_count = sum(len(x) for x in modified_file_batches)
 
         self.debug("Rendering {:,} output {} to '{}'", modified_count, plural("file", modified_count), self.output_dir)
 
-        for thread, files in zip(self.worker_threads, modified_file_batches):
+        for thread, files in zip(self._worker_threads, modified_file_batches):
             thread.commands.put((thread.render_output_files, (files,)))
 
-        for thread in self.worker_threads:
+        for thread in self._worker_threads:
             thread.commands.join()
 
-        if not self.worker_errors.empty():
-            raise self.worker_errors.get()
+        if not self._worker_errors.empty():
+            raise self._worker_errors.get()
 
         if self.output_dir.exists():
             self.output_dir.touch()
@@ -286,12 +286,11 @@ class TransomSite:
         self.log(f"{colorize('error:', '31;1')} {message}", *args)
 
 class InputFile:
-    __slots__ = "site", "input_path", "input_mtime", "output_path", "url", "title", "parent"
+    __slots__ = "site", "input_path", "output_path", "url", "title", "parent", "_input_mtime"
 
     def __init__(self, site, input_path, parent):
         self.site = site
         self.input_path = input_path
-        self.input_mtime = None
 
         # Path.relative_to is surprisingly slow in Python 3.12, so we
         # avoid it here
@@ -306,6 +305,8 @@ class InputFile:
         self.title = self.output_path.name
         self.parent = parent
 
+        self._input_mtime = None
+
     def __repr__(self):
         return f"{self.__class__.__name__}('{self.input_path}')"
 
@@ -319,9 +320,9 @@ class InputFile:
     def process_input(self, last_render_time=0):
         self.debug("Processing input")
 
-        self.input_mtime = self.input_path.stat().st_mtime
+        self._input_mtime = self.input_path.stat().st_mtime
 
-        return self.input_mtime >= last_render_time
+        return self._input_mtime >= last_render_time
 
     def render_output(self):
         self.debug("Rendering output")
@@ -339,10 +340,10 @@ class StaticFile(InputFile):
 
 class GeneratedFile(InputFile):
     __slots__ = ()
-    HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
+    _HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
 
     def extract_header_code(self, text):
-        match_ = GeneratedFile.HEADER_RE.match(text)
+        match_ = GeneratedFile._HEADER_RE.match(text)
 
         if match_:
             return text[match_.end():], match_.group(1)
@@ -383,8 +384,8 @@ class TemplateFile(GeneratedFile):
 
 class MarkdownPage(GeneratedFile):
     __slots__ = "page_template", "body_template", "content_template", "extra_headers", "_locals"
-    MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
-    HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
+    _MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
+    _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
     def process_input(self, last_render_time=0):
         modified = super().process_input(last_render_time)
@@ -398,9 +399,9 @@ class MarkdownPage(GeneratedFile):
             self.content_template = Template(text, self.input_path)
             self.extra_headers = ""
 
-            m = MarkdownPage.MARKDOWN_TITLE_RE.search(text)
+            m = MarkdownPage._MARKDOWN_TITLE_RE.search(text)
             self.title = m.group(1) if m else ""
-            m = MarkdownPage.HTML_TITLE_RE.search(text)
+            m = MarkdownPage._HTML_TITLE_RE.search(text)
             self.title = m.group(1) if m else self.title
 
             self._locals = {
