@@ -193,22 +193,16 @@ def get_page_info(page):
 
 ## Site properties
 
+<!-- XXX These are all mutable when site.py is executed -->
+
 `site.prefix` - A string prefix used in generated links.  It is
 inserted before the file path.  This is important when the published
 site lives under a directory prefix, as is the case for GitHub Pages.
 The default is `""`, meaning no prefix.
 
-`site.config_dirs` - A list of directories to watch for changes.  If
-any file changes, the whole site is re-rendered.  The default is
-`["config"]`, with only the standard `config/` directory.
-
 `site.ignored_file_patterns` - A list of shell globs for excluding
 input and config from processing.  The default is `[".git",
 ".#*","#*"]`.
-
-`site.ignored_link_patterns` - A list of shell globs for excluding
-link URLs from link checking.  The default is `[]`, meaning none are
-ignored.
 
 `site.page_template` - The default top-level template object for HTML
 pages.  The page template includes `{{page.body}}`.  The default is
@@ -219,6 +213,9 @@ element of HTML pages.  The body element includes `{{page.content}}`.
 The default is loaded from `config/body.html`.
 
 ## Page properties
+
+<!-- title, extra_headers, page_template, and body_template are
+mutable when the page header is executed -->
 
 `page.url` -
 
@@ -247,17 +244,17 @@ page.  The body element includes `{{page.content}}`.  The default is
 
 #### File operations
 
-`include(path)` - Include the file at `path`.
-
 `load_template(path)` - Load a template object from `path`.  Use this
 when setting template properties.
+
+`include(path)` - Include the file at `path`.
 
 `render(path)` - Include the file at `path` and render it as a
 template.  If `path` ends with `.md`, it is converted to HTML.
 
 #### Page navigation functions
 
-`path_nav(start=0, end=None, min=1)`
+`path_nav(start=0, end=None, min=1)` - XXX
 
 `toc_nav()` - XXX inspects the page content and generates a table
 of contents from its headings.  This must be placed outside the page

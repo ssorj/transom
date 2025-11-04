@@ -135,20 +135,6 @@ def site_code_execution():
         with expect_exception(TransomError):
             site.load_config_files()
 
-    # Illegal site attribute access
-    with empty_test_site() as site:
-        write("config/site.py", "site.site_dir = \"/nope\"")
-
-        with expect_exception(TransomError):
-            site.load_config_files()
-
-    # Illegal site attribute access
-    with empty_test_site() as site:
-        write("config/site.py", "print(site.site_dir)")
-
-        with expect_exception(TransomError):
-            site.load_config_files()
-
 @test
 def site_render():
     with empty_test_site() as site:
@@ -261,20 +247,6 @@ def page_code_execution():
         with expect_exception(TransomError):
             site.render()
 
-    # Illegal site attribute access
-    with empty_test_site() as site:
-        write("input/test.md", "---\npage.input_path = \"/nope\"\n---\n")
-
-        with expect_exception(TransomError):
-            site.render()
-
-    # Illegal site attribute access
-    with empty_test_site() as site:
-        write("input/test.md", "---\nprint(page.input_mtime)\n---\n")
-
-        with expect_exception(TransomError):
-            site.render()
-
 @test
 def template_code_execution():
     # Broken code
@@ -294,20 +266,6 @@ def template_code_execution():
     # Syntax error handling
     with empty_test_site() as site:
         write("input/test.md", "{{)(}}")
-
-        with expect_exception(TransomError):
-            site.render()
-
-    # Illegal site attribute access
-    with empty_test_site() as site:
-        write("input/test.md", "{{page.input_path = \"/nope\"}}")
-
-        with expect_exception(TransomError):
-            site.render()
-
-    # Illegal site attribute access
-    with empty_test_site() as site:
-        write("input/test.md", "{{page.input_mtime}}")
 
         with expect_exception(TransomError):
             site.render()

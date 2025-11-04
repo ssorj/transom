@@ -61,8 +61,8 @@ class TransomSite:
         self.prefix = ""
         self.ignored_file_patterns = [".git", ".#*", "#*"]
 
-        self.globals = {
-            "site": SiteInterface(self),
+        self._globals = {
+            "site": self,
             "include": include,
             "lipsum": lipsum,
             "plural": plural,
@@ -125,7 +125,7 @@ class TransomSite:
             self.debug("Executing site code in '{}'", self.config_dir / "site.py")
 
             try:
-                exec(site_code_path.read_text(), self.globals)
+                exec(site_code_path.read_text(), self._globals)
             except TransomError:
                 raise
             except Exception as e:
@@ -353,14 +353,14 @@ class GeneratedFile(InputFile):
         self.debug("Executing header code")
 
         try:
-            exec(header_code, self.site.globals, self.locals)
+            exec(header_code, self.site._globals, self._locals)
         except TransomError:
             raise
         except Exception as e:
             raise TransomError(f"{self.input_path}: header: {e}")
 
 class TemplateFile(GeneratedFile):
-    __slots__ = "template", "locals"
+    __slots__ = "template", "_locals"
 
     def process_input(self, last_render_time=0):
         modified = super().process_input(last_render_time)
@@ -370,7 +370,7 @@ class TemplateFile(GeneratedFile):
             text, header_code = self.extract_header_code(text)
 
             self.template = Template(text, self.input_path)
-            self.locals = {"file": FileInterface(self)}
+            self._locals = {"file": self}
 
             if header_code:
                 self.exec_header_code(header_code)
@@ -382,7 +382,7 @@ class TemplateFile(GeneratedFile):
         self.template.write(self)
 
 class MarkdownPage(GeneratedFile):
-    __slots__ = "page_template", "body_template", "content_template", "extra_headers", "locals"
+    __slots__ = "page_template", "body_template", "content_template", "extra_headers", "_locals"
     MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
     HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
@@ -403,8 +403,8 @@ class MarkdownPage(GeneratedFile):
             m = MarkdownPage.HTML_TITLE_RE.search(text)
             self.title = m.group(1) if m else self.title
 
-            self.locals = {
-                "page": PageInterface(self),
+            self._locals = {
+                "page": self,
                 "render": functools.partial(MarkdownPage.render_file, self),
                 "path_nav": functools.partial(MarkdownPage.path_nav, self),
                 "toc_nav": functools.partial(MarkdownPage.toc_nav, self),
@@ -489,7 +489,7 @@ class Template:
                 code, token = piece
 
                 try:
-                    result = eval(code, input_file.site.globals, input_file.locals)
+                    result = eval(code, input_file.site._globals, input_file._locals)
                 except TransomError:
                     raise
                 except Exception as e:
@@ -505,56 +505,6 @@ class Template:
     def write(self, input_file):
         text = "".join(self.render(input_file))
         input_file.output_path.write_text(text)
-
-class RestrictedInterface:
-    __slots__ = "_obj",
-
-    def __init__(self, obj):
-        assert obj is not None
-        self._obj = obj
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self._obj.__repr__()})"
-
-    @staticmethod
-    def _property(name, readonly=False):
-        def get(obj):
-            return getattr(obj._obj, name)
-
-        def set_(obj, value):
-            setattr(obj._obj, name, value)
-
-        if readonly:
-            return property(get)
-        else:
-            return property(get, set_)
-
-class SiteInterface(RestrictedInterface):
-    __slots__ = ()
-    prefix = RestrictedInterface._property("prefix")
-    ignored_file_patterns = RestrictedInterface._property("ignored_file_patterns")
-    page_template = RestrictedInterface._property("page_template")
-    body_template = RestrictedInterface._property("body_template")
-
-class FileInterface(RestrictedInterface):
-    __slots__ = ()
-    input_path = RestrictedInterface._property("input_path", readonly=True)
-    output_path = RestrictedInterface._property("output_path", readonly=True)
-    url = RestrictedInterface._property("url", readonly=True)
-    title = RestrictedInterface._property("title")
-
-    @property
-    def parent(self):
-        if self._obj.parent is not None:
-            return FileInterface(self._obj.parent)
-
-class PageInterface(FileInterface):
-    __slots__ = ()
-    body = RestrictedInterface._property("body", readonly=True)
-    content = RestrictedInterface._property("content", readonly=True)
-    extra_headers = RestrictedInterface._property("extra_headers")
-    page_template = RestrictedInterface._property("page_template")
-    body_template = RestrictedInterface._property("body_template")
 
 class WorkerThread(threading.Thread):
     def __init__(self, site, name, errors):
