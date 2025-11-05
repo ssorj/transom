@@ -459,7 +459,7 @@ class MarkdownPage(GeneratedFile):
 
 class Template:
     __slots__ = "pieces", "path"
-    VARIABLE_RE = re.compile(r"({{{.+?}}}|{{.+?}})")
+    _VARIABLE_RE = re.compile(r"({{{.+?}}}|{{.+?}})")
 
     def __init__(self, text, path):
         self.pieces = []
@@ -471,7 +471,7 @@ class Template:
         return f"{self.__class__.__name__}('{self.path}')"
 
     def parse(self, text):
-        for token in Template.VARIABLE_RE.split(text):
+        for token in Template._VARIABLE_RE.split(text):
             if token.startswith("{{{") and token.endswith("}}}"):
                 piece = token[1:-1]
             elif token.startswith("{{") and token.endswith("}}"):
@@ -600,14 +600,13 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
         self.send_response(httpserver.HTTPStatus.OK)
         self.end_headers()
 
-    # This handles GET and HEAD requests
+    # This intercepts all GET and HEAD requests
     def send_head(self):
         if not self.path.startswith(self.server.site.prefix):
             self.send_response(httpserver.HTTPStatus.TEMPORARY_REDIRECT)
             self.send_header("Location", self.server.site.prefix + self.path)
             self.end_headers()
-
-            return None
+            return
 
         self.path = self.path + "index.html" if self.path.endswith("/") else self.path
         self.path = self.path.removeprefix(self.server.site.prefix).removeprefix("/")

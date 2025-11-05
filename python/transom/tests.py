@@ -212,9 +212,18 @@ def site_serve():
             http_get("http://localhost:9191/site.css")
             http_get("http://localhost:9191/outer/inner/nested.html")
 
+    with empty_test_site() as site:
+        with test_server(site):
             write("input/outer/inner/new-file.html", "<html/>")
 
             http_get("http://localhost:9191/outer/inner/new-file.html")
+
+    with empty_test_site() as site:
+        with test_server(site):
+            write("input/broken-file.md", "{{1 / 0}}")
+
+            with expect_error():
+                http_get("http://localhost:9191/broken-file.html")
 
     with empty_test_site() as site:
         write("config/site.py", "site.prefix = \"/prefix\"\n")
