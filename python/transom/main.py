@@ -392,13 +392,14 @@ class InputFile:
 
         self._output_path = self._site._output_dir / output_path
 
-        self.url = f"{self._site.prefix}/{output_path}"
-        self.title = self._output_path.name
-        self.parent = parent
+        self._url = f"{self._site.prefix}/{output_path}"
+        self._title = self._output_path.name
+        self._parent = parent
 
     def __repr__(self):
         return f"{self.__class__.__name__}({repr(str(self._input_path))})"
 
+    @property
     def ancestors(self):
         parent = self.parent
 
@@ -406,11 +407,11 @@ class InputFile:
             yield parent
             parent = parent.parent
 
-    def process_input(self, last_render_time=0):
+    def _process_input(self, last_render_time=0):
         self.debug("Processing input")
         return self._input_path.stat().st_mtime >= last_render_time
 
-    def render_output(self):
+    def _render_output(self):
         self.debug("Rendering output")
         self._output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -420,8 +421,8 @@ class InputFile:
 class StaticFile(InputFile):
     __slots__ = ()
 
-    def render_output(self):
-        super().render_output()
+    def _render_output(self):
+        super()._render_output()
         shutil.copy(self._input_path, self._output_path)
 
 class GeneratedFile(InputFile):
@@ -445,8 +446,8 @@ class GeneratedFile(InputFile):
 class TemplateFile(GeneratedFile):
     __slots__ = "_template", "_locals"
 
-    def process_input(self, last_render_time=0):
-        modified = super().process_input(last_render_time)
+    def _process_input(self, last_render_time=0):
+        modified = super()._process_input(last_render_time)
 
         if modified:
             text = self._input_path.read_text()
@@ -460,30 +461,28 @@ class TemplateFile(GeneratedFile):
 
         return modified
 
-    def render_output(self):
-        super().render_output()
+    def _render_output(self):
+        super()._render_output()
         self._template.write(self)
 
 class MarkdownPage(GeneratedFile):
-    __slots__ = "_page_template", "_body_template", "_content_template", "_extra_headers", "_locals"
+    __slots__ = "_page_template", "_body_template", "_content_template", "_locals"
     _MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
     _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
     page_template = object_property("page_template", TransomTemplate)
     body_template = object_property("body_template", TransomTemplate)
-    extra_headers = object_property("extra_headers", str)
 
-    def process_input(self, last_render_time=0):
-        modified = super().process_input(last_render_time)
+    def _process_input(self, last_render_time=0):
+        modified = super()._process_input(last_render_time)
 
         if modified:
             text = self._input_path.read_text()
             text, header_code = self.extract_header_code(text)
 
-            self.page_template = self._site.page_template
-            self.body_template = self._site.body_template
+            self._page_template = self._site._page_template
+            self._body_template = self._site._body_template
             self._content_template = TransomTemplate(text, self._input_path)
-            self.extra_headers = ""
 
             match_ = MarkdownPage._MARKDOWN_TITLE_RE.search(text)
             self.title = match_.group(1) if match_ else ""
@@ -502,8 +501,8 @@ class MarkdownPage(GeneratedFile):
 
         return modified
 
-    def render_output(self):
-        super().render_output()
+    def _render_output(self):
+        super()._render_output()
         self.page_template.write(self)
 
     @property
@@ -520,7 +519,7 @@ class MarkdownPage(GeneratedFile):
         return MarkdownLocal.INSTANCE.value("".join(pieces))
 
     def path_nav(self, start=0, end=None, min=1):
-        files = [self] + list(self.ancestors())
+        files = [self] + list(self.ancestors)
         files.reverse()
         links = tuple(f"<a href=\"{x.url}\">{x.title}</a>" for x in files[start:end])
 
@@ -566,14 +565,14 @@ class WorkerThread(threading.Thread):
 
     def process_input_files(self, input_files, last_render_time, modified_files):
         for input_file in input_files:
-            modified = input_file.process_input(last_render_time)
+            modified = input_file._process_input(last_render_time)
 
             if modified:
                 modified_files.append(input_file)
 
     def render_output_files(self, modified_files):
         for input_file in modified_files:
-            input_file.render_output()
+            input_file._render_output()
 
 class HeadingParser(HTMLParser):
     def __init__(self):
@@ -663,11 +662,11 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
                 self.server.render()
                 return
 
-            for ancestor in input_file.ancestors():
-                ancestor.process_input()
+            for ancestor in input_file.ancestors:
+                ancestor._process_input()
 
-            input_file.process_input()
-            input_file.render_output()
+            input_file._process_input()
+            input_file._render_output()
 
 class TransomCommand:
     def __init__(self, home=None):
