@@ -328,7 +328,7 @@ class TransomSite:
             thread.commands.join()
 
         if not self._worker_errors.empty():
-            raise self._worker_errors.get()
+            raise TransomError("Rendering failed")
 
         if self._output_dir.exists():
             self._output_dir.touch()
