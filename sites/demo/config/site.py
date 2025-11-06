@@ -4,7 +4,7 @@ def interface_object_properties(obj_name, obj):
     yield "<dl>"
     yield f"<dt>{obj_name}</dt><dd><code>{repr(obj)}</code></dd>"
 
-    data_members = inspect.getmembers(obj, lambda x: not inspect.ismethod(x))
+    data_members = inspect.getmembers(obj)
 
     for attr_name, attr_value in (x for x in data_members if not x[0].startswith("_")):
         yield f"<dt>{obj_name}.{attr_name}</dt><dd><code>"

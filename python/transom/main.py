@@ -37,7 +37,6 @@ from html import escape as html_escape
 from html.parser import HTMLParser
 from pathlib import Path
 from queue import Queue
-from urllib import parse as urlparse
 
 __all__ = "TransomError", "TransomTemplate", "TransomSite", "TransomCommand"
 
@@ -123,13 +122,16 @@ def load_template(path):
     path = Path(path) if isinstance(path, str) else path
     return TransomTemplate(path.read_text(), path)
 
-def object_property(name, type_, default=None):
+def object_property(name, type_, default=None, readonly=False):
     def get(obj):
         return getattr(obj, f"_{name}", default)
 
     def set_(obj, value):
+        if readonly:
+            raise TransomError(f"Property '{name}' is read-only")
+
         if not isinstance(value, type_):
-            raise TransomError(f"Site property '{name}' set to illegal type '{type(value).__name__}' "
+            raise TransomError(f"Property '{name}' set to illegal type '{type(value).__name__}' "
                                f"(type '{type_.__name__}' is required)")
 
         setattr(obj, f"_{name}", value)
@@ -143,14 +145,14 @@ class TransomSite:
 
     prefix = object_property("prefix", str, "")
     ignored_file_patterns = object_property("ignored_file_patterns", list, [".git", ".#*", "#*"])
-    page_template = object_property("page_template", TransomTemplate)
-    body_template = object_property("body_template", TransomTemplate)
+    page_template = object_property("page_template", TransomTemplate, _FALLBACK_PAGE_TEMPLATE)
+    body_template = object_property("body_template", TransomTemplate, _FALLBACK_BODY_TEMPLATE)
 
     def __init__(self, site_dir, verbose=False, quiet=False, threads=8):
-        self._site_dir = Path(site_dir).resolve()
-        self._config_dir = self._site_dir / "config"
-        self._input_dir = self._site_dir / "input"
-        self._output_dir = self._site_dir / "output"
+        self._root_dir = Path(site_dir).resolve()
+        self._config_dir = self._root_dir / "config"
+        self._input_dir = self._root_dir / "input"
+        self._output_dir = self._root_dir / "output"
 
         self._verbose = verbose
         self._quiet = quiet
@@ -158,12 +160,12 @@ class TransomSite:
         self._globals = {
             "site": self,
             "include": include,
+            "load_template": load_template,
             "lipsum": lipsum,
             "plural": plural,
             "html_escape": html_escape,
             "html_table": html_table,
             "html_table_csv": html_table_csv,
-            "load_template": load_template,
             "TransomError": TransomError,
             "TransomTemplate": TransomTemplate,
         }
@@ -177,47 +179,44 @@ class TransomSite:
             self._worker_threads.append(WorkerThread(self, f"worker-thread-{i + 1}", self._worker_errors))
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({repr(str(self._site_dir))})"
+        return f"{self.__class__.__name__}({repr(str(self._root_dir))})"
 
     def __enter__(self):
-        self.start()
+        self._start()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.stop()
+        self._stop()
 
-    def start(self):
-        self.debug("Starting {} worker {}", len(self._worker_threads), plural("thread", len(self._worker_threads)))
+    def _start(self):
+        self._debug("Starting {} worker {}", len(self._worker_threads), plural("thread", len(self._worker_threads)))
 
         for thread in self._worker_threads:
             thread.start()
 
-    def stop(self):
-        self.debug("Stopping worker threads")
+    def _stop(self):
+        self._debug("Stopping worker threads")
 
         for thread in self._worker_threads:
             thread.commands.put((None, None))
             thread.join()
 
-    def load_config_files(self):
-        self.debug("Loading config files in '{}'", self._config_dir)
+    def _load_config_files(self):
+        self._debug("Loading config files in '{}'", self._config_dir)
 
         page_template_path = self._config_dir / "page.html"
         body_template_path = self._config_dir / "body.html"
         site_code_path = self._config_dir / "site.py"
 
-        self.page_template = TransomSite._FALLBACK_PAGE_TEMPLATE
-        self.body_template = TransomSite._FALLBACK_BODY_TEMPLATE
-
         if page_template_path.exists():
-            self.debug("Loading page template from '{}'", page_template_path)
+            self._debug("Loading page template from '{}'", page_template_path)
             self.page_template = load_template(page_template_path)
 
         if body_template_path.exists():
-            self.debug("Loading body template from '{}'", body_template_path)
+            self._debug("Loading body template from '{}'", body_template_path)
             self.body_template = load_template(body_template_path)
 
         if site_code_path.exists():
-            self.debug("Executing site code in '{}'", self._config_dir / "site.py")
+            self._debug("Executing site code in '{}'", self._config_dir / "site.py")
 
             with error_handling([site_code_path]):
                 exec(site_code_path.read_text(), self._globals)
@@ -225,8 +224,8 @@ class TransomSite:
         self._ignored_file_re = re.compile \
             ("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns] + ["(?!)"]))
 
-    def load_input_files(self):
-        self.debug("Loading input files in '{}'", self._input_dir)
+    def _load_input_files(self):
+        self._debug("Loading input files in '{}'", self._input_dir)
 
         def find_input_files(start_path, input_files, parent_file):
             with os.scandir(start_path) as entries:
@@ -234,7 +233,7 @@ class TransomSite:
 
                 for entry in entries:
                     if entry.name in ("index.md", "index.html"):
-                        input_file = self.load_input_file(Path(entry.path), parent_file)
+                        input_file = self._load_input_file(Path(entry.path), parent_file)
                         input_files.append(input_file)
                         parent_file = input_file
                         break
@@ -244,7 +243,7 @@ class TransomSite:
                         continue
 
                     if entry.is_file():
-                        input_file = self.load_input_file(Path(entry.path), parent_file)
+                        input_file = self._load_input_file(Path(entry.path), parent_file)
                         input_files.append(input_file)
                     elif entry.is_dir():
                         find_input_files(entry.path, input_files, parent_file)
@@ -254,12 +253,12 @@ class TransomSite:
         try:
             find_input_files(self._input_dir, input_files, None)
         except FileNotFoundError:
-            self.notice("Input directory not found: {}", self._input_dir)
+            self._notice("Input directory not found: {}", self._input_dir)
 
         return input_files
 
-    def load_input_file(self, input_path, parent):
-        self.debug("Loading '{}'", input_path)
+    def _load_input_file(self, input_path, parent):
+        self._debug("Loading '{}'", input_path)
 
         match input_path.suffix:
             case ".md":
@@ -271,7 +270,7 @@ class TransomSite:
 
         return input_file
 
-    def find_config_modified(self, last_render_time):
+    def _find_config_modified(self, last_render_time):
         def find_modified_file(start_path, last_render_time):
             with os.scandir(start_path) as entries:
                 for entry in (x for x in entries if not self._ignored_file_re.match(x.name)):
@@ -285,14 +284,14 @@ class TransomSite:
             if find_modified_file(self._config_dir, last_render_time):
                 return True
         except FileNotFoundError:
-            self.notice("Config directory not found: {}", self._config_dir)
+            self._notice("Config directory not found: {}", self._config_dir)
 
-    def render(self, force=False):
-        self.notice("Rendering files from '{}' to '{}'", self._input_dir, self._output_dir)
+    def _render(self, force=False):
+        self._notice("Rendering files from '{}' to '{}'", self._input_dir, self._output_dir)
 
-        self.load_config_files()
+        self._load_config_files()
 
-        input_files = self.load_input_files()
+        input_files = self._load_input_files()
         last_render_time = 0
 
         if not input_files:
@@ -301,10 +300,10 @@ class TransomSite:
         if not force and self._output_dir.exists():
             last_render_time = self._output_dir.stat().st_mtime
 
-            if self.find_config_modified(last_render_time):
+            if self._find_config_modified(last_render_time):
                 last_render_time = 0
 
-        self.debug("Processing {:,} input {}", len(input_files), plural("file", len(input_files)))
+        self._debug("Processing {:,} input {}", len(input_files), plural("file", len(input_files)))
 
         input_file_batches = itertools.batched(input_files, math.ceil(len(input_files) / len(self._worker_threads)))
         modified_file_batches = tuple([] for x in self._worker_threads)
@@ -317,7 +316,7 @@ class TransomSite:
 
         modified_count = sum(len(x) for x in modified_file_batches)
 
-        self.debug("Rendering {:,} output {} to '{}'", modified_count, plural("file", modified_count), self._output_dir)
+        self._debug("Rendering {:,} output {} to '{}'", modified_count, plural("file", modified_count), self._output_dir)
 
         for thread, files in zip(self._worker_threads, modified_file_batches):
             thread.commands.put((thread.render_output_files, (files,)))
@@ -337,12 +336,12 @@ class TransomSite:
         if unmodified_count > 0:
             unmodified_note = " ({:,} unchanged)".format(unmodified_count)
 
-        self.notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
+        self._notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
 
         return input_files
 
-    def serve(self, port=8080):
-        self.notice("Serving the site at http://localhost:{}", port)
+    def _serve(self, port=8080):
+        self._notice("Serving the site at http://localhost:{}", port)
 
         try:
             with Server(self, port) as server:
@@ -354,30 +353,30 @@ class TransomSite:
             else: # pragma: nocover
                 raise
 
-    def log(self, message, *args):
+    def _log(self, message, *args):
         if self._verbose:
             message = f"{colorize(threading.current_thread().name, '90')} {message}"
 
         print(message.format(*args), file=sys.stderr, flush=True)
 
-    def debug(self, message, *args):
+    def _debug(self, message, *args):
         if self._verbose:
-            self.log(colorize(f"debug: {message}", "37"), *args)
+            self._log(colorize(f"debug: {message}", "37"), *args)
 
-    def notice(self, message, *args):
+    def _notice(self, message, *args):
         if not self._quiet:
             message = f"{colorize('notice:', '36')} {message}" if self._verbose else message
-            self.log(message, *args)
+            self._log(message, *args)
 
-    def error(self, message, *args):
-        self.log(f"{colorize('error:', '31;1')} {message}", *args)
+    def _error(self, message, *args):
+        self._log(f"{colorize('error:', '31;1')} {message}", *args)
 
 class InputFile:
-    __slots__ = "_site", "_input_path", "_output_path", "_url", "_title", "_parent"
+    __slots__ = "_site", "_input_path", "_output_path", "_url", "_parent", "_title"
 
-    url = object_property("url", str)
+    url = object_property("url", str, readonly=True)
+    parent = object_property("parent", object, readonly=True)
     title = object_property("title", str)
-    parent = object_property("parent", object)
 
     def __init__(self, site, input_path, parent):
         self._site = site
@@ -393,8 +392,8 @@ class InputFile:
         self._output_path = self._site._output_dir / output_path
 
         self._url = f"{self._site.prefix}/{output_path}"
-        self._title = self._output_path.name
         self._parent = parent
+        self._title = self._output_path.name
 
     def __repr__(self):
         return f"{self.__class__.__name__}({repr(str(self._input_path))})"
@@ -408,15 +407,15 @@ class InputFile:
             parent = parent.parent
 
     def _process_input(self, last_render_time=0):
-        self.debug("Processing input")
+        self._debug("Processing input")
         return self._input_path.stat().st_mtime >= last_render_time
 
     def _render_output(self):
-        self.debug("Rendering output")
+        self._debug("Rendering output")
         self._output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def debug(self, message, *args):
-        self._site.debug(f"{self._input_path}: {message}", *args)
+    def _debug(self, message, *args):
+        self._site._debug(f"{self._input_path}: {message}", *args)
 
 class StaticFile(InputFile):
     __slots__ = ()
@@ -429,7 +428,7 @@ class GeneratedFile(InputFile):
     __slots__ = ()
     _HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
 
-    def extract_header_code(self, text):
+    def _extract_header_code(self, text):
         match_ = GeneratedFile._HEADER_RE.match(text)
 
         if match_:
@@ -437,8 +436,8 @@ class GeneratedFile(InputFile):
 
         return text, None
 
-    def exec_header_code(self, header_code):
-        self.debug("Executing header code")
+    def _exec_header_code(self, header_code):
+        self._debug("Executing header code")
 
         with error_handling([self._input_path, "header"]):
             exec(header_code, self._site._globals, self._locals)
@@ -451,13 +450,13 @@ class TemplateFile(GeneratedFile):
 
         if modified:
             text = self._input_path.read_text()
-            text, header_code = self.extract_header_code(text)
+            text, header_code = self._extract_header_code(text)
 
             self._template = TransomTemplate(text, self._input_path)
             self._locals = {"file": self}
 
             if header_code:
-                self.exec_header_code(header_code)
+                self._exec_header_code(header_code)
 
         return modified
 
@@ -466,11 +465,11 @@ class TemplateFile(GeneratedFile):
         self._template.write(self)
 
 class MarkdownPage(GeneratedFile):
-    __slots__ = "_page_template", "_body_template", "_content_template", "_locals"
+    __slots__ = "_template", "_body_template", "_content_template", "_locals"
     _MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
     _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
-    page_template = object_property("page_template", TransomTemplate)
+    template = object_property("template", TransomTemplate)
     body_template = object_property("body_template", TransomTemplate)
 
     def _process_input(self, last_render_time=0):
@@ -478,10 +477,10 @@ class MarkdownPage(GeneratedFile):
 
         if modified:
             text = self._input_path.read_text()
-            text, header_code = self.extract_header_code(text)
+            text, header_code = self._extract_header_code(text)
 
-            self._page_template = self._site._page_template
-            self._body_template = self._site._body_template
+            self._template = self._site.page_template
+            self._body_template = self._site.body_template
             self._content_template = TransomTemplate(text, self._input_path)
 
             match_ = MarkdownPage._MARKDOWN_TITLE_RE.search(text)
@@ -497,17 +496,17 @@ class MarkdownPage(GeneratedFile):
             }
 
             if header_code:
-                self.exec_header_code(header_code)
+                self._exec_header_code(header_code)
 
         return modified
 
     def _render_output(self):
         super()._render_output()
-        self.page_template.write(self)
+        self._template.write(self)
 
     @property
     def body(self):
-        return self.body_template.render(self)
+        return self._body_template.render(self)
 
     @property
     def content(self):
@@ -555,7 +554,7 @@ class WorkerThread(threading.Thread):
             try:
                 fn(*args)
             except TransomError as e:
-                self.site.error(str(e))
+                self.site._error(str(e))
                 self.errors.put(e)
             except Exception as e: # pragma: nocover
                 traceback.print_exc()
@@ -616,7 +615,7 @@ class Server(httpserver.ThreadingHTTPServer):
         self.render()
 
     def render(self):
-        self.input_files = {x._input_path: x for x in self.site.render()}
+        self.input_files = {x._input_path: x for x in self.site._render()}
 
 class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
@@ -742,10 +741,10 @@ class TransomCommand:
             pass
 
     def notice(self, message, *args):
-        self.site.notice(message, *args)
+        self.site._notice(message, *args)
 
     def fail(self, message, *args):
-        self.site.error(message, *args)
+        self.site._error(message, *args)
         sys.exit(1)
 
     def command_init(self):
@@ -788,11 +787,11 @@ class TransomCommand:
 
     def command_render(self):
         with self.site:
-            self.site.render(force=self.args.force)
+            self.site._render(force=self.args.force)
 
     def command_serve(self):
         with self.site:
-            self.site.serve(port=self.args.port)
+            self.site._serve(port=self.args.port)
 
 class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
     def heading(self, text, level, **attrs):
