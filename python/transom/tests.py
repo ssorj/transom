@@ -113,29 +113,6 @@ def site_load_input_files():
         assert len(input_files) > 0, len(input_files)
 
 @test
-def site_code_execution():
-    # Broken code
-    with empty_test_site() as site:
-        write("config/site.py", "1 / 0")
-
-        with expect_exception(TransomError):
-            site.load_config_files()
-
-    # Transom error handling
-    with empty_test_site() as site:
-        write("config/site.py", "raise TransomError()")
-
-        with expect_exception(TransomError):
-            site.load_config_files()
-
-    # Syntax error handling
-    with empty_test_site() as site:
-        write("config/site.py", ")(")
-
-        with expect_exception(TransomError):
-            site.load_config_files()
-
-@test
 def site_render():
     with empty_test_site() as site:
         site.render()
@@ -232,6 +209,36 @@ def site_serve():
         with test_server(site):
             http_get("http://localhost:9191/")
             http_get("http://localhost:9191/prefix/")
+
+@test
+def site_code_execution():
+    # Broken code
+    with empty_test_site() as site:
+        write("config/site.py", "1 / 0")
+
+        with expect_exception(TransomError):
+            site.load_config_files()
+
+    # Transom error handling
+    with empty_test_site() as site:
+        write("config/site.py", "raise TransomError()")
+
+        with expect_exception(TransomError):
+            site.load_config_files()
+
+    # Syntax error handling
+    with empty_test_site() as site:
+        write("config/site.py", ")(")
+
+        with expect_exception(TransomError):
+            site.load_config_files()
+
+    # Load a non-existant template
+    with empty_test_site() as site:
+        write("config/site.py", "site.page_template = load_template(\"/not-there.html\")")
+
+        with expect_exception(TransomError):
+            site.load_config_files()
 
 @test
 def page_code_execution():

@@ -39,15 +39,111 @@ from pathlib import Path
 from queue import Queue
 from urllib import parse as urlparse
 
-__all__ = "TransomError", "TransomSite", "TransomCommand"
+__all__ = "TransomError", "TransomTemplate", "TransomSite", "TransomCommand"
 
 class TransomError(Exception):
-    pass
+    def __init__(self, message, contexts=None):
+        self.message = message
+        self.contexts = contexts
+
+    def __str__(self):
+        prefix = ""
+
+        if self.contexts:
+            prefix = "".join(f"{x}: " for x in self.contexts)
+
+        return prefix + str(self.message)
+
+class transom_error_handling:
+    def __init__(self, contexts):
+        self.contexts = contexts
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type == TransomError:
+            if not exc_value.contexts:
+                exc_value.contexts = self.contexts
+
+            return False
+
+        if exc_type is not None:
+            raise TransomError(exc_value, self.contexts)
+
+class TransomTemplate:
+    __slots__ = "pieces", "context"
+    _VARIABLE_RE = re.compile(r"({{{.+?}}}|{{.+?}})")
+
+    def __init__(self, text, context=None):
+        self.pieces = []
+        self.context = context
+
+        self._parse(text)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({repr(self.context)})"
+
+    def _parse(self, text):
+        for token in TransomTemplate._VARIABLE_RE.split(text):
+            if token.startswith("{{{") and token.endswith("}}}"):
+                piece = token[1:-1]
+            elif token.startswith("{{") and token.endswith("}}"):
+                # XXX try to move {{{ }}} handling in here
+
+                code = token[2:-2]
+
+                try:
+                    piece = compile(code, "<string>", "eval"), repr(code)
+                except Exception as e:
+                    raise TransomError(e, [self.context, repr(code)])
+            else:
+                piece = token
+
+            self.pieces.append(piece)
+
+    def render(self, input_file):
+        for piece in self.pieces:
+            if type(piece) is tuple:
+                code, token = piece
+
+                with transom_error_handling(["Template.render", input_file.input_path, token]):
+                    result = eval(code, input_file.site._globals, input_file._locals)
+
+                if type(result) is types.GeneratorType:
+                    yield from result
+                else:
+                    yield str(result)
+            else:
+                yield piece
+
+    def write(self, input_file):
+        text = "".join(self.render(input_file))
+        input_file.output_path.write_text(text)
 
 class TransomSite:
-    _FALLBACK_PAGE_TEMPLATE = "<!doctype html>" \
-        "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>"
-    _FALLBACK_BODY_TEMPLATE = "<body>{{page.content}}</body>"
+    _FALLBACK_PAGE_TEMPLATE = TransomTemplate("<!doctype html>" \
+        "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>")
+    _FALLBACK_BODY_TEMPLATE = TransomTemplate("<body>{{page.content}}</body>")
+
+    @staticmethod
+    def site_property(name, type_):
+        def get(obj):
+            return getattr(obj, f"_{name}", None)
+
+        def set_(obj, value):
+            if not isinstance(value, type_):
+                raise TransomError(f"Site property '{name}' set to illegal type '{type(value).__name__}' "
+                                   f"(type '{type_.__name__}' is required)")
+
+            setattr(obj, f"_{name}", value)
+
+        return property(get, set_)
+
+    prefix = site_property("prefix", str)
+    ignored_file_patterns = site_property("ignored_file_patterns", list)
+    page_template = site_property("page_template", TransomTemplate)
+    body_template = site_property("body_template", TransomTemplate)
 
     def __init__(self, site_dir, verbose=False, quiet=False, threads=8):
         self.site_dir = Path(site_dir).resolve()
@@ -71,6 +167,7 @@ class TransomSite:
             "html_table_csv": html_table_csv,
             "load_template": functools.partial(TransomSite.load_template, self),
             "TransomError": TransomError,
+            "TransomTemplate": TransomTemplate,
         }
 
         threading.current_thread().name = "main-thread"
@@ -82,7 +179,7 @@ class TransomSite:
             self._worker_threads.append(WorkerThread(self, f"worker-thread-{i + 1}", self._worker_errors))
 
     def __repr__(self):
-        return f"{self.__class__.__name__}('{self.site_dir}')"
+        return f"{self.__class__.__name__}({repr(self.site_dir)})"
 
     def __enter__(self):
         self.start()
@@ -110,8 +207,8 @@ class TransomSite:
         body_template_path = self.config_dir / "body.html"
         site_code_path = self.config_dir / "site.py"
 
-        self.page_template = Template(TransomSite._FALLBACK_PAGE_TEMPLATE, "[fallback]")
-        self.body_template = Template(TransomSite._FALLBACK_BODY_TEMPLATE, "[fallback]")
+        self.page_template = TransomSite._FALLBACK_PAGE_TEMPLATE
+        self.body_template = TransomSite._FALLBACK_BODY_TEMPLATE
 
         if page_template_path.exists():
             self.debug("Loading page template from '{}'", page_template_path)
@@ -124,19 +221,15 @@ class TransomSite:
         if site_code_path.exists():
             self.debug("Executing site code in '{}'", self.config_dir / "site.py")
 
-            try:
+            with transom_error_handling([site_code_path]):
                 exec(site_code_path.read_text(), self._globals)
-            except TransomError:
-                raise
-            except Exception as e:
-                raise TransomError(f"{site_code_path}: {e}")
 
         self._ignored_file_re = re.compile \
             ("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns] + ["(?!)"]))
 
     def load_template(self, path):
         path = Path(path) if isinstance(path, str) else path
-        return Template(path.read_text(), path)
+        return TransomTemplate(path.read_text(), path)
 
     def load_input_files(self):
         self.debug("Loading input files in '{}'", self.input_dir)
@@ -286,7 +379,7 @@ class TransomSite:
         self.log(f"{colorize('error:', '31;1')} {message}", *args)
 
 class InputFile:
-    __slots__ = "site", "input_path", "output_path", "url", "title", "parent", "_input_mtime"
+    __slots__ = "site", "input_path", "output_path", "url", "title", "parent"
 
     def __init__(self, site, input_path, parent):
         self.site = site
@@ -305,10 +398,8 @@ class InputFile:
         self.title = self.output_path.name
         self.parent = parent
 
-        self._input_mtime = None
-
     def __repr__(self):
-        return f"{self.__class__.__name__}('{self.input_path}')"
+        return f"{self.__class__.__name__}({repr(self.input_path)})"
 
     def ancestors(self):
         parent = self.parent
@@ -319,10 +410,7 @@ class InputFile:
 
     def process_input(self, last_render_time=0):
         self.debug("Processing input")
-
-        self._input_mtime = self.input_path.stat().st_mtime
-
-        return self._input_mtime >= last_render_time
+        return self.input_path.stat().st_mtime >= last_render_time
 
     def render_output(self):
         self.debug("Rendering output")
@@ -353,12 +441,8 @@ class GeneratedFile(InputFile):
     def exec_header_code(self, header_code):
         self.debug("Executing header code")
 
-        try:
+        with transom_error_handling([self.input_path, "header"]):
             exec(header_code, self.site._globals, self._locals)
-        except TransomError:
-            raise
-        except Exception as e:
-            raise TransomError(f"{self.input_path}: header: {e}")
 
 class TemplateFile(GeneratedFile):
     __slots__ = "template", "_locals"
@@ -370,7 +454,7 @@ class TemplateFile(GeneratedFile):
             text = self.input_path.read_text()
             text, header_code = self.extract_header_code(text)
 
-            self.template = Template(text, self.input_path)
+            self.template = TransomTemplate(text, self.input_path)
             self._locals = {"file": self}
 
             if header_code:
@@ -396,7 +480,7 @@ class MarkdownPage(GeneratedFile):
 
             self.page_template = self.site.page_template
             self.body_template = self.site.body_template
-            self.content_template = Template(text, self.input_path)
+            self.content_template = TransomTemplate(text, self.input_path)
             self.extra_headers = ""
 
             m = MarkdownPage._MARKDOWN_TITLE_RE.search(text)
@@ -437,10 +521,8 @@ class MarkdownPage(GeneratedFile):
         return MarkdownLocal.INSTANCE.value("".join(pieces))
 
     def path_nav(self, start=0, end=None, min=1):
-        files = list(self.ancestors())
+        files = [self] + list(self.ancestors())
         files.reverse()
-        files.append(self)
-
         links = tuple(f"<a href=\"{x.url}\">{x.title}</a>" for x in files[start:end])
 
         if len(links) < min:
@@ -456,56 +538,6 @@ class MarkdownPage(GeneratedFile):
                       if x[0] in ("h1", "h2") and x[1] is not None)
 
         return f"<nav class=\"page-toc\">{''.join(links)}</nav>"
-
-class Template:
-    __slots__ = "pieces", "path"
-    _VARIABLE_RE = re.compile(r"({{{.+?}}}|{{.+?}})")
-
-    def __init__(self, text, path):
-        self.pieces = []
-        self.path = path
-
-        self.parse(text)
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}('{self.path}')"
-
-    def parse(self, text):
-        for token in Template._VARIABLE_RE.split(text):
-            if token.startswith("{{{") and token.endswith("}}}"):
-                piece = token[1:-1]
-            elif token.startswith("{{") and token.endswith("}}"):
-                try:
-                    piece = compile(token[2:-2], "<string>", "eval"), token
-                except Exception as e:
-                    raise TransomError(f"{self.path}: '{token}': {e}")
-            else:
-                piece = token
-
-            self.pieces.append(piece)
-
-    def render(self, input_file):
-        for piece in self.pieces:
-            if type(piece) is tuple:
-                code, token = piece
-
-                try:
-                    result = eval(code, input_file.site._globals, input_file._locals)
-                except TransomError:
-                    raise
-                except Exception as e:
-                    raise TransomError(f"{self.path}: '{{{{{token}}}}}': {e}")
-
-                if type(result) is types.GeneratorType:
-                    yield from result
-                else:
-                    yield str(result)
-            else:
-                yield piece
-
-    def write(self, input_file):
-        text = "".join(self.render(input_file))
-        input_file.output_path.write_text(text)
 
 class WorkerThread(threading.Thread):
     def __init__(self, site, name, errors):
