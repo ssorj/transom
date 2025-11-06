@@ -135,7 +135,7 @@ def site_render():
     with empty_test_site() as site:
         write("config/site.py", "site.prefix = \"/prefix\"\n")
         write("input/index.md", "# Top\n")
-        write("input/test.md", "{{path_nav()}}\n")
+        write("input/test.md", "{{page.path_nav()}}\n")
 
         site._render()
 

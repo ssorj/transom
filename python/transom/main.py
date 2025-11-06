@@ -19,7 +19,6 @@
 
 import argparse
 import fnmatch
-import functools
 import http.server as httpserver
 import itertools
 import math
@@ -482,18 +481,12 @@ class MarkdownPage(GeneratedFile):
             self._template = self._site.page_template
             self._body_template = self._site.body_template
             self._content_template = TransomTemplate(text, self._input_path)
+            self._locals = {"page": self}
 
             match_ = MarkdownPage._MARKDOWN_TITLE_RE.search(text)
             self.title = match_.group(1) if match_ else ""
             match_ = MarkdownPage._HTML_TITLE_RE.search(text)
             self.title = match_.group(1) if match_ else self.title
-
-            self._locals = {
-                "page": self,
-                "render_template": functools.partial(MarkdownPage.render_template, self),
-                "path_nav": functools.partial(MarkdownPage.path_nav, self),
-                "toc_nav": functools.partial(MarkdownPage.toc_nav, self),
-            }
 
             if header_code:
                 self._exec_header_code(header_code)

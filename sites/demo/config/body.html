@@ -5,7 +5,7 @@
     </div>
     <div>
 
-{{path_nav()}}
+      {{page.path_nav()}}
 
     </div>
     <div>
@@ -14,22 +14,38 @@
   </header>
   <main>
 
-{{page.content}}
+    {{page.content}}
 
   </main>
   <aside>
 
-{{toc_nav()}}
+    {{page.toc_nav()}}
 
   </aside>
   <footer>
     <div></div>
     <div style="display: flex; justify-content: space-between; gap: 1em;">
+      <div style="display: flex; gap: 1em; flex-direction: column;">
+        <section>
+          <h4>Globals</h4>
+          {{_globals()}}
+        </section>
+        <section>
+          <h4>Locals</h4>
+          {{_locals()}}
+        </section>
+      </div>
+      <div style="display: flex; gap: 1em; flex-direction: column;">
+        <section>
+          <h4>Site</h4>
+          {{_object_properties("site", site)}}
+        </section>
 
-{{interface_object_properties("site", site)}}
-
-{{interface_object_properties("page", page)}}
-
+        <section>
+          <h4>Page</h4>
+          {{_object_properties("page", page)}}
+        </section>
+      </div>
     </div>
     <div></div>
   </footer>
