@@ -47,12 +47,10 @@ class TransomError(Exception):
         self.contexts = contexts
 
     def __str__(self):
-        prefix = ""
-
         if self.contexts:
-            prefix = "".join(f"{x}: " for x in self.contexts)
-
-        return prefix + str(self.message)
+            return "".join(f"{x}: " for x in self.contexts) + str(self.message)
+        else:
+            return str(self.message)
 
 class error_handling:
     def __init__(self, contexts):
@@ -107,8 +105,8 @@ class TransomTemplate:
             if type(piece) is tuple:
                 code, token = piece
 
-                with error_handling([input_file.input_path, token]):
-                    result = eval(code, input_file.site._globals, input_file._locals)
+                with error_handling([input_file._input_path, token]):
+                    result = eval(code, input_file._site._globals, input_file._locals)
 
                 if type(result) is types.GeneratorType:
                     yield from result
@@ -119,7 +117,7 @@ class TransomTemplate:
 
     def write(self, input_file):
         text = "".join(self.render(input_file))
-        input_file.output_path.write_text(text)
+        input_file._output_path.write_text(text)
 
 def load_template(path):
     path = Path(path) if isinstance(path, str) else path
@@ -375,27 +373,31 @@ class TransomSite:
         self.log(f"{colorize('error:', '31;1')} {message}", *args)
 
 class InputFile:
-    __slots__ = "site", "input_path", "output_path", "url", "title", "parent"
+    __slots__ = "_site", "_input_path", "_output_path", "_url", "_title", "_parent"
+
+    url = object_property("url", str)
+    title = object_property("title", str)
+    parent = object_property("parent", object)
 
     def __init__(self, site, input_path, parent):
-        self.site = site
-        self.input_path = input_path
+        self._site = site
+        self._input_path = input_path
 
         # Path.relative_to is surprisingly slow in Python 3.12, so we
         # avoid it here
-        output_path = str(self.input_path)[len(str(self.site._input_dir)) + 1:]
+        output_path = str(self._input_path)[len(str(self._site._input_dir)) + 1:]
 
         if output_path.endswith(".md"):
             output_path = output_path[:-3] + ".html"
 
-        self.output_path = self.site._output_dir / output_path
+        self._output_path = self._site._output_dir / output_path
 
-        self.url = f"{self.site.prefix}/{output_path}"
-        self.title = self.output_path.name
+        self.url = f"{self._site.prefix}/{output_path}"
+        self.title = self._output_path.name
         self.parent = parent
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({repr(str(self.input_path))})"
+        return f"{self.__class__.__name__}({repr(str(self._input_path))})"
 
     def ancestors(self):
         parent = self.parent
@@ -406,21 +408,21 @@ class InputFile:
 
     def process_input(self, last_render_time=0):
         self.debug("Processing input")
-        return self.input_path.stat().st_mtime >= last_render_time
+        return self._input_path.stat().st_mtime >= last_render_time
 
     def render_output(self):
         self.debug("Rendering output")
-        self.output_path.parent.mkdir(parents=True, exist_ok=True)
+        self._output_path.parent.mkdir(parents=True, exist_ok=True)
 
     def debug(self, message, *args):
-        self.site.debug(f"{self.input_path}: {message}", *args)
+        self._site.debug(f"{self._input_path}: {message}", *args)
 
 class StaticFile(InputFile):
     __slots__ = ()
 
     def render_output(self):
         super().render_output()
-        shutil.copy(self.input_path, self.output_path)
+        shutil.copy(self._input_path, self._output_path)
 
 class GeneratedFile(InputFile):
     __slots__ = ()
@@ -437,20 +439,20 @@ class GeneratedFile(InputFile):
     def exec_header_code(self, header_code):
         self.debug("Executing header code")
 
-        with error_handling([self.input_path, "header"]):
-            exec(header_code, self.site._globals, self._locals)
+        with error_handling([self._input_path, "header"]):
+            exec(header_code, self._site._globals, self._locals)
 
 class TemplateFile(GeneratedFile):
-    __slots__ = "template", "_locals"
+    __slots__ = "_template", "_locals"
 
     def process_input(self, last_render_time=0):
         modified = super().process_input(last_render_time)
 
         if modified:
-            text = self.input_path.read_text()
+            text = self._input_path.read_text()
             text, header_code = self.extract_header_code(text)
 
-            self.template = TransomTemplate(text, self.input_path)
+            self._template = TransomTemplate(text, self._input_path)
             self._locals = {"file": self}
 
             if header_code:
@@ -460,29 +462,33 @@ class TemplateFile(GeneratedFile):
 
     def render_output(self):
         super().render_output()
-        self.template.write(self)
+        self._template.write(self)
 
 class MarkdownPage(GeneratedFile):
-    __slots__ = "page_template", "body_template", "content_template", "extra_headers", "_locals"
+    __slots__ = "_page_template", "_body_template", "_content_template", "_extra_headers", "_locals"
     _MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
     _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
+
+    page_template = object_property("page_template", TransomTemplate)
+    body_template = object_property("body_template", TransomTemplate)
+    extra_headers = object_property("extra_headers", str)
 
     def process_input(self, last_render_time=0):
         modified = super().process_input(last_render_time)
 
         if modified:
-            text = self.input_path.read_text()
+            text = self._input_path.read_text()
             text, header_code = self.extract_header_code(text)
 
-            self.page_template = self.site.page_template
-            self.body_template = self.site.body_template
-            self.content_template = TransomTemplate(text, self.input_path)
+            self.page_template = self._site.page_template
+            self.body_template = self._site.body_template
+            self._content_template = TransomTemplate(text, self._input_path)
             self.extra_headers = ""
 
-            m = MarkdownPage._MARKDOWN_TITLE_RE.search(text)
-            self.title = m.group(1) if m else ""
-            m = MarkdownPage._HTML_TITLE_RE.search(text)
-            self.title = m.group(1) if m else self.title
+            match_ = MarkdownPage._MARKDOWN_TITLE_RE.search(text)
+            self.title = match_.group(1) if match_ else ""
+            match_ = MarkdownPage._HTML_TITLE_RE.search(text)
+            self.title = match_.group(1) if match_ else self.title
 
             self._locals = {
                 "page": self,
@@ -506,7 +512,7 @@ class MarkdownPage(GeneratedFile):
 
     @property
     def content(self):
-        pieces = self.content_template.render(self)
+        pieces = self._content_template.render(self)
         return MarkdownLocal.INSTANCE.value("".join(pieces))
 
     def render_template(self, path):
@@ -611,7 +617,7 @@ class Server(httpserver.ThreadingHTTPServer):
         self.render()
 
     def render(self):
-        self.input_files = {x.input_path: x for x in self.site.render()}
+        self.input_files = {x._input_path: x for x in self.site.render()}
 
 class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
