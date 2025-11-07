@@ -41,6 +41,7 @@
         line-height: 1.66;
         color: var(--text-color, hsl(0, 0%, 20%));
         background-color: var(--body-background-color, white);
+        font-weight: 400;
     }
 
     /* Use flex for prose containers */
@@ -121,6 +122,11 @@
 
     :where(ul, ol, dd) {
         padding-left: 1.3rem;
+    }
+
+    :where(th) {
+        text-align: left;
+        font-weight: 600;
     }
 }
 

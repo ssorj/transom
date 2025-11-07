@@ -1,9 +1,11 @@
-# Transom
+# Transom demo
 
-[Styles](styles.html)
+[State inspector](state-inspector.html)
 
-[Markdown](markdown.html)
+[HTML generation functions](html-generation-functions.html)
 
-[Readme](readme.html)
+[Sample styles](styles.html)
+
+[Sample Markdown](markdown.html)
 
 [Benjamin Franklin](benjamin-franklin.html)

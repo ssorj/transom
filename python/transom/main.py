@@ -18,6 +18,7 @@
 #
 
 import argparse
+import csv
 import fnmatch
 import http.server as httpserver
 import itertools
@@ -162,7 +163,10 @@ class TransomSite:
             "load_template": load_template,
             "lipsum": lipsum,
             "plural": plural,
+            "html_elem": html_elem,
             "html_escape": html_escape,
+            "html_list": html_list,
+            "html_list_csv": html_list_csv,
             "html_table": html_table,
             "html_table_csv": html_table_csv,
             "TransomError": TransomError,
@@ -831,43 +835,6 @@ def plural(noun, count=0, plural=None):
 def colorize(text, code):
     return text if "NO_COLOR" in os.environ else f"\u001b[{code}m{text}\u001b[0m"
 
-def html_table_csv(path, **attrs):
-    import csv
-
-    with open(path, newline="") as f:
-        return html_table(csv.reader(f), **attrs)
-
-def html_table_cell(column_index, value):
-    return html_elem("td", str(value if value is not None else ""))
-
-def html_table(data, headings=None, cell_fn=html_table_cell, **attrs):
-    if headings:
-        thead = html_elem("thead", html_elem("tr", (html_elem("th", x) for x in headings)))
-    else:
-        thead = ""
-
-    tbody = html_elem("tbody", html_table_rows(data, headings, cell_fn))
-
-    return html_elem("table", (thead, tbody), **attrs)
-
-def html_table_rows(data, headings, cell_fn):
-    for row in data:
-        yield html_elem("tr", (cell_fn(i, x) for i, x in enumerate(row)))
-
-def html_elem(tag, content, **attrs):
-    if not isinstance(content, str):
-        content = "".join(content)
-
-    return f"<{tag}{''.join(html_attrs(attrs))}>{content or ''}</{tag}>"
-
-def html_attrs(attrs):
-    for name, value in attrs.items():
-        name = "class" if name in ("class_", "_class") else name
-        value = name if value is True else value
-
-        if value is not False:
-            yield f" {name}=\"{html_escape(value, quote=True)}\""
-
 HTML_ID_RESTRICT_RE = re.compile(r"[^a-z0-9\s-]")
 HTML_ID_HYPHENATE_RE = re.compile(r"[-\s]+")
 
@@ -877,6 +844,58 @@ def html_id(text):
     text = HTML_ID_HYPHENATE_RE.sub("-", text).strip("-")
 
     return text
+
+def html_elem(tag, content, **attrs):
+    attrs = "".join(_html_attrs(attrs))
+
+    if content is None:
+        content = ""
+    elif not isinstance(content, (str, int, float, complex, bool)):
+        content = "".join(str(x) for x in content if x is not None)
+
+    return f"<{tag}{attrs}>{content}</{tag}>"
+
+def _html_attrs(attrs):
+    for name, value in attrs.items():
+        name = "class" if name in ("class_", "_class") else name
+        value = name if value is True else value
+
+        if value is not False:
+            yield f" {name}=\"{html_escape(value, quote=True)}\""
+
+# item_fn(index, value) -> "<li>...</li>"
+def html_list(data, tag="ul", item_fn=None, **attrs):
+    if item_fn is None:
+        item_fn = lambda value: html_elem("li", value)
+
+    items = (item_fn(v) for v in data)
+
+    return html_elem(tag, items, **attrs)
+
+def html_list_csv(path, **attrs):
+    with open(path, newline="") as f:
+        return html_list(csv.reader(f), **attrs)
+
+# item_fn(row_index, column_index, value) -> "<td>...</td>"
+# heading_fn(column_index, value) -> "<th>...</th>"
+def html_table(data, headings=None, item_fn=None, heading_fn=None, **attrs):
+    if item_fn is None:
+        item_fn = lambda row_index, column_index, value: html_elem("td", value)
+
+    if heading_fn is None:
+        heading_fn = lambda column_index, value: html_elem("th", value)
+
+    thead = None
+    trows = (html_elem("tr", (item_fn(ri, ci, x) for ci, x in enumerate(row))) for ri, row in enumerate(data))
+
+    if headings:
+        thead = html_elem("thead", html_elem("tr", (heading_fn(i, x) for i, x in enumerate(headings))))
+
+    return html_elem("table", (thead, html_elem("tbody", trows)), **attrs)
+
+def html_table_csv(path, **attrs):
+    with open(path, newline="") as f:
+        return html_table(csv.reader(f), **attrs)
 
 if __name__ == "__main__": # pragma: nocover
     command = TransomCommand()
