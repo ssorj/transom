@@ -12,7 +12,7 @@ site.page_template == {{site.page_template}}
 site.body_template == {{site.body_template}}
 
 page == {{page}}
-page.template == {{page.template}}
+page.page_template == {{page.page_template}}
 page.body_template == {{page.body_template}}
 ~~~
 

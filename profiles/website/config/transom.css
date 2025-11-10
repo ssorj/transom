@@ -227,7 +227,7 @@
         align-self: start; /* Important for sticky positioning */
         position: sticky;
         top: 6rem;
-        padding: 0 2rem 0 1rem;
+        padding: 0 1rem;
         border-left: 0.1rem solid var(--line-color, lightgray);
     }
 }

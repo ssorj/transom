@@ -21,6 +21,7 @@ import argparse
 import csv
 import fnmatch
 import http.server as httpserver
+import html
 import itertools
 import math
 import mistune
@@ -33,14 +34,18 @@ import traceback
 import types
 import unicodedata
 
-from html import escape as html_escape
+from collections.abc import Iterator
 from html.parser import HTMLParser
 from pathlib import Path
 from queue import Queue
 
-__all__ = "TransomError", "TransomTemplate", "TransomSite", "TransomCommand"
+__all__ = "TransomError", "TransomSite", "TransomCommand"
 
 class TransomError(Exception):
+    """
+    The standard Transom error.
+    """
+
     def __init__(self, message, contexts=None):
         self.message = message
         self.contexts = contexts
@@ -51,15 +56,15 @@ class TransomError(Exception):
         else:
             return str(self.message)
 
-class error_handling:
+class ErrorHandling:
     def __init__(self, contexts):
         self.contexts = contexts
 
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type == TransomError:
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if isinstance(exc_value, TransomError):
             if not exc_value.contexts:
                 exc_value.contexts = self.contexts
 
@@ -104,8 +109,8 @@ class TransomTemplate:
             if type(piece) is tuple:
                 code, token = piece
 
-                with error_handling([input_file._input_path, token]):
-                    result = eval(code, input_file._site._globals, input_file._locals)
+                with ErrorHandling([input_file._input_path, token]):
+                    result = eval(code, input_file._globals)
 
                 if type(result) is types.GeneratorType:
                     yield from result
@@ -118,17 +123,33 @@ class TransomTemplate:
         text = "".join(self.render(input_file))
         input_file._output_path.write_text(text)
 
-def load_template(path):
+def load_template(path) -> TransomTemplate:
+    """
+    Load the template at 'path'.
+    """
     path = Path(path) if isinstance(path, str) else path
     return TransomTemplate(path.read_text(), path)
 
-def object_property(name, type_, default=None, readonly=False):
+# class ObjectProperty:
+#     __slots__ = type, default, __doc__, readonly, nullable
+
+#     def __init__(self, type_, default=None, doc=None, readonly=True, nullable=False):
+#         self.type = type_
+#         self.default = default
+#         self.__doc__ = doc
+#         self.readonly = readonlye
+#         self.nullable = nullable
+
+    # def __set_name__(self, owner, name):
+    #     self.public_name = name
+
+def object_property(name, type_, default=None, doc=None, readonly=False, nullable=False):
     def get(obj):
         return getattr(obj, f"_{name}", default)
 
     def set_(obj, value):
-        if readonly:
-            raise TransomError(f"Property '{name}' is read-only")
+        if value is None and not nullable:
+            raise TransomError(f"Property '{name}' must not be None")
 
         if not isinstance(value, type_):
             raise TransomError(f"Property '{name}' set to illegal type '{type(value).__name__}' "
@@ -136,17 +157,43 @@ def object_property(name, type_, default=None, readonly=False):
 
         setattr(obj, f"_{name}", value)
 
-    return property(get, set_)
+    if readonly:
+        return property(get, None, None, doc)
+    else:
+        return property(get, set_, None, doc)
 
 class TransomSite:
     _FALLBACK_PAGE_TEMPLATE = TransomTemplate("<!doctype html>" \
         "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>")
     _FALLBACK_BODY_TEMPLATE = TransomTemplate("<body>{{page.content}}</body>")
 
-    prefix = object_property("prefix", str, "")
-    ignored_file_patterns = object_property("ignored_file_patterns", list, [".git", ".#*", "#*"])
-    page_template = object_property("page_template", TransomTemplate, _FALLBACK_PAGE_TEMPLATE)
-    body_template = object_property("body_template", TransomTemplate, _FALLBACK_BODY_TEMPLATE)
+    _prefix_doc = """
+    A string prefix used in generated links. It is
+    inserted before the file path. This is important when the
+    published site lives under a directory prefix, as is the case for
+    GitHub Pages. The default is the empty string, meaning no prefix.
+    """
+    prefix = object_property("prefix", str, "", _prefix_doc)
+
+    _ignored_files_doc = """
+    A list of shell globs for excluding input and config files from
+    processing. The default is `[".git", ".#*","#*"]`.
+    """
+    ignored_files = object_property("ignored_files", list, [".git", ".#*", "#*"], _ignored_files_doc)
+
+    _page_template_doc = """
+    The default top-level template object for HTML pages. The page
+    template wraps `{{page.body}}`. The default is loaded from
+    `config/page.html`.
+    """
+    page_template = object_property("page_template", TransomTemplate, _FALLBACK_PAGE_TEMPLATE, _page_template_doc)
+
+    _body_template_doc = """
+    The default template object for the body element of HTML
+    pages. The body element wraps `{{page.content}}`. The default
+    is loaded from `config/body.html`.
+    """
+    body_template = object_property("body_template", TransomTemplate, _FALLBACK_BODY_TEMPLATE, _body_template_doc)
 
     def __init__(self, site_dir, verbose=False, quiet=False, threads=8):
         self._root_dir = Path(site_dir).resolve()
@@ -161,16 +208,16 @@ class TransomSite:
             "site": self,
             "include": include,
             "load_template": load_template,
-            "lipsum": lipsum,
+            "convert_markdown": convert_markdown,
+            "strip": strip,
             "plural": plural,
-            "html_elem": html_elem,
+            "lipsum": lipsum,
             "html_escape": html_escape,
             "html_list": html_list,
             "html_list_csv": html_list_csv,
             "html_table": html_table,
             "html_table_csv": html_table_csv,
             "TransomError": TransomError,
-            "TransomTemplate": TransomTemplate,
         }
 
         threading.current_thread().name = "main-thread"
@@ -221,18 +268,18 @@ class TransomSite:
         if site_code_path.exists():
             self._debug("Executing site code in '{}'", self._config_dir / "site.py")
 
-            with error_handling([site_code_path]):
+            with ErrorHandling([site_code_path]):
                 exec(site_code_path.read_text(), self._globals)
 
-        self._ignored_file_re = re.compile \
-            ("|".join([fnmatch.translate(x) for x in self.ignored_file_patterns] + ["(?!)"]))
+        self._ignored_files_re = re.compile \
+            ("|".join([fnmatch.translate(x) for x in self.ignored_files] + ["(?!)"]))
 
     def _load_input_files(self):
         self._debug("Loading input files in '{}'", self._input_dir)
 
         def find_input_files(start_path, input_files, parent_file):
             with os.scandir(start_path) as entries:
-                entries = tuple(x for x in entries if not self._ignored_file_re.match(x.name))
+                entries = tuple(x for x in entries if not self._ignored_files_re.match(x.name))
 
                 for entry in entries:
                     if entry.name in ("index.md", "index.html"):
@@ -276,7 +323,7 @@ class TransomSite:
     def _find_config_modified(self, last_render_time):
         def find_modified_file(start_path, last_render_time):
             with os.scandir(start_path) as entries:
-                for entry in (x for x in entries if not self._ignored_file_re.match(x.name)):
+                for entry in (x for x in entries if not self._ignored_files_re.match(x.name)):
                     if entry.is_file():
                         if entry.stat().st_mtime >= last_render_time:
                             return True
@@ -372,14 +419,31 @@ class TransomSite:
             self._log(message, *args)
 
     def _error(self, message, *args):
+        if self._verbose:
+            traceback.print_exc()
+
         self._log(f"{colorize('error:', '31;1')} {message}", *args)
 
 class InputFile:
     __slots__ = "_site", "_input_path", "_output_path", "_url", "_parent", "_title"
 
-    url = object_property("url", str, readonly=True)
-    parent = object_property("parent", object, readonly=True)
-    title = object_property("title", str)
+    _url_doc = """
+    The website path of this page.  It includes the site
+    prefix, if configured.
+    """
+    url = object_property("url", str, None, _url_doc, readonly=True)
+
+    _parent_doc = """
+    The parent file of this page, or None if it's the root file.
+    Parent files are index files higher in the file hierarchy.
+    """
+    parent = object_property("parent", object, None, _parent_doc, readonly=True)
+
+    _title_doc = """
+    The title of this page.  Default title values are
+    extracted from Markdown or HTML content.
+    """
+    title = object_property("title", str, None, _title_doc)
 
     def __init__(self, site, input_path, parent):
         self._site = site
@@ -402,7 +466,10 @@ class InputFile:
         return f"{self.__class__.__name__}({repr(str(self._input_path))})"
 
     @property
-    def ancestors(self):
+    def parents(self):
+        """
+        The ancestors of this page.
+        """
         parent = self.parent
 
         while parent is not None:
@@ -442,11 +509,11 @@ class GeneratedFile(InputFile):
     def _exec_header_code(self, header_code):
         self._debug("Executing header code")
 
-        with error_handling([self._input_path, "header"]):
-            exec(header_code, self._site._globals, self._locals)
+        with ErrorHandling([self._input_path, "header"]):
+            exec(header_code, self._globals, None)
 
 class TemplateFile(GeneratedFile):
-    __slots__ = "_template", "_locals"
+    __slots__ = "_template", "_globals"
 
     def _process_input(self, last_render_time=0):
         modified = super()._process_input(last_render_time)
@@ -456,7 +523,7 @@ class TemplateFile(GeneratedFile):
             text, header_code = self._extract_header_code(text)
 
             self._template = TransomTemplate(text, self._input_path)
-            self._locals = {"file": self}
+            self._globals = {**self._site._globals, "file": self}
 
             if header_code:
                 self._exec_header_code(header_code)
@@ -468,12 +535,23 @@ class TemplateFile(GeneratedFile):
         self._template.write(self)
 
 class MarkdownPage(GeneratedFile):
-    __slots__ = "_template", "_body_template", "_content_template", "_locals"
-    _MARKDOWN_TITLE_RE = re.compile(r"(?s)^(?:#|##)\s+(.*?)\n")
+    __slots__ = "_page_template", "_body_template", "_content_template", "_globals"
+    _MARKDOWN_TITLE_RE = re.compile(r"(?m)^(?:#|##)\s+(.*?)\n")
     _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
-    template = object_property("template", TransomTemplate)
-    body_template = object_property("body_template", TransomTemplate)
+    _page_template_doc = """
+    The top-level template object for the page.  The page
+    template wraps `{{page.body}}`.  The default is the value of
+    `site.page_template`.
+    """
+    page_template = object_property("page_template", TransomTemplate, None, _page_template_doc)
+
+    _body_template_doc = """
+    The template object for the body element of the page.
+    The body element wraps `{{page.content}}`.  The default is
+    the value of `site.body_template`.
+    """
+    body_template = object_property("body_template", TransomTemplate, None, _body_template_doc)
 
     def _process_input(self, last_render_time=0):
         modified = super()._process_input(last_render_time)
@@ -482,15 +560,15 @@ class MarkdownPage(GeneratedFile):
             text = self._input_path.read_text()
             text, header_code = self._extract_header_code(text)
 
-            self._template = self._site.page_template
+            self._page_template = self._site.page_template
             self._body_template = self._site.body_template
             self._content_template = TransomTemplate(text, self._input_path)
-            self._locals = {"page": self}
+            self._globals = {**self._site._globals, "page": self}
 
-            match_ = MarkdownPage._MARKDOWN_TITLE_RE.search(text)
-            self.title = match_.group(1) if match_ else ""
-            match_ = MarkdownPage._HTML_TITLE_RE.search(text)
-            self.title = match_.group(1) if match_ else self.title
+            if match_ := MarkdownPage._MARKDOWN_TITLE_RE.search(text):
+                self.title = match_.group(1)
+            elif match_ := MarkdownPage._HTML_TITLE_RE.search(text):
+                self.title = match_.group(1)
 
             if header_code:
                 self._exec_header_code(header_code)
@@ -499,23 +577,40 @@ class MarkdownPage(GeneratedFile):
 
     def _render_output(self):
         super()._render_output()
-        self._template.write(self)
+        self._page_template.write(self)
 
     @property
     def body(self):
+        """
+        The body element of the page.  It is rendered from
+        `page.body_template`.
+        """
         return self._body_template.render(self)
 
     @property
     def content(self):
+        """
+        The primary page content.  It is rendered from
+        the page input path, `input/<file>.md`.
+        """
         pieces = self._content_template.render(self)
         return MarkdownLocal.INSTANCE.value("".join(pieces))
 
-    def render_template(self, path):
-        pieces = load_template(path).render(self)
-        return MarkdownLocal.INSTANCE.value("".join(pieces))
+    def render_template(self, path) -> Iterator[str]:
+        """
+        Load the template at `path` and render it using the Python
+        environment of this page.
+        """
+        return load_template(path).render(self)
 
-    def path_nav(self, start=0, end=None, min=1):
-        files = [self] + list(self.ancestors)
+    def path_nav(self, start=0, end=None, min=1) -> str:
+        """
+        Generate context navigation links.  It produces a `<nav>`
+        element with links to the parents of this page.  `start` and
+        `end` trim off parts you don't need.  If the resulting number
+        of links is less than `min`, it returns empty string.
+        """
+        files = [self] + list(self.parents)
         files.reverse()
         links = tuple(f"<a href=\"{x.url}\">{x.title}</a>" for x in files[start:end])
 
@@ -524,7 +619,14 @@ class MarkdownPage(GeneratedFile):
 
         return f"<nav class=\"page-path\">{''.join(links)}</nav>"
 
-    def toc_nav(self):
+    def toc_nav(self) -> str:
+        """
+        Generate a table of contents.  It produces a `<nav>`
+        element with links to the headings in the content of this
+        page.  To avoid recursion, this must be placed outside the
+        page content, in a separate navigation element, such as an
+        aside.
+        """
         parser = HeadingParser()
         parser.feed("".join(self.content))
 
@@ -658,8 +760,8 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
                 self.server.render()
                 return
 
-            for ancestor in input_file.ancestors:
-                ancestor._process_input()
+            for parent in input_file.parents:
+                parent._process_input()
 
             input_file._process_input()
             input_file._render_output()
@@ -810,14 +912,43 @@ LIPSUM_WORDS = (
     "ligula", "consequat", "condimentum", "integer", "tempus", "sem",
 )
 
-def include(path):
+def colorize(text, code):
+    return text if "NO_COLOR" in os.environ else f"\u001b[{code}m{text}\u001b[0m"
+
+def normalize_content(content):
+    if content is None:
+        return ""
+
+    if not isinstance(content, (str, int, float, complex, bool)):
+        content = "".join(str(x) for x in content if x is not None)
+
+    return str(content)
+
+def include(path) -> str:
+    """
+    Return the content of the file at `path`.
+    """
     path = Path(path) if isinstance(path, str) else path
     return path.read_text()
 
-def lipsum(count=50, end="."):
-    return (" ".join((LIPSUM_WORDS[i % len(LIPSUM_WORDS)] for i in range(count))) + end).capitalize()
+def convert_markdown(content) -> str:
+    """
+    Convert `content` from Markdown to HTML.
+    """
+    return MarkdownLocal.INSTANCE.value(normalize_content(content))
 
-def plural(noun, count=0, plural=None):
+def strip(content) -> str:
+    """
+    Remove leading and trailing whitespace from `content`.
+    """
+    return normalize_content(content).strip()
+
+def plural(noun, count=0, plural=None) -> str:
+    """
+    Return the plural form of `noun` if `count` is not 1.  Set the
+    plural form explicitly with `plural` if it's not a simple matter of
+    adding `s` or `es`.
+    """
     if noun in (None, ""):
         return ""
 
@@ -832,8 +963,17 @@ def plural(noun, count=0, plural=None):
 
     return plural
 
-def colorize(text, code):
-    return text if "NO_COLOR" in os.environ else f"\u001b[{code}m{text}\u001b[0m"
+def lipsum(count=50, end=".") -> str:
+    """
+    Generate lorem ipsum filler text.
+    """
+    return (" ".join((LIPSUM_WORDS[i % len(LIPSUM_WORDS)] for i in range(count))) + end).capitalize()
+
+def html_escape(content) -> str:
+    """
+    Escape HTML special characters in `text`.
+    """
+    return html.escape(normalize_content(content), quote=False)
 
 HTML_ID_RESTRICT_RE = re.compile(r"[^a-z0-9\s-]")
 HTML_ID_HYPHENATE_RE = re.compile(r"[-\s]+")
@@ -846,25 +986,22 @@ def html_id(text):
     return text
 
 def html_elem(tag, content, **attrs):
-    attrs = "".join(_html_attrs(attrs))
+    attrs = "".join(html_attrs(attrs))
+    return f"<{tag}{attrs}>{normalize_content(content)}</{tag}>"
 
-    if content is None:
-        content = ""
-    elif not isinstance(content, (str, int, float, complex, bool)):
-        content = "".join(str(x) for x in content if x is not None)
-
-    return f"<{tag}{attrs}>{content}</{tag}>"
-
-def _html_attrs(attrs):
+def html_attrs(attrs):
     for name, value in attrs.items():
         name = "class" if name in ("class_", "_class") else name
         value = name if value is True else value
 
         if value is not False:
-            yield f" {name}=\"{html_escape(value, quote=True)}\""
+            yield f" {name}=\"{html.escape(value)}\""
 
 # item_fn(index, value) -> "<li>...</li>"
-def html_list(data, tag="ul", item_fn=None, **attrs):
+def html_list(data, tag="ul", item_fn=None, **attrs) -> str:
+    """
+    Generate an HTML list from 'data'.
+    """
     if item_fn is None:
         item_fn = lambda value: html_elem("li", value)
 
@@ -872,13 +1009,19 @@ def html_list(data, tag="ul", item_fn=None, **attrs):
 
     return html_elem(tag, items, **attrs)
 
-def html_list_csv(path, **attrs):
+def html_list_csv(path, tag="ul", item_fn=None, **attrs) -> str:
+    """
+    Generate an HTML list with CSV data loaded from 'path'.
+    """
     with open(path, newline="") as f:
-        return html_list(csv.reader(f), **attrs)
+        return html_list(csv.reader(f), tag=tag, item_fn=item_fn, **attrs)
 
 # item_fn(row_index, column_index, value) -> "<td>...</td>"
 # heading_fn(column_index, value) -> "<th>...</th>"
-def html_table(data, headings=None, item_fn=None, heading_fn=None, **attrs):
+def html_table(data, headings=None, item_fn=None, heading_fn=None, **attrs) -> str:
+    """
+    Generate an HTML table from 'data'.
+    """
     if item_fn is None:
         item_fn = lambda row_index, column_index, value: html_elem("td", value)
 
@@ -893,9 +1036,12 @@ def html_table(data, headings=None, item_fn=None, heading_fn=None, **attrs):
 
     return html_elem("table", (thead, html_elem("tbody", trows)), **attrs)
 
-def html_table_csv(path, **attrs):
+def html_table_csv(path, headings=None, item_fn=None, heading_fn=None, **attrs) -> str:
+    """
+    Generate an HTML table with CSV data loaded from 'path'.
+    """
     with open(path, newline="") as f:
-        return html_table(csv.reader(f), **attrs)
+        return html_table(csv.reader(f), headings=headings, item_fn=item_fn, heading_fn=heading_fn, **attrs)
 
 if __name__ == "__main__": # pragma: nocover
     command = TransomCommand()
