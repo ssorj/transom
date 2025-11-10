@@ -32,16 +32,10 @@ employee_data = (
 
 # HTML generation functions
 
-## Elements
-
-~~~ python
-html_elem(tag, content, **attrs)
-~~~
-
-Element `content` is rendered as `str(content)` if scalar and
-`"".join(content)` if iterable.  `None` is converted to `""`.  Element
-`attrs` are rendered as `<name>="<value>"` after the tag.  The name
-`_class` or `class_` is converted to `class`.
+<!-- Element `content` is rendered as `str(content)` if scalar and -->
+<!-- `"".join(content)` if iterable.  `None` is converted to `""`.  Element -->
+<!-- `attrs` are rendered as `<name>="<value>"` after the tag.  The name -->
+<!-- `_class` or `class_` is converted to `class`. -->
 
 ## Lists
 
