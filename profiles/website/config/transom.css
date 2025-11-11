@@ -19,7 +19,7 @@
  *
  */
 
-@layer base, components, layout;
+@layer base, components, layout, fonts;
 
 @layer base {
     :where(*, *::before, *::after) {
@@ -44,11 +44,8 @@
         font-weight: 400;
     }
 
-    /* Use flex for prose containers */
-    :where(main, article, section, nav, aside, form, fieldset, figure) {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
+    :where(:is(main, article, section, aside, form, fieldset, figure, li) > * + *) {
+        margin-top: var(--prose-margin, 1.33rem) !important;
     }
 
     /* Prevent long words from distorting layouts */
@@ -62,26 +59,23 @@
 
     :where(h1, h2, h3, h4, h5, h6) {
         text-wrap: balance;
-        line-height: 1.3;
+        line-height: 1.33;
     }
 
     :where(h1) {
-        font-size: 1.45rem;
+        font-size: 1.4rem;
     }
 
     :where(h2) {
         font-size: 1.2rem;
-        margin-top: 0.4rem;
     }
 
     :where(h3) {
         font-size: 1rem;
-        margin-top: 0.4rem;
     }
 
     :where(h4) {
         font-size: 0.9rem;
-        margin-top: 0.4rem;
     }
 
     :where(a), :where(a:visited) {
@@ -131,26 +125,28 @@
 }
 
 @layer components {
-    :where(nav.page-path) {
+    :where(nav.transom-page-path) {
         display: inline;
         flex-direction: row;
     }
 
-    :where(nav.page-path > a:not(:last-child))::after {
+    :where(nav.transom-page-path > a + a)::before {
         content: " \00a0\003e\00a0\00a0 ";
     }
 
-    :where(nav.page-toc) {
+    :where(nav.transom-page-toc) {
+        display: flex;
+        flex-direction: column;
         gap: 1rem;
     }
 
-    :where(nav.page-toc) > a {
-        color: inherit;
+    :where(nav.transom-page-toc) > a {
         text-wrap: balance;
     }
 
-    :where(nav.page-toc) > a.selected {
-        text-decoration: underline;
+    :where(nav.transom-page-toc) > a.selected {
+        color: inherit;
+        font-weight: 450;
     }
 }
 
@@ -227,7 +223,16 @@
         align-self: start; /* Important for sticky positioning */
         position: sticky;
         top: 6rem;
-        padding: 0 1rem;
+        margin: 0 0 0 1rem;
+        padding: 0 1rem 0 2rem;
         border-left: 0.1rem solid var(--line-color, lightgray);
+    }
+}
+
+@layer fonts {
+    body {
+        font-family: "Inter", sans-serif;
+        font-style: normal;
+        font-size: 0.9rem;
     }
 }

@@ -27,21 +27,21 @@ Element.prototype.$$ = function () {
 };
 
 window.addEventListener("load", () => {
-    const tocLinks = $("nav.page-toc");
+    const tocNav = $("nav.transom-page-toc");
 
-    if (!tocLinks) {
+    if (!tocNav || !tocNav.$("a")) {
         return;
     }
 
     const updateHeadingSelection = () => {
         const currHash = window.location.hash;
 
-        for (const elem of tocLinks.$$(".selected")) {
+        for (const elem of tocNav.$$(".selected")) {
             elem.classList.remove("selected");
         }
 
         if (currHash) {
-            for (const link of tocLinks.$$("a")) {
+            for (const link of tocNav.$$("a")) {
                 const linkHash = new URL(link.href).hash;
 
                 if (linkHash === currHash) {
@@ -53,7 +53,7 @@ window.addEventListener("load", () => {
             $(currHash).parentElement.parentElement.classList.add("selected");
         } else {
             // Select the top heading by default
-            tocLinks.$("a").classList.add("selected");
+            tocNav.$("a").classList.add("selected");
         }
     }
 

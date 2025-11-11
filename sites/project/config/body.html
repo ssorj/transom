@@ -1,0 +1,31 @@
+<body>
+  <header>
+    <div>
+      <a class="logo" href="{{site.prefix}}/index.html">
+        <img src="{{site.prefix}}/images/icon.svg"/>
+        <div>Transom</div>
+      </a>
+    </div>
+    <div>{{page.path_nav()}}</div>
+    <div>
+      <a href="https://github.com/ssorj/transom" style="display: flex; gap: 0.5em;">
+        <img src="{{site.prefix}}/images/github.svg" style="height: 1.3rem;"/>
+        GitHub
+      </a>
+    </div>
+  </header>
+  <main>{{page.content}}</main>
+  <aside>
+    <section id="-toc">
+      <h4>Contents</h4>
+      {{page.toc_nav()}}
+    </section>
+  </aside>
+  <footer>
+    <div></div>
+    <div>{{page.path_nav()}}</div>
+    <div></div>
+  </footer>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+</body>

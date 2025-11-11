@@ -428,20 +428,17 @@ class InputFile:
     __slots__ = "_site", "_input_path", "_output_path", "_url", "_parent", "_title"
 
     _url_doc = """
-    The website path of this page.  It includes the site
-    prefix, if configured.
+    The website path of this file.  It includes the site prefix, if configured.
     """
     url = object_property("url", str, None, _url_doc, readonly=True)
 
     _parent_doc = """
-    The parent file of this page, or None if it's the root file.
-    Parent files are index files higher in the file hierarchy.
+    The parent index file of this file, or `None` if this is the root file.
     """
     parent = object_property("parent", object, None, _parent_doc, readonly=True)
 
     _title_doc = """
-    The title of this page.  Default title values are
-    extracted from Markdown or HTML content.
+    The title of this file.  Default title values are extracted from Markdown or HTML content.
     """
     title = object_property("title", str, None, _title_doc)
 
@@ -468,7 +465,7 @@ class InputFile:
     @property
     def parents(self):
         """
-        The ancestors of this page.
+        The ancestor index files of this file.
         """
         parent = self.parent
 
@@ -563,7 +560,7 @@ class MarkdownPage(GeneratedFile):
             self._page_template = self._site.page_template
             self._body_template = self._site.body_template
             self._content_template = TransomTemplate(text, self._input_path)
-            self._globals = {**self._site._globals, "page": self}
+            self._globals = {**self._site._globals, "file": self, "page": self}
 
             if match_ := MarkdownPage._MARKDOWN_TITLE_RE.search(text):
                 self.title = match_.group(1)
@@ -617,7 +614,7 @@ class MarkdownPage(GeneratedFile):
         if len(links) < min:
             return ""
 
-        return f"<nav class=\"page-path\">{''.join(links)}</nav>"
+        return f"<nav class=\"transom-page-path\">{''.join(links)}</nav>"
 
     def toc_nav(self) -> str:
         """
@@ -633,7 +630,7 @@ class MarkdownPage(GeneratedFile):
         links = tuple(f"<a href=\"#{x[1]}\">{x[2]}</a>" for x in parser.headings
                       if x[0] in ("h1", "h2") and x[1] is not None)
 
-        return f"<nav class=\"page-toc\">{''.join(links)}</nav>"
+        return f"<nav class=\"transom-page-toc\">{''.join(links)}</nav>"
 
 class WorkerThread(threading.Thread):
     def __init__(self, site, name, errors):
@@ -893,6 +890,8 @@ class TransomCommand:
             self.site._serve(port=self.args.port)
 
 class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
+    # XXX Move html_id in here?
+
     def heading(self, text, level, **attrs):
         return f"<h{level} id=\"{html_id(text)}\">{text}</h{level}>\n"
 

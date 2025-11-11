@@ -57,12 +57,21 @@ def _render_callables():
         yield _format_value(member) + "\n\n"
 ---
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+# Transom Python
 
-# Python environment
+In Transom, Python code is used for all logic performed at
+site-generation time.
 
-## Site
+Python code appears in the following locations:
+
+- *Site scope* - `config/site.py`
+- *File scope* - The header of template files (between `---\n` and
+  `---\n` at the start of the file)
+- *Expression scope* - Template placeholders inside double curly
+  braces (between `{{{` and `}}}` at any location inside the body of
+  the template)
+
+## The site object
 
 You can modify site properties in `config/site.py`.  Use
 `load_template(path)` to set template properties.
@@ -74,7 +83,7 @@ site = {{repr(site)}}
 {{strip(_render_properties(_TransomSite, site, "site"))}}
 ~~~
 
-## File
+## The file object
 
 All textual files (`.css`, `.csv`, `.html`, `.js`, `.json`, `.md`,
 `.svg`, `.txt`) are processed as templates.  You can access and modify
@@ -87,7 +96,7 @@ file = {{repr(file)}}
 {{strip(_render_properties(_InputFile, file, "file"))}}
 ~~~
 
-## Page
+## The page object
 
 Markdown files (`.md`) have additional properties and methods accessed
 through the `page` variable.
