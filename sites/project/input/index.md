@@ -57,3 +57,4 @@ def hello():
 - [Transom Python](python.html)
 - [Transom CSS](css.html)
 - [Transom Javascript](javascript.html)
+- [HTML generation functions](html-generation-functions.html)

@@ -13,5 +13,5 @@ by design, since we try to do as much as possible in Python.
 <div class="code-label">config/transom.js</div>
 
 ~~~ javascript
-{{strip(include("config/transom.js"))}}
+{{strip(strip_license_header(include("config/transom.js")))}}
 ~~~

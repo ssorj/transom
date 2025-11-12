@@ -27,9 +27,6 @@ employee_data = (
 
 ---
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-
 # HTML generation functions
 
 <!-- Element `content` is rendered as `str(content)` if scalar and -->

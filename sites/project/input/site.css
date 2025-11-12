@@ -1,29 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap');
-@import url("https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css");
 
 {{include("config/transom.css")}}
+{{include("config/prism.css")}}
 
-h1, h2, h3, h4, h5, h6 {
-    font-weight: 700;
-    font-family: "Merriweather", sans-serif;
-}
-
-b, strong {
-    font-weight: 600;
-}
-
-code, code[class*="language-"], pre, pre[class*="language-"] {
-    font-family: "Roboto Mono", monospace;
-    font-weight: 400;
-    font-style: normal;
-    font-size: 0.8rem;
-    background-color: var(--code-background-color, whitesmoke);
+:root {
+    --heading-font-family: "Merriweather";
+    --heading-font-weight: 700;
 }
 
 div.code-label {
     color: gray;
     background-color: var(--code-background-color, whitesmoke);
-    padding: 0.2rem 0.4rem;
+    padding: 0.2rem 0.5rem;
     border-bottom: 0.1rem solid var(--line-color, lightgray);
     margin-bottom: -1.33rem;
 }
@@ -32,7 +20,7 @@ a.logo {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    font-family: "Merriweather";
+    font-family: var(--heading-font-family), sans-serif;
     font-size: 1rem;
     font-weight: 800;
 }

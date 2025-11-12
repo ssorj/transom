@@ -1,6 +1,6 @@
 # Transom CSS
 
-- It is parameterized.
+<!-- - It is parameterized. -->
 
 <div class="code-label">input/site.css</div>
 
@@ -11,5 +11,5 @@
 <div class="code-label">config/transom.css</div>
 
 ~~~ css
-{{include("config/transom.css")}}
+{{strip(strip_license_header(include("config/transom.css")))}}
 ~~~
