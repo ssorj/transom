@@ -151,7 +151,7 @@ def object_property(name, type_, default=None, doc=None, readonly=False, nullabl
         if value is None and not nullable:
             raise TransomError(f"Property '{name}' must not be None")
 
-        if not isinstance(value, type_):
+        if not isinstance(value, (type_, type(None))): # XXX Better logic?
             raise TransomError(f"Property '{name}' set to illegal type '{type(value).__name__}' "
                                f"(type '{type_.__name__}' is required)")
 
@@ -186,14 +186,14 @@ class TransomSite:
     template wraps `{{page.body}}`. The default is loaded from
     `config/page.html`.
     """
-    page_template = object_property("page_template", TransomTemplate, _FALLBACK_PAGE_TEMPLATE, _page_template_doc)
+    page_template = object_property("page_template", TransomTemplate, _FALLBACK_PAGE_TEMPLATE, _page_template_doc, nullable=True)
 
     _body_template_doc = """
     The default template object for the body element of Markdown
     pages. The body element wraps `{{page.content}}`. The default
     is loaded from `config/body.html`.
     """
-    body_template = object_property("body_template", TransomTemplate, _FALLBACK_BODY_TEMPLATE, _body_template_doc)
+    body_template = object_property("body_template", TransomTemplate, _FALLBACK_BODY_TEMPLATE, _body_template_doc, nullable=True)
 
     def __init__(self, site_dir, verbose=False, quiet=False, threads=8):
         self._root_dir = Path(site_dir).resolve()
@@ -278,13 +278,22 @@ class TransomSite:
         self._debug("Loading input files in '{}'", self._input_dir)
 
         def find_input_files(start_path, input_files, parent_file):
+            def add_input_file(input_path, parent_file):
+                input_file = self._load_input_file(Path(entry.path), parent_file)
+
+                input_files.append(input_file)
+
+                if parent_file is not None:
+                    parent_file._children.append(input_file)
+
+                return input_file
+
             with os.scandir(start_path) as entries:
                 entries = tuple(x for x in entries if not self._ignored_files_re.match(x.name))
 
                 for entry in entries:
                     if entry.name in ("index.md", "index.html"):
-                        input_file = self._load_input_file(Path(entry.path), parent_file)
-                        input_files.append(input_file)
+                        input_file = add_input_file(Path(entry.path), parent_file)
                         parent_file = input_file
                         break
 
@@ -293,8 +302,7 @@ class TransomSite:
                         continue
 
                     if entry.is_file():
-                        input_file = self._load_input_file(Path(entry.path), parent_file)
-                        input_files.append(input_file)
+                        input_file = add_input_file(Path(entry.path), parent_file)
                     elif entry.is_dir():
                         find_input_files(entry.path, input_files, parent_file)
 
@@ -425,7 +433,7 @@ class TransomSite:
         self._log(f"{colorize('error:', '31;1')} {message}", *args)
 
 class InputFile:
-    __slots__ = "_site", "_input_path", "_output_path", "_url", "_parent", "_title"
+    __slots__ = "_site", "_input_path", "_output_path", "_url", "_parent", "_children", "_title"
 
     _url_doc = """
     The website path of this file.  It includes the site prefix, if configured.
@@ -435,6 +443,7 @@ class InputFile:
     _parent_doc = """
     The parent index file of this file, or `None` if this is the root file.
     """
+    # XXX Make this just an @property
     parent = object_property("parent", object, None, _parent_doc, readonly=True)
 
     _title_doc = """
@@ -457,6 +466,7 @@ class InputFile:
 
         self._url = f"{self._site.prefix}/{output_path}"
         self._parent = parent
+        self._children = []
         self._title = self._output_path.name
 
     def __repr__(self):
@@ -472,6 +482,10 @@ class InputFile:
         while parent is not None:
             yield parent
             parent = parent.parent
+
+    @property
+    def children(self):
+        return self._children
 
     def _process_input(self, last_render_time=0):
         self._debug("Processing input")
@@ -541,14 +555,14 @@ class MarkdownPage(GeneratedFile):
     template wraps `{{page.body}}`.  The default is the value of
     `site.page_template`.
     """
-    page_template = object_property("page_template", TransomTemplate, None, _page_template_doc)
+    page_template = object_property("page_template", TransomTemplate, None, _page_template_doc, nullable=True)
 
     _body_template_doc = """
     The template object for the body element of the page.
     The body element wraps `{{page.content}}`.  The default is
     the value of `site.body_template`.
     """
-    body_template = object_property("body_template", TransomTemplate, None, _body_template_doc)
+    body_template = object_property("body_template", TransomTemplate, None, _body_template_doc, nullable=True)
 
     def _process_input(self, last_render_time=0):
         modified = super()._process_input(last_render_time)
@@ -582,6 +596,9 @@ class MarkdownPage(GeneratedFile):
         The body element of the page.  It is rendered from
         `page.body_template`.
         """
+        if self._body_template is None:
+            return self.content
+
         return self._body_template.render(self)
 
     @property
