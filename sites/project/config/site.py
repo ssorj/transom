@@ -2,5 +2,5 @@
 
 import re
 
-def strip_license_header(text):
+def _strip_license_header(text):
     return re.sub(r"(?sm)^\s*(?:(?:#.*?\n)+|(?://.*?\n)+|/\*.*?\*/)", "", text).lstrip()

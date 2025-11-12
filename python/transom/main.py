@@ -182,14 +182,14 @@ class TransomSite:
     ignored_files = object_property("ignored_files", list, [".git", ".#*", "#*"], _ignored_files_doc)
 
     _page_template_doc = """
-    The default top-level template object for HTML pages. The page
+    The default top-level template object for Markdown pages. The page
     template wraps `{{page.body}}`. The default is loaded from
     `config/page.html`.
     """
     page_template = object_property("page_template", TransomTemplate, _FALLBACK_PAGE_TEMPLATE, _page_template_doc)
 
     _body_template_doc = """
-    The default template object for the body element of HTML
+    The default template object for the body element of Markdown
     pages. The body element wraps `{{page.content}}`. The default
     is loaded from `config/body.html`.
     """
@@ -890,10 +890,23 @@ class TransomCommand:
             self.site._serve(port=self.args.port)
 
 class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
-    # XXX Move html_id in here?
+    _HTML_ID_RESTRICT_RE = re.compile(r"[^a-z0-9\s-]")
+    _HTML_ID_HYPHENATE_RE = re.compile(r"[-\s]+")
+
+    @staticmethod
+    def html_id(text):
+        text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+        text = HtmlRenderer._HTML_ID_RESTRICT_RE.sub("", text.lower())
+        text = HtmlRenderer._HTML_ID_HYPHENATE_RE.sub("-", text).strip("-")
+
+        return text
 
     def heading(self, text, level, **attrs):
-        return f"<h{level} id=\"{html_id(text)}\">{text}</h{level}>\n"
+        return f"<h{level} id=\"{HtmlRenderer.html_id(text)}\">{text}</h{level}>\n"
+
+    def block_code(self, code, info=None):
+        lang_attr = f" class=\"language-{info}\"" if info else ""
+        return f"<pre><code{lang_attr}>{html_escape(code)}</code></pre>\n"
 
 class MarkdownLocal(threading.local):
     def __init__(self):
@@ -973,16 +986,6 @@ def html_escape(content) -> str:
     Escape HTML special characters in `text`.
     """
     return html.escape(normalize_content(content), quote=False)
-
-HTML_ID_RESTRICT_RE = re.compile(r"[^a-z0-9\s-]")
-HTML_ID_HYPHENATE_RE = re.compile(r"[-\s]+")
-
-def html_id(text):
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    text = HTML_ID_RESTRICT_RE.sub("", text.lower())
-    text = HTML_ID_HYPHENATE_RE.sub("-", text).strip("-")
-
-    return text
 
 def html_elem(tag, content, **attrs):
     attrs = "".join(html_attrs(attrs))

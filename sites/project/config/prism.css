@@ -1,3 +1,5 @@
+/* (setq ansi-color-names-vector ["black" "tomato" "PaleGreen2" "gold1" "blue2" "MediumOrchid1" "cyan" "white"]) */
+
 code[class*="language-"],
 pre[class*="language-"] {
     color: black;
@@ -12,11 +14,7 @@ code[class*="language-"]::selection, code[class*="language-"] ::selection {
 .token.prolog,
 .token.doctype,
 .token.cdata {
-    color: slategray;
-}
-
-.token.punctuation {
-    color: #999;
+    color: dimgray;
 }
 
 .token.namespace {
@@ -30,7 +28,7 @@ code[class*="language-"]::selection, code[class*="language-"] ::selection {
 .token.constant,
 .token.symbol,
 .token.deleted {
-    color: #905;
+    color: saddlebrown;
 }
 
 .token.selector,
@@ -39,32 +37,33 @@ code[class*="language-"]::selection, code[class*="language-"] ::selection {
 .token.char,
 .token.builtin,
 .token.inserted {
-    color: #690;
+    color: brown;
 }
 
 .token.operator,
 .token.entity,
 .token.url,
-.language-css .token.string,
-.style .token.string {
     color: #9a6e3a;
 }
 
 .token.atrule,
 .token.attr-value,
 .token.keyword {
-    color: #07a;
+    color: royalblue;
 }
 
-.token.function,
+.token.function {
+    color: seagreen;
+}
+
 .token.class-name {
-    color: #DD4A68;
+    color: royalblue;
 }
 
 .token.regex,
 .token.important,
 .token.variable {
-    color: #e90;
+    color: seagreen;
 }
 
 .token.important,

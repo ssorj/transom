@@ -11,5 +11,5 @@
 <div class="code-label">config/transom.css</div>
 
 ~~~ css
-{{strip(strip_license_header(include("config/transom.css")))}}
+{{strip(_strip_license_header(include("config/transom.css")))}}
 ~~~
