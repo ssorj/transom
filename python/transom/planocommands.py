@@ -21,6 +21,10 @@ from plano import *
 from plano.github import *
 from transom import TransomCommand
 
+class project_env(working_env):
+    def __init__(self):
+        super(project_env, self).__init__(PYTHONPATH="python")
+
 @command(passthrough=True)
 def render(passthrough_args=[]):
     """
@@ -48,7 +52,3 @@ def update_transom(): # pragma: nocover
     Update the embedded Transom repo
     """
     update_external_from_github("external/transom", "ssorj", "transom")
-
-class project_env(working_env):
-    def __init__(self):
-        super(project_env, self).__init__(PYTHONPATH="python")

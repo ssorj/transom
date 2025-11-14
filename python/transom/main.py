@@ -233,6 +233,7 @@ class TransomSite:
 
     def __enter__(self):
         self._start()
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._stop()
