@@ -22,7 +22,7 @@
         align-items: center;
         justify-content: space-between;
         z-index: 1;
-        background-color: inherit;
+        background-color: var(--body-background-color, white);
     }
 
     :where(header) {

@@ -10,8 +10,14 @@ by design, since we try to do as much as possible in Python.
 {{strip(include("../../profiles/website/input/site.js"))}}
 ~~~
 
-<div class="code-label">config/transom.js</div>
+<div class="code-label">config/transom/base.js</div>
 
 ~~~ javascript
-{{strip(_strip_license_header(include("config/transom.js")))}}
+{{strip(include("config/transom/base.js"))}}
+~~~
+
+<div class="code-label">config/transom/components.js</div>
+
+~~~ javascript
+{{strip(include("config/transom/components.js"))}}
 ~~~

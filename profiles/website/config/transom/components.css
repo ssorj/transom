@@ -6,12 +6,13 @@
 
     :where(nav.transom-page-path > a + a)::before {
         content: " \00a0\003e\00a0\00a0 ";
+        color: inherit;
     }
 
     :where(nav.transom-page-toc) {
         display: flex;
         flex-direction: column;
-        gap: 0.6rem;
+        gap: 0.66rem;
     }
 
     :where(nav.transom-page-toc) > a {
