@@ -22,7 +22,7 @@
         align-items: center;
         justify-content: space-between;
         z-index: 1;
-        background-color: var(--body-background-color, white);
+        background-color: var(--base-color, white);
     }
 
     :where(header) {
@@ -31,17 +31,17 @@
         position: sticky;
         top: 0;
         padding: 1rem;
-        border-bottom: var(--border-width, 0.05rem) solid var(--border-color, black);
+        border-bottom: var(--border-width, 0.1rem) solid var(--light-line-color, lightgray);
     }
 
     :where(footer) {
         grid-area: footer;
         padding: 2rem 1rem;
-        border-top: var(--border-width, 0.05rem) solid var(--border-color, black);
+        border-top: var(--border-width, 0.1rem) solid var(--light-line-color, lightgray);
     }
 
     :where(:is(header, footer) a) {
-        color: inherit;
+        color: var(--body-color, black);
         text-decoration: inherit;
     }
 
@@ -72,7 +72,7 @@
         top: 6rem;
         margin: 0 0 0 1rem;
         padding: 0 1rem 0 2rem;
-        border-left: var(--border-width, 0.05rem) solid var(--border-color, black);
+        border-left: var(--border-width, 0.1rem) solid var(--light-line-color, lightgray);
     }
 
     /* Spacing between prose elements */

@@ -2,7 +2,7 @@
 
 {{include("config/transom/base.css")}}
 {{include("config/transom/components.css")}}
-/* {{include("config/transom/theme.css")}} */
+{{include("config/transom/theme.css")}}
 {{include("config/transom/layout.css")}}
 {{include("config/prism.css")}}
 
@@ -10,13 +10,14 @@
     :root {
         --heading-font-family: "Merriweather";
         --heading-font-weight: 700;
+        --base-color: #fffbf5; /* lch(99, 1, 72); */
     }
 
     div.code-label {
-        color: gray;
-        background-color: var(--code-background-color, whitesmoke);
+        color: var(--light-text-color);
+        background-color: var(--light-background-color);
         padding: 0.2rem 0.5rem;
-        border-bottom: 0.1rem solid var(--line-color, lightgray);
+        border-bottom: 0.1rem solid var(--light-line-color);
         margin-bottom: -1.33rem;
     }
 
