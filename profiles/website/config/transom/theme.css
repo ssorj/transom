@@ -1,0 +1,68 @@
+@layer theme {
+    :where(body) {
+        color: var(--body-color, hsl(0, 0%, 20%));
+        background-color: var(--body-background-color, white);
+        font-family: var(--body-font-family, "Inter"), sans-serif;
+        font-size: var(--body-font-size, 0.9rem);
+        font-weight: var(--body-font-weight, 400);
+        line-height: var(--body-line-height, 1.66);
+    }
+
+    :where(h1, h2, h3, h4, h5, h6) {
+        color: var(--heading-color, inherit);
+        background-color: var(--heading-background-color, inherit);
+        font-family: var(--heading-font-family, "Inter"), sans-serif;
+        font-weight: var(--heading-font-weight, 600);
+        line-height: var(--heading-line-height, 1.33);
+    }
+
+    :where(h1) {
+        font-size: calc(1.6 * var(--heading-font-size, 0.9rem));
+    }
+
+    :where(h2) {
+        font-size: calc(1.3 * var(--heading-font-size, 0.9rem));
+    }
+
+    :where(h3) {
+        font-size: calc(1.1 * var(--heading-font-size, 0.9rem));
+    }
+
+    :where(h4) {
+        font-size: var(--heading-font-size, 0.9rem);
+    }
+
+    :where(b, strong) {
+        font-weight: 600;
+    }
+
+    :where(a) {
+        color: var(--link-color, royalblue);
+        background-color: var(--link-background-color, inherit);
+        font-weight: inherit;
+    }
+
+    :where(a.selected) {
+        color: var(--selected-link-color, hsl(0, 0%, 10%));
+        background-color: var(--selected-link-background-color, inherit);
+        font-weight: var(--selected-link-font-weight, 500);
+    }
+
+    :where(hr) {
+        background-color: var(--border-color, lightgray);
+        height: var(--border-width, 0.1rem);
+    }
+
+    :where(code, pre) {
+        color: var(--code-color, hsl(0, 0%, 10%));
+        background-color: var(--code-background-color, whitesmoke);
+        font-family: var(--code-font-family, "Roboto Mono"), monospace;
+        font-size: var(--code-font-size, 0.8rem);
+        font-weight: var(--code-font-weight, 400);
+        line-height: var(--code-line-height, 1.66);
+    }
+
+    :where(th) {
+        font-weight: var(--heading-font-weight, 600);
+    }
+}

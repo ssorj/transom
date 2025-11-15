@@ -1,0 +1,20 @@
+@layer components {
+    :where(nav.transom-page-path) {
+        display: inline;
+        flex-direction: row;
+    }
+
+    :where(nav.transom-page-path > a + a)::before {
+        content: " \00a0\003e\00a0\00a0 ";
+    }
+
+    :where(nav.transom-page-toc) {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    :where(nav.transom-page-toc) > a {
+        text-wrap: balance;
+    }
+}

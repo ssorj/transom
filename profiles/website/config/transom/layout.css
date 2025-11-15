@@ -1,0 +1,82 @@
+@layer layout {
+    :where(html) {
+        scroll-padding-top: 6rem;
+    }
+
+    :where(body) {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        grid-template-columns:
+            minmax(2em, 1fr)
+            calc(var(--page-width, 1100px) * 0.7)
+            calc(var(--page-width, 1100px) * 0.3)
+            minmax(2em, 1fr);
+        grid-template-areas:
+            "header header header header"
+            ". main aside ."
+            "footer footer footer footer";
+    }
+
+    :where(header, footer) {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 1;
+        background-color: inherit;
+    }
+
+    :where(header) {
+        grid-area: header;
+        align-self: start; /* Important for sticky positioning */
+        position: sticky;
+        top: 0;
+        padding: 1rem;
+        border-bottom: var(--border-width, 0.05rem) solid var(--border-color, black);
+    }
+
+    :where(footer) {
+        grid-area: footer;
+        padding: 2rem 1rem;
+        border-top: var(--border-width, 0.05rem) solid var(--border-color, black);
+    }
+
+    :where(:is(header, footer) a) {
+        color: inherit;
+        text-decoration: inherit;
+    }
+
+    :where(:is(header, footer) > div:nth-child(1)) {
+        flex: 0 1 calc((100% - (var(--page-width, 1100px))) / 2);
+    }
+
+    :where(:is(header, footer) > div:nth-child(2)) {
+        flex: 0 1 var(--page-width, 1100px);
+        padding: 0 1rem;
+    }
+
+    :where(:is(header, footer) > div:nth-child(3)) {
+        flex: 0 1 calc((100% - (var(--page-width, 1100px))) / 2);
+        display: flex;
+        justify-content: right;
+    }
+
+    :where(main) {
+        grid-area: main;
+        padding: 2rem 1rem;
+    }
+
+    :where(aside) {
+        grid-area: aside;
+        align-self: start; /* Important for sticky positioning */
+        position: sticky;
+        top: 6rem;
+        margin: 0 0 0 1rem;
+        padding: 0 1rem 0 2rem;
+        border-left: var(--border-width, 0.05rem) solid var(--border-color, black);
+    }
+
+    /* Spacing between prose elements */
+    :where(:is(main, article, section, aside, form, fieldset, figure, li) > * + *) {
+        margin-top: var(--prose-element-gap, 1.33rem);
+    }
+}

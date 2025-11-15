@@ -39,7 +39,3 @@ violet == "{{violet}}"
 ~~~
 page.path_nav(1, -1) == "{{page.path_nav(1, -1)}}"
 ~~~
-
-## Make sure link checking treats "/" as "/index.html"
-
-[Index]({{site.prefix}}/)

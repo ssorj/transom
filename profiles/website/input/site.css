@@ -1,29 +1,40 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700");
 
-{{include("config/transom.css")}}
+{{include("config/transom/base.css")}}
+{{include("config/transom/components.css")}}
+{{include("config/transom/theme.css")}}
+{{include("config/transom/layout.css")}}
 
-/* These are all default values */
-:root {
-    /* Fonts */
-    --body-font-family: "Inter";
-    --body-font-size: 0.9rem;
-    --body-font-weight: 400;
-    --body-line-height: 1.66;
-    --heading-font-family: "Inter";
-    --heading-font-size: 0.9rem;
-    --heading-font-weight: 600;
-    --heading-line-height: 1.33;
-    --code-font-family: "Roboto Mono";
-    --code-font-size: 0.8rem;
-    --code-font-weight: 400;
-    --code-line-height: 1.66;
-    /* Colors */
-    --body-background-color: white;
-    --code-background-color: whitesmoke;
-    --text-color: hsl(0, 0%, 20%);
-    --link-color: royalblue;
-    --border-color: lightgray;
-    /* Layout */
-    --page-width: 1100px;
-    --prose-margin: 1.33rem;
+@layer {
+    /* These are all default values */
+    :root {
+        --body-color: hsl(0, 0%, 20%);
+        --body-background-color: white;
+        --body-font-family: "Inter";
+        --body-font-size: 0.9rem;
+        --body-font-weight: 400;
+        --body-line-height: 1.66;
+        --heading-color: inherit;
+        --heading-background-color: inherit;
+        --heading-font-family: "Inter";
+        --heading-font-size: 0.9rem;
+        --heading-font-weight: 600;
+        --heading-line-height: 1.33;
+        --code-color: hsl(0, 0%, 10%));
+        --code-background-color: whitesmoke;
+        --code-font-family: "Roboto Mono";
+        --code-font-size: 0.8rem;
+        --code-font-weight: 400;
+        --code-line-height: 1.66;
+        --link-color: royalblue;
+        --link-background-color: inherit;
+        --link-font-weight: inherit;
+        --selected-link-color: hsl(0, 0%, 10%);
+        --selected-link-background-color: inherit;
+        --selected-link-font-weight: 500;
+        --border-color: lightgray;
+        --border-width: 0.1rem;
+        --page-width: 1100px;
+        --prose-element-gap: 1.33rem;
+    }
 }

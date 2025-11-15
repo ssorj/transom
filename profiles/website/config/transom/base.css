@@ -1,0 +1,86 @@
+@layer base {
+    :where(*, *::before, *::after) {
+        box-sizing: border-box;
+        margin: 0;
+    }
+
+    :where(html) {
+        /* Prevent font size inflation */
+        -moz-text-size-adjust: none;
+        -webkit-text-size-adjust: none;
+        text-size-adjust: none;
+        /* Avoid layout jumps from disappearing scroll bars */
+        overflow-y: scroll;
+    }
+
+    :where(body) {
+        min-height: 100vh;
+    }
+
+    /* Spacing between prose elements */
+    :where(:is(main, article, section, aside, form, fieldset, figure, li) > * + *) {
+        margin-top: 1rem;
+    }
+
+    /* Prevent long words from distorting layouts */
+    :where(p, h1, h2, h3, h4, h5, h6) {
+        overflow-wrap: break-word;
+    }
+
+    :where(h1, h2, h3, h4, h5, h6) {
+        text-wrap: balance;
+    }
+
+    :where(p) {
+        text-wrap: pretty;
+    }
+
+    :where(a), :where(a:visited) {
+        text-decoration: none;
+    }
+
+    :where(a:visited) {
+        color: blue;
+    }
+
+    :where(a.selected) {
+        color: black;
+    }
+
+    :where(img, canvas, picture, svg, video) {
+        display: block;
+        max-width: 100%;
+    }
+
+    :where(input, button, textarea, select) {
+        font: inherit;
+    }
+
+    :where(hr) {
+        border: none;
+        height: 0.1rem;
+        background-color: lightgray;
+    }
+
+    :where(code) {
+        padding: 0 0.1rem;
+    }
+
+    :where(pre) {
+        padding: 0.9rem 1rem;
+        overflow-y: auto;
+        background-color: whitesmoke;
+    }
+
+    :where(pre > code) {
+        padding: 0;
+    }
+
+    :where(ul, ol, dd) {
+        padding-left: 1.3rem;
+    }
+
+    :where(th) {
+        text-align: left;
+    }
+}
