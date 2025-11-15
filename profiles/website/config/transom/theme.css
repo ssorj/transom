@@ -8,6 +8,7 @@
         --dark-line-color: oklch(from var(--base-color) calc(l - 0.4) c h);
         --dark-text-color: oklch(from var(--base-color) calc(l - 0.6) c h);
         --dark-background-color: oklch(from var(--base-color) calc(l - 0.1) c h);
+        --link-color: oklch(from var(--base-color) calc(l - 0.4) calc(c + 0.4) calc(h + 180));
         /* Derived, element-specific variables (<element>-<property>) */
         /* --body-color: var(--dark-text-color); */
         /* --body-background-color: var(--base-color); */

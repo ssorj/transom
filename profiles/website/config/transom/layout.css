@@ -41,7 +41,7 @@
     }
 
     :where(:is(header, footer) a) {
-        color: var(--body-color, black);
+        color: var(--dark-text-color, black);
         text-decoration: inherit;
     }
 
