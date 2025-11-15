@@ -31,13 +31,13 @@
         position: sticky;
         top: 0;
         padding: 1rem;
-        border-bottom: var(--border-width, 0.1rem) solid var(--light-line-color, lightgray);
+        border-bottom: var(--border-width, 0.05rem) solid var(--light-border-color, lightgray);
     }
 
     :where(footer) {
         grid-area: footer;
         padding: 2rem 1rem;
-        border-top: var(--border-width, 0.1rem) solid var(--light-line-color, lightgray);
+        border-top: var(--border-width, 0.05rem) solid var(--light-border-color, lightgray);
     }
 
     :where(:is(header, footer) a) {
@@ -72,7 +72,7 @@
         top: 6rem;
         margin: 0 0 0 1rem;
         padding: 0 1rem 0 2rem;
-        border-left: var(--border-width, 0.1rem) solid var(--light-line-color, lightgray);
+        border-left: var(--border-width, 0.05rem) solid var(--light-border-color, lightgray);
     }
 
     /* Spacing between prose elements */

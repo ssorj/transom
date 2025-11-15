@@ -10,14 +10,14 @@
     :root {
         --heading-font-family: "Merriweather";
         --heading-font-weight: 700;
-        --base-color: #fffbf5; /* lch(99, 1, 72); */
+        --base-color: rgb(255, 252, 250);
     }
 
     div.code-label {
         color: var(--light-text-color);
         background-color: var(--light-background-color);
         padding: 0.2rem 0.5rem;
-        border-bottom: 0.1rem solid var(--light-line-color);
+        border-bottom: 0.01rem solid var(--light-border-color);
         margin-bottom: -1.33rem;
     }
 
