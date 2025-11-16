@@ -5,12 +5,11 @@
         --blank-background-color: var(--base-color);
         --light-accent-color: oklch(from var(--base-color) calc(l - 0.2) calc(c + 0.2) calc(h + 180));
         --light-background-color: oklch(from var(--base-color) calc(l - 0.025) c h);
-        --light-border-color: oklch(from var(--base-color) calc(l - 0.15) c h);
         --light-text-color: oklch(from var(--base-color) calc(l - 0.3) c h);
         --dark-accent-color: oklch(from var(--base-color) calc(l - 0.4) calc(c + 0.2) calc(h + 180));
         --dark-background-color: oklch(from var(--base-color) calc(l - 0.1) c h);
-        --dark-border-color: oklch(from var(--base-color) calc(l - 0.4) c h);
         --dark-text-color: oklch(from var(--base-color) calc(l - 0.6) c h);
+
         /* Font variables */
         --base-font-family: "Inter", sans-serif;
         --base-font-size: 0.9rem;
@@ -19,10 +18,11 @@
         --normal-font-weight: var(--base-font-weight);
         --semibold-font-weight: calc(var(--base-font-weight) + 100);
         --bold-font-weight: calc(var(--base-font-weight) + 200);
-        /* Border thickness variables */
-        --base-border-width: 0.05rem;
-        --thin-border-width: var(--base-border-width);
-        --thick-border-width: calc(var(--base-border-width) * 2);
+
+        /* Border variables */
+        --border-color: oklch(from var(--base-color) calc(l - 0.15) c h);
+        --border-width: 0.05rem;
+
         /* Element-specific variables */
         --body-color: var(--dark-text-color);
         --body-background-color: var(--blank-background-color);
@@ -48,13 +48,13 @@
         --selected-link-color: var(--dark-text-color);
         --selected-link-background-color: inherit;
         --selected-link-font-weight: var(--semibold-font-weight);
-        --hr-background-color: var(--light-border-color);
-        --hr-height: var(--thin-border-width);
+        --hr-background-color: var(--border-color);
+        --hr-height: var(--border-width);
         --th-font-weight: var(--bold-font-weight);
     }
 
     :where(html) {
-        scrollbar-color: var(--light-border-color) var(--blank-background-color);
+        scrollbar-color: var(--border-color) var(--blank-background-color);
     }
 
     :where(body) {
