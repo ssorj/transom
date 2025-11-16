@@ -2,6 +2,7 @@
     :where(:root) {
         /* Color variables */
         --base-color: white;
+        --blank-background-color: var(--base-color);
         --light-accent-color: oklch(from var(--base-color) calc(l - 0.2) calc(c + 0.2) calc(h + 180));
         --light-background-color: oklch(from var(--base-color) calc(l - 0.025) c h);
         --light-border-color: oklch(from var(--base-color) calc(l - 0.15) c h);
@@ -14,43 +15,46 @@
         --base-font-family: "Inter", sans-serif;
         --base-font-size: 0.9rem;
         --base-font-weight: 400;
+        --base-line-height: 1.66;
         --normal-font-weight: var(--base-font-weight);
         --semibold-font-weight: calc(var(--base-font-weight) + 100);
         --bold-font-weight: calc(var(--base-font-weight) + 200);
+        /* Border thickness variables */
+        --base-border-width: 0.05rem;
+        --thin-border-width: var(--base-border-width);
+        --thick-border-width: calc(var(--base-border-width) * 2);
         /* Element-specific variables */
         --body-color: var(--dark-text-color);
-        --body-background-color: var(--base-color);
+        --body-background-color: var(--blank-background-color);
         --body-font-family: var(--base-font-family);
         --body-font-size: var(--base-font-size);
         --body-font-weight: var(--normal-font-weight);
-        --body-line-height: 1.66;
+        --body-line-height: var(--base-line-height);
         --heading-color: inherit;
         --heading-background-color: inherit;
         --heading-font-family: var(--base-font-family);
         --heading-font-size: var(--base-font-size);
         --heading-font-weight: var(--bold-font-weight);
-        --heading-line-height: 1.33;
+        --heading-line-height: calc(var(--base-line-height) * 0.8);
         --code-color: var(--dark-text-color);
         --code-background-color: var(--light-background-color);
         --code-font-family: "Roboto Mono", monospace;
         --code-font-size: calc(var(--base-font-size) * 0.9);
         --code-font-weight: var(--normal-font-weight);
-        --code-line-height: 1.66;
+        --code-line-height: calc(var(--base-line-height) * 0.95);
         --link-color: var(--dark-accent-color);
         --link-background-color: inherit;
         --link-font-weight: inherit;
         --selected-link-color: var(--dark-text-color);
         --selected-link-background-color: inherit;
         --selected-link-font-weight: var(--semibold-font-weight);
-        --border-color: var(--light-border-color);
-        --border-width: 0.05rem;
         --hr-background-color: var(--light-border-color);
-        --hr-height: var(--border-width);
-        --th-font-weight: var(--semibold-font-weight);
+        --hr-height: var(--thin-border-width);
+        --th-font-weight: var(--bold-font-weight);
     }
 
     :where(html) {
-        scrollbar-color: var(--light-border-color) var(--base-color);
+        scrollbar-color: var(--light-border-color) var(--blank-background-color);
     }
 
     :where(body) {
@@ -104,15 +108,15 @@
 
     :where(hr) {
         background-color: var(--hr-background-color);
-        height: var(--border-width);
+        height: var(--hr-height);
     }
 
     :where(code, pre) {
         color: var(--code-color);
         font-family: var(--code-font-family);
-        font-size: var(--code-font-size, 0.8rem);
-        font-weight: var(--code-font-weight, 400);
-        line-height: var(--code-line-height, 1.66);
+        font-size: var(--code-font-size);
+        font-weight: var(--code-font-weight);
+        line-height: var(--code-line-height);
     }
 
     :where(code:not(pre code), pre) {
