@@ -81,7 +81,12 @@
         padding-left: 1.33rem;
     }
 
-    :where(th) {
+    :where(table) {
         text-align: left;
+        border-collapse: collapse;
+    }
+
+    :where(th + th, td + td) {
+        padding-left: 1rem;
     }
 }
