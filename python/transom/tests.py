@@ -128,8 +128,8 @@ def site_render():
         check_file("output/site.js")
 
         result = read("output/index.html")
-        assert "<title>Transom</title>" in result, result
-        assert "<h1 id=\"transom\">Transom</h1>" in result, result
+        assert "<title>Home - Transom test</title>" in result, result
+        assert "<h1 id=\"transom-test\">Transom test</h1>" in result, result
 
     # Site prefix
     with empty_test_site() as site:
@@ -319,8 +319,9 @@ def command_init():
         check_dir("config")
         check_dir("input")
         check_file("config/site.py")
-        check_file("config/transom.css")
-        check_file("config/transom.js")
+        check_file("config/page.html")
+        check_file("config/body.html")
+        check_dir("config/transom")
         check_file("input/index.md")
         check_file("input/site.css")
         check_file("input/site.js")
@@ -359,8 +360,8 @@ def command_render():
         check_file("output/site.js")
 
         result = read("output/index.html")
-        assert "<title>Transom</title>" in result, result
-        assert "<h1 id=\"transom\">Transom</h1>" in result, result
+        assert "<title>Home - Transom test</title>" in result, result
+        assert "<h1 id=\"transom-test\">Transom test</h1>" in result, result
 
         call_transom_command(["render", "--quiet"])
         call_transom_command(["render", "--force"])

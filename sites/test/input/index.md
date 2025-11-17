@@ -1,4 +1,8 @@
-# Transom
+---
+page.title = "Home"
+---
+
+# Transom test
 
 [Test cases 1](test-cases-1.html)
 

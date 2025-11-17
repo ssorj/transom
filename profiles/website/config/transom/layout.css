@@ -4,11 +4,11 @@
         --prose-element-gap: 1.33rem;
     }
 
-    :where(html) {
+    :where(html:has(body.transom-page)) {
         scroll-padding-top: 6rem;
     }
 
-    :where(body) {
+    :where(body.transom-page) {
         display: grid;
         grid-template-rows: auto 1fr auto;
         grid-template-columns:
@@ -22,7 +22,7 @@
             "footer footer footer footer";
     }
 
-    :where(header, footer) {
+    :where(body.transom-page :is(header, footer)) {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -30,7 +30,7 @@
         background-color: var(--base-color, white);
     }
 
-    :where(header) {
+    :where(body.transom-page header) {
         grid-area: header;
         align-self: start; /* Important for sticky positioning */
         position: sticky;
@@ -39,38 +39,38 @@
         border-bottom: var(--border-width, 0.05rem) solid var(--light-foreground-color, gray);
     }
 
-    :where(footer) {
+    :where(body.transom-page footer) {
         grid-area: footer;
         padding: 2rem 1rem;
         border-top: var(--border-width, 0.05rem) solid var(--light-foreground-color, gray);
     }
 
-    :where(:is(header, footer) a) {
+    :where(body.transom-page :is(header, footer) a) {
         color: var(--dark-foreground-color, black);
         text-decoration: inherit;
     }
 
-    :where(:is(header, footer) > div:nth-child(1)) {
+    :where(body.transom-page :is(header, footer) > div:nth-child(1)) {
         flex: 0 1 calc((100% - (var(--page-width))) / 2);
     }
 
-    :where(:is(header, footer) > div:nth-child(2)) {
+    :where(body.transom-page :is(header, footer) > div:nth-child(2)) {
         flex: 0 1 var(--page-width);
         padding: 0 1rem;
     }
 
-    :where(:is(header, footer) > div:nth-child(3)) {
+    :where(body.transom-page :is(header, footer) > div:nth-child(3)) {
         flex: 0 1 calc((100% - (var(--page-width))) / 2);
         display: flex;
         justify-content: right;
     }
 
-    :where(main) {
+    :where(body.transom-page main) {
         grid-area: main;
         padding: 2rem 1rem;
     }
 
-    :where(aside) {
+    :where(body.transom-page aside) {
         grid-area: aside;
         align-self: start; /* Important for sticky positioning */
         position: sticky;
@@ -81,7 +81,7 @@
     }
 
     /* Spacing between prose elements */
-    :where(:is(main, article, section, aside, form, fieldset, figure, li) > * + *) {
+    :where(body.transom-page :is(main, article, section, aside, form, fieldset, figure, li) > * + *) {
         margin-top: var(--prose-element-gap);
     }
 }
