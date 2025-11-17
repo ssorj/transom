@@ -1023,9 +1023,9 @@ def html_list(data, tag="ul", item_fn=None, **attrs) -> str:
     Generate an HTML list from 'data'.
     """
     if item_fn is None:
-        item_fn = lambda value: html_elem("li", value)
+        item_fn = lambda index, value: html_elem("li", value)
 
-    items = (item_fn(v) for v in data)
+    items = (item_fn(i, v) for i, v in enumerate(data))
 
     return html_elem(tag, items, **attrs)
 

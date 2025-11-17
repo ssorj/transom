@@ -27,7 +27,7 @@
         align-items: center;
         justify-content: space-between;
         z-index: 1;
-        background-color: var(--blank-background-color, white);
+        background-color: var(--base-color, white);
     }
 
     :where(header) {
@@ -36,17 +36,17 @@
         position: sticky;
         top: 0;
         padding: 1rem;
-        border-bottom: var(--border-width, 0.05rem) solid var(--border-color, lightgray);
+        border-bottom: var(--border-width, 0.05rem) solid var(--light-foreground-color, gray);
     }
 
     :where(footer) {
         grid-area: footer;
         padding: 2rem 1rem;
-        border-top: var(--border-width, 0.05rem) solid var(--border-color, lightgray);
+        border-top: var(--border-width, 0.05rem) solid var(--light-foreground-color, gray);
     }
 
     :where(:is(header, footer) a) {
-        color: var(--dark-text-color, black);
+        color: var(--dark-foreground-color, black);
         text-decoration: inherit;
     }
 
@@ -77,7 +77,7 @@
         top: 6rem;
         margin: 0 0 0 1rem;
         padding: 0 1rem 0 2rem;
-        border-left: var(--border-width, 0.05rem) solid var(--border-color, lightgray);
+        border-left: var(--border-width, 0.05rem) solid var(--light-foreground-color, gray);
     }
 
     /* Spacing between prose elements */

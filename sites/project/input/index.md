@@ -58,3 +58,4 @@ def hello():
 - [Transom CSS](css.html)
 - [Transom Javascript](javascript.html)
 - [HTML generation functions](html-generation-functions.html)
+- [Sample pages](samples/index.html)

@@ -1,10 +1,11 @@
-# Benjamin Franklin
+# The Autobiography of Benjamin Franklin
 
-Title: The Autobiography of Benjamin Franklin
-
-Author: Benjamin Franklin
-
-Year: 1791
+<dl class="transom-properties">
+  <dt>Author</dt>
+  <dd>Benjamin Franklin</dd>
+  <dt>Year</dt>
+  <dd>1791</dd>
+</dl>
 
 ## I - Ancestry and early youth in Boston
 

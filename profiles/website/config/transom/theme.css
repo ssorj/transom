@@ -2,128 +2,96 @@
     :where(:root) {
         /* Color variables */
         --base-color: white;
-        --blank-background-color: var(--base-color);
         --light-accent-color: oklch(from var(--base-color) calc(l - 0.2) calc(c + 0.2) calc(h + 180));
-        --light-background-color: oklch(from var(--base-color) calc(l - 0.025) c h);
-        --light-text-color: oklch(from var(--base-color) calc(l - 0.3) c h);
-        --dark-accent-color: oklch(from var(--base-color) calc(l - 0.4) calc(c + 0.2) calc(h + 180));
+        --light-background-color: oklch(from var(--base-color) calc(l - 0.02) c h);
+        --light-foreground-color: oklch(from var(--base-color) calc(l - 0.2) c h);
+        --dark-accent-color: oklch(from var(--base-color) calc(l - 0.5) calc(c + 0.2) calc(h + 180));
         --dark-background-color: oklch(from var(--base-color) calc(l - 0.1) c h);
-        --dark-text-color: oklch(from var(--base-color) calc(l - 0.6) c h);
+        --dark-foreground-color: oklch(from var(--base-color) calc(l - 0.6) c h);
+        --link-color: var(--dark-accent-color);
 
         /* Font variables */
         --base-font-family: "Inter", sans-serif;
         --base-font-size: 0.9rem;
         --base-font-weight: 400;
         --base-line-height: 1.66;
-        --normal-font-weight: var(--base-font-weight);
+        --monospace-font-family: "Roboto Mono", monospace;
         --semibold-font-weight: calc(var(--base-font-weight) + 100);
         --bold-font-weight: calc(var(--base-font-weight) + 200);
 
         /* Border variables */
-        --border-color: oklch(from var(--base-color) calc(l - 0.15) c h);
         --border-width: 0.05rem;
-
-        /* Element-specific variables */
-        --body-color: var(--dark-text-color);
-        --body-background-color: var(--blank-background-color);
-        --body-font-family: var(--base-font-family);
-        --body-font-size: var(--base-font-size);
-        --body-font-weight: var(--normal-font-weight);
-        --body-line-height: var(--base-line-height);
-        --heading-color: inherit;
-        --heading-background-color: inherit;
-        --heading-font-family: var(--base-font-family);
-        --heading-font-size: var(--base-font-size);
-        --heading-font-weight: var(--bold-font-weight);
-        --heading-line-height: calc(var(--base-line-height) * 0.8);
-        --code-color: var(--dark-text-color);
-        --code-background-color: var(--light-background-color);
-        --code-font-family: "Roboto Mono", monospace;
-        --code-font-size: calc(var(--base-font-size) * 0.9);
-        --code-font-weight: var(--normal-font-weight);
-        --code-line-height: calc(var(--base-line-height) * 0.95);
-        --link-color: var(--dark-accent-color);
-        --link-background-color: inherit;
-        --link-font-weight: inherit;
-        --selected-link-color: var(--dark-text-color);
-        --selected-link-background-color: inherit;
-        --selected-link-font-weight: var(--semibold-font-weight);
-        --hr-background-color: var(--border-color);
-        --hr-height: var(--border-width);
-        --th-font-weight: var(--bold-font-weight);
     }
 
     :where(html) {
-        scrollbar-color: var(--border-color) var(--blank-background-color);
+        scrollbar-color: var(--light-foreground-color) var(--base-color);
     }
 
     :where(body) {
-        color: var(--body-color);
-        background-color: var(--body-background-color);
-        font-family: var(--body-font-family);
-        font-size: var(--body-font-size);
-        font-weight: var(--body-font-weight);
-        line-height: var(--body-line-height);
+        color: var(--dark-foreground-color);
+        background-color: var(--base-color);
+        font-family: var(--base-font-family);
+        font-size: var(--base-font-size);
+        font-weight: var(--base-font-weight);
+        line-height: var(--base-line-height);
     }
 
     :where(h1, h2, h3, h4, h5, h6) {
-        color: var(--heading-color);
-        background-color: var(--heading-background-color);
-        font-family: var(--heading-font-family);
-        font-weight: var(--heading-font-weight);
-        line-height: var(--heading-line-height);
+        font-weight: var(--bold-font-weight);
+        line-height: calc(var(--base-line-height) * 0.8);
     }
 
     :where(h1) {
-        font-size: calc(1.6 * var(--heading-font-size));
+        font-size: calc(1.6 * var(--base-font-size));
     }
 
     :where(h2) {
-        font-size: calc(1.3 * var(--heading-font-size));
+        font-size: calc(1.3 * var(--base-font-size));
     }
 
     :where(h3) {
-        font-size: calc(1.1 * var(--heading-font-size));
+        font-size: calc(1.1 * var(--base-font-size));
     }
 
     :where(h4) {
-        font-size: var(--heading-font-size);
+        font-size: var(--base-font-size);
     }
 
     :where(b, strong) {
-        font-weight: 600;
+        font-weight: var(--bold-font-weight);
     }
 
     :where(a:not(:is(header, footer) a)) {
         color: var(--link-color);
-        background-color: var(--link-background-color);
-        font-weight: var(--link-font-weight);
     }
 
     :where(a.selected) {
-        color: var(--selected-link-color);
-        background-color: var(--selected-link-background-color);
-        font-weight: var(--selected-link-font-weight);
+        color: var(--dark-foreground-color);
+        font-weight: var(--semibold-font-weight);
     }
 
     :where(hr) {
-        background-color: var(--hr-background-color);
-        height: var(--hr-height);
+        background-color: var(--border-color);
+        height: var(--border-width);
     }
 
     :where(code, pre) {
-        color: var(--code-color);
-        font-family: var(--code-font-family);
-        font-size: var(--code-font-size);
-        font-weight: var(--code-font-weight);
-        line-height: var(--code-line-height);
+        color: var(--dark-foreground-color);
+        font-family: var(--monospace-font-family);
+        font-size: calc(var(--base-font-size) * 0.9);
+        line-height: var(--base-line-height) * 0.95;
+    }
+
+    :where(pre) {
+        border: var(--border-width) solid oklch(from var(--light-background-color) calc(l - 0.02) c h);
+        border-radius: 0.4rem;
     }
 
     :where(code:not(pre code), pre) {
-        background-color: var(--code-background-color);
+        background-color: var(--light-background-color);
     }
 
     :where(th) {
-        font-weight: var(--th-font-weight);
+        font-weight: var(--bold-font-weight);
     }
 }

@@ -8,24 +8,27 @@
 
 @layer {
     :root {
-        --heading-font-family: "Merriweather";
-        --heading-font-weight: 700;
-        --base-color: rgb(255, 252, 250);
+        --base-color: rgb(255, 253, 250);
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: "Merriweather";
+        font-weight: 700;
     }
 
     div.code-label {
-        color: var(--light-text-color);
+        color: oklch(from var(--light-foreground-color) calc(l - 0.2) c h);
         background-color: var(--light-background-color);
-        padding: 0.2rem 0.5rem;
-        border-bottom: var(--border-width) solid var(--border-color);
-        margin-bottom: -1.33rem;
+        padding: 0.2rem 0.6rem;
+        border-bottom: var(--border-width) solid var(--light-foreground-color);
+        margin-bottom: calc(var(--prose-element-gap) * -1);
     }
 
     a.logo {
         display: flex;
         align-items: center;
         gap: 0.6rem;
-        font-family: var(--heading-font-family), sans-serif;
+        font-family: "Merriweather";
         font-size: 1rem;
         font-weight: 800;
     }
