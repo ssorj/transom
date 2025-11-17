@@ -50,6 +50,51 @@ def hello():
 ./plano install
 ~~~
 
+## Site file layout
+
+Root directories
+
+~~~
+config/
+input/
+output/
+~~~
+
+Site code
+
+~~~
+config/site.py
+~~~
+
+Templates
+
+~~~
+config/page.html
+config/body.html
+~~~
+
+Transom standard CSS and JavaScript
+
+~~~
+config/transom
+~~~
+
+Input files
+
+~~~
+input/index.md
+input/site.css
+input/site.js
+~~~
+
+Output files
+
+~~~
+output/index.html
+output/site.css
+output/site.js
+~~~
+
 ## Resources
 
 - How Transom works
