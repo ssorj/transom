@@ -167,6 +167,11 @@ class TransomSite:
         "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>")
     _FALLBACK_BODY_TEMPLATE = TransomTemplate("<body>{{page.content}}</body>")
 
+    _title_doc = """
+    The site title.  XXX Used in head/title element (so, in bookmarks).
+    """
+    title = object_property("title", str, None, _title_doc)
+
     _prefix_doc = """
     A string prefix used in generated links. It is
     inserted before the file path. This is important when the
@@ -372,6 +377,9 @@ class TransomSite:
 
         for thread in self._worker_threads:
             thread.commands.join()
+
+        if self.title is None:
+            self.title = input_files[0].title
 
         modified_count = sum(len(x) for x in modified_file_batches)
 
