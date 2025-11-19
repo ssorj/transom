@@ -91,8 +91,6 @@ class TransomTemplate:
             if token.startswith("{{{") and token.endswith("}}}"):
                 piece = token[1:-1]
             elif token.startswith("{{") and token.endswith("}}"):
-                # XXX try to move {{{ }}} handling in here
-
                 code = token[2:-2]
 
                 try:
@@ -130,37 +128,38 @@ def load_template(path) -> TransomTemplate:
     path = Path(path) if isinstance(path, str) else path
     return TransomTemplate(path.read_text(), path)
 
-# class ObjectProperty:
-#     __slots__ = type, default, __doc__, readonly, nullable
+class ObjectProperty:
+    __slots__ = "type", "default", "__doc__", "readonly", "nullable", "name"
 
-#     def __init__(self, type_, default=None, doc=None, readonly=True, nullable=False):
-#         self.type = type_
-#         self.default = default
-#         self.__doc__ = doc
-#         self.readonly = readonlye
-#         self.nullable = nullable
+    def __init__(self, type_, default=None, doc=None, readonly=False, nullable=False):
+        self.type = type_
+        self.default = default
+        self.__doc__ = doc
+        self.readonly = readonly
+        self.nullable = nullable
+        self.name = None
 
-    # def __set_name__(self, owner, name):
-    #     self.public_name = name
+    def __set_name__(self, owner, name):
+        self.name = name
 
-def object_property(name, type_, default=None, doc=None, readonly=False, nullable=False):
-    def get(obj):
-        return getattr(obj, f"_{name}", default)
+    def __get__(self, obj, owner=None):
+        if obj is None:
+            return self
 
-    def set_(obj, value):
-        if value is None and not nullable:
-            raise TransomError(f"Property '{name}' must not be None")
+        return getattr(obj, f"_{self.name}", self.default)
 
-        if not isinstance(value, (type_, type(None))): # XXX Better logic?
-            raise TransomError(f"Property '{name}' set to illegal type '{type(value).__name__}' "
-                               f"(type '{type_.__name__}' is required)")
+    def __set__(self, obj, value):
+        if self.readonly:
+             raise AttributeError(f"Property '{self.name}' is read-only")
 
-        setattr(obj, f"_{name}", value)
+        if value is None and not self.nullable:
+            raise TransomError(f"Property '{self.name}' must not be None")
 
-    if readonly:
-        return property(get, None, None, doc)
-    else:
-        return property(get, set_, None, doc)
+        if not isinstance(value, (self.type, type(None))):
+            raise TransomError(f"Property '{self.name}' set to illegal type '{type(value).__name__}' "
+                               f"(type '{self.type.__name__}' is required)")
+
+        setattr(obj, f"_{self.name}", value)
 
 class TransomSite:
     _FALLBACK_PAGE_TEMPLATE = TransomTemplate("<!doctype html>" \
@@ -170,7 +169,7 @@ class TransomSite:
     _title_doc = """
     The site title.  XXX Used in head/title element (so, in bookmarks).
     """
-    title = object_property("title", str, None, _title_doc)
+    title = ObjectProperty(str, None, _title_doc)
 
     _prefix_doc = """
     A string prefix used in generated links. It is
@@ -178,27 +177,27 @@ class TransomSite:
     published site lives under a directory prefix, as is the case for
     GitHub Pages. The default is the empty string, meaning no prefix.
     """
-    prefix = object_property("prefix", str, "", _prefix_doc)
+    prefix = ObjectProperty(str, "", _prefix_doc)
 
     _ignored_files_doc = """
     A list of shell globs for excluding input and config files from
     processing. The default is `[".git", ".#*","#*"]`.
     """
-    ignored_files = object_property("ignored_files", list, [".git", ".#*", "#*"], _ignored_files_doc)
+    ignored_files = ObjectProperty(list, [".git", ".#*", "#*"], _ignored_files_doc)
 
     _page_template_doc = """
     The default top-level template object for Markdown pages. The page
     template wraps `{{page.body}}`. The default is loaded from
     `config/page.html`.
     """
-    page_template = object_property("page_template", TransomTemplate, _FALLBACK_PAGE_TEMPLATE, _page_template_doc, nullable=True)
+    page_template = ObjectProperty(TransomTemplate, _FALLBACK_PAGE_TEMPLATE, _page_template_doc, nullable=True)
 
     _body_template_doc = """
     The default template object for the body element of Markdown
     pages. The body element wraps `{{page.content}}`. The default
     is loaded from `config/body.html`.
     """
-    body_template = object_property("body_template", TransomTemplate, _FALLBACK_BODY_TEMPLATE, _body_template_doc, nullable=True)
+    body_template = ObjectProperty(TransomTemplate, _FALLBACK_BODY_TEMPLATE, _body_template_doc, nullable=True)
 
     def __init__(self, site_dir, verbose=False, quiet=False, threads=8):
         self._root_dir = Path(site_dir).resolve()
@@ -447,18 +446,18 @@ class InputFile:
     _url_doc = """
     The website path of this file.  It includes the site prefix, if configured.
     """
-    url = object_property("url", str, None, _url_doc, readonly=True)
+    url = ObjectProperty(str, None, _url_doc, readonly=True)
 
     _parent_doc = """
     The parent index file of this file, or `None` if this is the root file.
     """
     # XXX Make this just an @property
-    parent = object_property("parent", object, None, _parent_doc, readonly=True)
+    parent = ObjectProperty(object, None, _parent_doc, readonly=True)
 
     _title_doc = """
     The title of this file.  Default title values are extracted from Markdown or HTML content.
     """
-    title = object_property("title", str, None, _title_doc)
+    title = ObjectProperty(str, None, _title_doc)
 
     def __init__(self, site, input_path, parent):
         self._site = site
@@ -484,7 +483,7 @@ class InputFile:
     @property
     def parents(self):
         """
-        The ancestor index files of this file.
+        The ancestor index files of this file, nearest ancestor first.
         """
         parent = self.parent
 
@@ -494,6 +493,9 @@ class InputFile:
 
     @property
     def children(self):
+        """
+        The direct descendant files of this file.
+        """
         return self._children
 
     def _process_input(self, last_render_time=0):
@@ -564,14 +566,14 @@ class MarkdownPage(GeneratedFile):
     template wraps `{{page.body}}`.  The default is the value of
     `site.page_template`.
     """
-    page_template = object_property("page_template", TransomTemplate, None, _page_template_doc, nullable=True)
+    page_template = ObjectProperty(TransomTemplate, None, _page_template_doc, nullable=True)
 
     _body_template_doc = """
     The template object for the body element of the page.
     The body element wraps `{{page.content}}`.  The default is
     the value of `site.body_template`.
     """
-    body_template = object_property("body_template", TransomTemplate, None, _body_template_doc, nullable=True)
+    body_template = ObjectProperty(TransomTemplate, None, _body_template_doc, nullable=True)
 
     def _process_input(self, last_render_time=0):
         modified = super()._process_input(last_render_time)
