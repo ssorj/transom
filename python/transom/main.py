@@ -137,7 +137,6 @@ class ObjectProperty:
         self.__doc__ = doc
         self.readonly = readonly
         self.nullable = nullable
-        self.name = None
 
     def __set_name__(self, owner, name):
         self.name = name
@@ -150,7 +149,7 @@ class ObjectProperty:
 
     def __set__(self, obj, value):
         if self.readonly:
-             raise AttributeError(f"Property '{self.name}' is read-only")
+            raise TransomError(f"Property '{self.name}' is read-only")
 
         if value is None and not self.nullable:
             raise TransomError(f"Property '{self.name}' must not be None")
@@ -166,38 +165,33 @@ class TransomSite:
         "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>")
     _FALLBACK_BODY_TEMPLATE = TransomTemplate("<body>{{page.content}}</body>")
 
-    _title_doc = """
+    title = ObjectProperty(str, doc="""
     The site title.  XXX Used in head/title element (so, in bookmarks).
-    """
-    title = ObjectProperty(str, None, _title_doc)
+    """)
 
-    _prefix_doc = """
+    prefix = ObjectProperty(str, "", doc="""
     A string prefix used in generated links. It is
     inserted before the file path. This is important when the
     published site lives under a directory prefix, as is the case for
     GitHub Pages. The default is the empty string, meaning no prefix.
-    """
-    prefix = ObjectProperty(str, "", _prefix_doc)
+    """)
 
-    _ignored_files_doc = """
+    ignored_files = ObjectProperty(list, [".git", ".#*", "#*"], doc="""
     A list of shell globs for excluding input and config files from
     processing. The default is `[".git", ".#*","#*"]`.
-    """
-    ignored_files = ObjectProperty(list, [".git", ".#*", "#*"], _ignored_files_doc)
+    """)
 
-    _page_template_doc = """
+    page_template = ObjectProperty(TransomTemplate, _FALLBACK_PAGE_TEMPLATE, nullable=True, doc="""
     The default top-level template object for Markdown pages. The page
     template wraps `{{page.body}}`. The default is loaded from
     `config/page.html`.
-    """
-    page_template = ObjectProperty(TransomTemplate, _FALLBACK_PAGE_TEMPLATE, _page_template_doc, nullable=True)
+    """)
 
-    _body_template_doc = """
+    body_template = ObjectProperty(TransomTemplate, _FALLBACK_BODY_TEMPLATE, nullable=True, doc="""
     The default template object for the body element of Markdown
     pages. The body element wraps `{{page.content}}`. The default
     is loaded from `config/body.html`.
-    """
-    body_template = ObjectProperty(TransomTemplate, _FALLBACK_BODY_TEMPLATE, _body_template_doc, nullable=True)
+    """)
 
     def __init__(self, site_dir, verbose=False, quiet=False, threads=8):
         self._root_dir = Path(site_dir).resolve()
@@ -443,21 +437,21 @@ class TransomSite:
 class InputFile:
     __slots__ = "_site", "_input_path", "_output_path", "_url", "_parent", "_children", "_title"
 
-    _url_doc = """
+    url = ObjectProperty(str, readonly=True, doc="""
     The website path of this file.  It includes the site prefix, if configured.
-    """
-    url = ObjectProperty(str, None, _url_doc, readonly=True)
+    """)
 
-    _parent_doc = """
-    The parent index file of this file, or `None` if this is the root file.
-    """
-    # XXX Make this just an @property
-    parent = ObjectProperty(object, None, _parent_doc, readonly=True)
-
-    _title_doc = """
+    title = ObjectProperty(str, doc="""
     The title of this file.  Default title values are extracted from Markdown or HTML content.
-    """
-    title = ObjectProperty(str, None, _title_doc)
+    """)
+
+    parent = ObjectProperty("InputFile", readonly=True, doc="""
+    The parent index file of this file, or `None` if this is the root file.
+    """)
+
+    children = ObjectProperty(list, readonly=True, doc="""
+    The direct descendant files of this file.
+    """)
 
     def __init__(self, site, input_path, parent):
         self._site = site
@@ -490,13 +484,6 @@ class InputFile:
         while parent is not None:
             yield parent
             parent = parent.parent
-
-    @property
-    def children(self):
-        """
-        The direct descendant files of this file.
-        """
-        return self._children
 
     def _process_input(self, last_render_time=0):
         self._debug("Processing input")
@@ -561,19 +548,21 @@ class MarkdownPage(GeneratedFile):
     _MARKDOWN_TITLE_RE = re.compile(r"(?m)^(?:#|##)\s+(.*?)\n")
     _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
-    _page_template_doc = """
+    page_template = ObjectProperty(TransomTemplate, nullable=True, doc="""
     The top-level template object for the page.  The page
     template wraps `{{page.body}}`.  The default is the value of
     `site.page_template`.
-    """
-    page_template = ObjectProperty(TransomTemplate, None, _page_template_doc, nullable=True)
 
-    _body_template_doc = """
+    XXX null means
+    """)
+
+    body_template = ObjectProperty(TransomTemplate, nullable=True, doc="""
     The template object for the body element of the page.
     The body element wraps `{{page.content}}`.  The default is
     the value of `site.body_template`.
-    """
-    body_template = ObjectProperty(TransomTemplate, None, _body_template_doc, nullable=True)
+
+    XXX null means
+    """)
 
     def _process_input(self, last_render_time=0):
         modified = super()._process_input(last_render_time)
