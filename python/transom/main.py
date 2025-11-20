@@ -519,7 +519,7 @@ class GeneratedFile(InputFile):
         self._debug("Executing header code")
 
         with ErrorHandling([self._input_path, "header"]):
-            exec(header_code, self._globals, None)
+            exec(header_code, self._globals)
 
 class TemplateFile(GeneratedFile):
     __slots__ = "_template", "_globals"
@@ -532,7 +532,7 @@ class TemplateFile(GeneratedFile):
             text, header_code = self._extract_header_code(text)
 
             self._template = TransomTemplate(text, self._input_path)
-            self._globals = {**self._site._globals, "file": self}
+            self._globals = self._site._globals | {"file": self}
 
             if header_code:
                 self._exec_header_code(header_code)
@@ -574,7 +574,7 @@ class MarkdownPage(GeneratedFile):
             self._page_template = self._site.page_template
             self._body_template = self._site.body_template
             self._content_template = TransomTemplate(text, self._input_path)
-            self._globals = {**self._site._globals, "file": self, "page": self}
+            self._globals = self._site._globals | {"file": self, "page": self}
 
             if match_ := MarkdownPage._MARKDOWN_TITLE_RE.search(text):
                 self.title = match_.group(1)

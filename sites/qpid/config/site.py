@@ -1,7 +1,7 @@
 site_url = ""
 
-site.ignored_file_patterns.append("tracing_client_8cpp-example.html")
-site.ignored_file_patterns.append("_transom_template.html")
+site.ignored_files.append("tracing_client_8cpp-example.html")
+site.ignored_files.append("_transom_template.html")
 
 class _Release(object):
     def __init__(self, site_url, component_name, component_key, number):
