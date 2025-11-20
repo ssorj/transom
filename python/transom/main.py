@@ -45,7 +45,6 @@ class TransomError(Exception):
     """
     The standard Transom error.
     """
-
     def __init__(self, message, contexts=None):
         self.message = message
         self.contexts = contexts
@@ -129,7 +128,7 @@ def load_template(path) -> TransomTemplate:
     return TransomTemplate(path.read_text(), path)
 
 class ObjectProperty:
-    __slots__ = "type", "default", "__doc__", "readonly", "nullable", "name"
+    __slots__ = "name", "owner", "type", "default", "__doc__", "readonly", "nullable"
 
     def __init__(self, type_, default=None, doc=None, readonly=False, nullable=False):
         self.type = type_
@@ -139,6 +138,7 @@ class ObjectProperty:
         self.nullable = nullable
 
     def __set_name__(self, owner, name):
+        self.owner = owner
         self.name = name
 
     def __get__(self, obj, owner=None):
@@ -149,13 +149,13 @@ class ObjectProperty:
 
     def __set__(self, obj, value):
         if self.readonly:
-            raise TransomError(f"Property '{self.name}' is read-only")
+            raise TransomError(f"Property '{self.owner}.{self.name}' is read-only")
 
         if value is None and not self.nullable:
-            raise TransomError(f"Property '{self.name}' must not be None")
+            raise TransomError(f"Property '{self.owner}.{self.name}' must not be None")
 
         if not isinstance(value, (self.type, type(None))):
-            raise TransomError(f"Property '{self.name}' set to illegal type '{type(value).__name__}' "
+            raise TransomError(f"Property '{self.owner}.{self.name}' set to illegal type '{type(value).__name__}' "
                                f"(type '{self.type.__name__}' is required)")
 
         setattr(obj, f"_{self.name}", value)
