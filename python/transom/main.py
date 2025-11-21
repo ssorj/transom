@@ -35,6 +35,7 @@ import types
 import unicodedata
 
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
 from queue import Queue
@@ -161,37 +162,37 @@ class ObjectProperty:
         setattr(obj, f"_{self.name}", value)
 
 class TransomSite:
-    _FALLBACK_PAGE_TEMPLATE = TransomTemplate("<!doctype html>" \
-        "<html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>")
-    _FALLBACK_BODY_TEMPLATE = TransomTemplate("<body>{{page.content}}</body>")
+    # _FALLBACK_PAGE_TEMPLATE = TransomTemplate \
+    #     ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>")
+    # _FALLBACK_BODY_TEMPLATE = TransomTemplate("<body>{{page.content}}</body>")
 
-    title = ObjectProperty(str, doc="""
-    The site title.  XXX Used in head/title element (so, in bookmarks).
-    """)
+    # title = ObjectProperty(str, doc="""
+    # The site title.  XXX Used in head/title element (so, in bookmarks).
+    # """)
 
-    prefix = ObjectProperty(str, "", doc="""
-    A string prefix used in generated links. It is
-    inserted before the file path. This is important when the
-    published site lives under a directory prefix, as is the case for
-    GitHub Pages. The default is the empty string, meaning no prefix.
-    """)
+    # prefix = ObjectProperty(str, "", doc="""
+    # A string prefix used in generated links. It is
+    # inserted before the file path. This is important when the
+    # published site lives under a directory prefix, as is the case for
+    # GitHub Pages. The default is the empty string, meaning no prefix.
+    # """)
 
-    ignored_files = ObjectProperty(list, [".git", ".#*", "#*"], doc="""
-    A list of shell globs for excluding input and config files from
-    processing. The default is `[".git", ".#*","#*"]`.
-    """)
+    # ignored_files = ObjectProperty(list, [".git", ".#*", "#*"], doc="""
+    # A list of shell globs for excluding input and config files from
+    # processing. The default is `[".git", ".#*","#*"]`.
+    # """)
 
-    page_template = ObjectProperty(TransomTemplate, _FALLBACK_PAGE_TEMPLATE, nullable=True, doc="""
-    The default top-level template object for Markdown pages. The page
-    template wraps `{{page.body}}`. The default is loaded from
-    `config/page.html`.
-    """)
+    # page_template = ObjectProperty(TransomTemplate, _FALLBACK_PAGE_TEMPLATE, nullable=True, doc="""
+    # The default top-level template object for Markdown pages. The page
+    # template wraps `{{page.body}}`. The default is loaded from
+    # `config/page.html`.
+    # """)
 
-    body_template = ObjectProperty(TransomTemplate, _FALLBACK_BODY_TEMPLATE, nullable=True, doc="""
-    The default template object for the body element of Markdown
-    pages. The body element wraps `{{page.content}}`. The default
-    is loaded from `config/body.html`.
-    """)
+    # body_template = ObjectProperty(TransomTemplate, _FALLBACK_BODY_TEMPLATE, nullable=True, doc="""
+    # The default template object for the body element of Markdown
+    # pages. The body element wraps `{{page.content}}`. The default
+    # is loaded from `config/body.html`.
+    # """)
 
     def __init__(self, site_dir, verbose=False, quiet=False, threads=8):
         self._root_dir = Path(site_dir).resolve()
@@ -202,8 +203,10 @@ class TransomSite:
         self._verbose = verbose
         self._quiet = quiet
 
+        self.config = SiteConfig()
+
         self._globals = {
-            "site": self,
+            "site": self.config,
             "include": include,
             "load_template": load_template,
             "convert_markdown": convert_markdown,
@@ -258,11 +261,11 @@ class TransomSite:
 
         if page_template_path.exists():
             self._debug("Loading page template from '{}'", page_template_path)
-            self.page_template = load_template(page_template_path)
+            self.config.page_template = load_template(page_template_path)
 
         if body_template_path.exists():
             self._debug("Loading body template from '{}'", body_template_path)
-            self.body_template = load_template(body_template_path)
+            self.config.body_template = load_template(body_template_path)
 
         if site_code_path.exists():
             self._debug("Executing site code in '{}'", self._config_dir / "site.py")
@@ -271,7 +274,7 @@ class TransomSite:
                 exec(site_code_path.read_text(), self._globals)
 
         self._ignored_files_re = re.compile \
-            ("|".join([fnmatch.translate(x) for x in self.ignored_files] + ["(?!)"]))
+            ("|".join([fnmatch.translate(x) for x in self.config.ignored_files] + ["(?!)"]))
 
     def _load_input_files(self):
         self._debug("Loading input files in '{}'", self._input_dir)
@@ -371,8 +374,8 @@ class TransomSite:
         for thread in self._worker_threads:
             thread.commands.join()
 
-        if self.title is None:
-            self.title = input_files[0].title
+        if self.config.title is None:
+            self.config.title = input_files[0].title
 
         modified_count = sum(len(x) for x in modified_file_batches)
 
@@ -434,6 +437,22 @@ class TransomSite:
 
         self._log(f"{colorize('error:', '31;1')} {message}", *args)
 
+@dataclass
+class SiteConfig:
+    title: str = None
+    prefix: str = ""
+    ignored_files: list[str] = field(default_factory=lambda: [".git", ".#*", "#*"])
+    page_template: TransomTemplate = TransomTemplate \
+        ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>")
+    body_template: TransomTemplate = TransomTemplate("<body>{{page.content}}</body>")
+
+# @dataclass
+# class FileConfig:
+#     url: str # readonly
+#     title: str
+#     parent: InputFile # readonly
+#     children: list[InputFile] # readonly
+
 class InputFile:
     __slots__ = "_site", "_input_path", "_output_path", "_url", "_parent", "_children", "_title"
 
@@ -466,7 +485,7 @@ class InputFile:
 
         self._output_path = self._site._output_dir / output_path
 
-        self._url = f"{self._site.prefix}/{output_path}"
+        self._url = f"{self._site.config.prefix}/{output_path}"
         self._parent = parent
         self._children = []
         self._title = self._output_path.name
@@ -571,8 +590,8 @@ class MarkdownPage(GeneratedFile):
             text = self._input_path.read_text()
             text, header_code = self._extract_header_code(text)
 
-            self._page_template = self._site.page_template
-            self._body_template = self._site.body_template
+            self._page_template = self._site.config.page_template
+            self._body_template = self._site.config.body_template
             self._content_template = TransomTemplate(text, self._input_path)
             self._globals = self._site._globals | {"file": self, "page": self}
 
@@ -744,14 +763,16 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
 
     # This intercepts all GET and HEAD requests
     def send_head(self):
-        if not self.path.startswith(self.server.site.prefix):
+        prefix = self.server.site.config.prefix
+
+        if not self.path.startswith(prefix):
             self.send_response(httpserver.HTTPStatus.TEMPORARY_REDIRECT)
-            self.send_header("Location", self.server.site.prefix + self.path)
+            self.send_header("Location", prefix + self.path)
             self.end_headers()
             return
 
         self.path = self.path + "index.html" if self.path.endswith("/") else self.path
-        self.path = self.path.removeprefix(self.server.site.prefix).removeprefix("/")
+        self.path = self.path.removeprefix(prefix).removeprefix("/")
 
         input_path = self.server.site._input_dir / self.path
 
