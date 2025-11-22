@@ -441,7 +441,7 @@ class StaticFile(InputFile):
         shutil.copy(self.input_path, self.output_path)
 
 class TemplatePage(InputFile):
-    __slots__ = "config", "variables", "code", "template"
+    __slots__ = "config", "variables", "template"
     _HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
     _MARKDOWN_TITLE_RE = re.compile(r"(?m)^(?:#|##)\s+(.*?)\n")
     _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
@@ -458,7 +458,6 @@ class TemplatePage(InputFile):
         if modified:
             code, text = self.process_text()
 
-            self.code = compile(code, "<string>", "exec") if code else None
             self.template = Template(text, self.input_path)
 
             if self.input_path.suffix in (".md", ".html"):
@@ -466,6 +465,12 @@ class TemplatePage(InputFile):
                     self.config.title = match_.group(1)
                 elif match_ := MarkdownPage._HTML_TITLE_RE.search(text):
                     self.config.title = match_.group(1)
+
+            if code:
+                self._debug("Executing page code")
+
+                with ErrorHandling([self.input_path, "header"]):
+                    exec(code, self.variables)
 
         return modified
 
@@ -479,12 +484,6 @@ class TemplatePage(InputFile):
 
     def render_output(self):
         super().render_output()
-
-        if self.code:
-            self._debug("Executing page code")
-
-            with ErrorHandling([self.input_path, "header"]):
-                exec(self.code, self.variables)
 
         self.template.write(self)
 
@@ -512,30 +511,24 @@ class TemplatePage(InputFile):
         return f"<nav class=\"transom-page-path\">{''.join(links)}</nav>"
 
 class MarkdownPage(TemplatePage):
-    __slots__ = ()
+    __slots__ = "content",
 
     def process_text(self):
+        code, text = super().process_text()
+
+        self.content = MarkdownLocal.INSTANCE.value(text)
+
         page_path = Path(self.config.page_template)
         body_path = Path(self.config.body_template)
 
         page = page_path.read_text() if page_path.exists() else "@body@"
         body = body_path.read_text() if body_path.exists() else "@content@"
 
-        code = None
-        content = self.input_path.read_text()
-
-        if match_ := TemplatePage._HEADER_RE.match(content):
-            code = match_.group(1)
-            content = content[match_.end():]
-
-        content = MarkdownLocal.INSTANCE.value(content)
-        text = page.replace("@body@", body.replace("@content@", content))
+        text = page.replace("@body@", body.replace("@content@", self.content))
 
         return code, text
 
     def toc_nav(self) -> str:
-        return "XXX"
-
         """
         Generate a table of contents.  It produces a `<nav>`
         element with links to the headings in the content of this
@@ -544,7 +537,7 @@ class MarkdownPage(TemplatePage):
         aside.
         """
         parser = HeadingParser()
-        parser.feed("".join(self.content))
+        parser.feed(self.content)
 
         links = tuple(f"<a href=\"#{x[1]}\">{x[2]}</a>" for x in parser.headings
                       if x[0] in ("h1", "h2") and x[1] is not None)
