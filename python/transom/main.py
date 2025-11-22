@@ -107,8 +107,8 @@ class TransomTemplate:
             if type(piece) is tuple:
                 code, token = piece
 
-                with ErrorHandling([input_file._input_path, token]):
-                    result = eval(code, input_file._globals)
+                with ErrorHandling([input_file.input_path, token]):
+                    result = eval(code, input_file.globals)
 
                 if type(result) is types.GeneratorType:
                     yield from result
@@ -119,7 +119,7 @@ class TransomTemplate:
 
     def write(self, input_file):
         text = "".join(self.render(input_file))
-        input_file._output_path.write_text(text)
+        input_file.output_path.write_text(text)
 
 def load_template(path) -> TransomTemplate:
     """
@@ -128,44 +128,252 @@ def load_template(path) -> TransomTemplate:
     path = Path(path) if isinstance(path, str) else path
     return TransomTemplate(path.read_text(), path)
 
-class ObjectProperty:
-    __slots__ = "name", "owner", "type", "default", "__doc__", "readonly", "nullable"
-
-    def __init__(self, type_, default=None, doc=None, readonly=False, nullable=False):
-        self.type = type_
-        self.default = default
-        self.__doc__ = doc
-        self.readonly = readonly
-        self.nullable = nullable
-
-    def __set_name__(self, owner, name):
-        self.owner = owner
-        self.name = name
-
-    def __get__(self, obj, owner=None):
-        if obj is None:
-            return self
-
-        return getattr(obj, f"_{self.name}", self.default)
-
-    def __set__(self, obj, value):
-        if self.readonly:
-            raise TransomError(f"Property '{self.owner}.{self.name}' is read-only")
-
-        if value is None and not self.nullable:
-            raise TransomError(f"Property '{self.owner}.{self.name}' must not be None")
-
-        if not isinstance(value, (self.type, type(None))):
-            raise TransomError(f"Property '{self.owner}.{self.name}' set to illegal type '{type(value).__name__}' "
-                               f"(type '{self.type.__name__}' is required)")
-
-        setattr(obj, f"_{self.name}", value)
-
 class TransomSite:
-    # _FALLBACK_PAGE_TEMPLATE = TransomTemplate \
-    #     ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>")
-    # _FALLBACK_BODY_TEMPLATE = TransomTemplate("<body>{{page.content}}</body>")
+    def __init__(self, root_dir, verbose=False, quiet=False, threads=8):
+        self.root_dir = Path(root_dir).resolve()
+        self.config_dir = self.root_dir / "config"
+        self.input_dir = self.root_dir / "input"
+        self.output_dir = self.root_dir / "output"
 
+        self.verbose = verbose
+        self.quiet = quiet
+
+        self.config = SiteConfig()
+
+        self.globals = {
+            "site": self.config,
+            "include": include,
+            "load_template": load_template,
+            "convert_markdown": convert_markdown,
+            "strip": strip,
+            "plural": plural,
+            "lipsum": lipsum,
+            "html_escape": html_escape,
+            "html_list": html_list,
+            "html_list_csv": html_list_csv,
+            "html_table": html_table,
+            "html_table_csv": html_table_csv,
+            "TransomError": TransomError,
+        }
+
+        threading.current_thread().name = "main-thread"
+
+        self.worker_threads = []
+        self.worker_errors = Queue()
+
+        for i in range(threads):
+            self.worker_threads.append(WorkerThread(self, f"worker-thread-{i + 1}", self.worker_errors))
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({repr(str(self.root_dir))})"
+
+    def __enter__(self):
+        self._start()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._stop()
+
+    def _start(self):
+        self._debug("Starting {} worker {}", len(self.worker_threads), plural("thread", len(self.worker_threads)))
+
+        for thread in self.worker_threads:
+            thread.start()
+
+    def _stop(self):
+        self._debug("Stopping worker threads")
+
+        for thread in self.worker_threads:
+            thread.commands.put((None, None))
+            thread.join()
+
+    def _load_config_files(self):
+        self._debug("Loading config files in '{}'", self.config_dir)
+
+        page_template_path = self.config_dir / "page.html"
+        body_template_path = self.config_dir / "body.html"
+        site_code_path = self.config_dir / "site.py"
+
+        if page_template_path.exists():
+            self._debug("Loading page template from '{}'", page_template_path)
+            self.config.page_template = load_template(page_template_path)
+
+        if body_template_path.exists():
+            self._debug("Loading body template from '{}'", body_template_path)
+            self.config.body_template = load_template(body_template_path)
+
+        if site_code_path.exists():
+            self._debug("Executing site code in '{}'", self.config_dir / "site.py")
+
+            with ErrorHandling([site_code_path]):
+                exec(site_code_path.read_text(), self.globals)
+
+        self._ignored_files_re = re.compile \
+            ("|".join([fnmatch.translate(x) for x in self.config.ignored_files] + ["(?!)"]))
+
+    def _load_input_files(self):
+        self._debug("Loading input files in '{}'", self.input_dir)
+
+        def find_input_files(start_path, input_files, parent_file):
+            def add_input_file(input_path, parent_file):
+                input_file = self._load_input_file(Path(entry.path), parent_file)
+
+                input_files.append(input_file)
+
+                if parent_file is not None:
+                    parent_file.children.append(input_file)
+
+                return input_file
+
+            with os.scandir(start_path) as entries:
+                entries = tuple(x for x in entries if not self._ignored_files_re.match(x.name))
+
+                for entry in entries:
+                    if entry.name in ("index.md", "index.html"):
+                        input_file = add_input_file(Path(entry.path), parent_file)
+                        parent_file = input_file
+                        break
+
+                for entry in entries:
+                    if entry.name in ("index.md", "index.html"):
+                        continue
+
+                    if entry.is_file():
+                        input_file = add_input_file(Path(entry.path), parent_file)
+                    elif entry.is_dir():
+                        find_input_files(entry.path, input_files, parent_file)
+
+        input_files = []
+
+        try:
+            find_input_files(self.input_dir, input_files, None)
+        except FileNotFoundError:
+            self._notice("Input directory not found: {}", self.input_dir)
+
+        return input_files
+
+    def _load_input_file(self, input_path, parent):
+        self._debug("Loading '{}'", input_path)
+
+        match input_path.suffix:
+            case ".md":
+                input_file = MarkdownPage(self, input_path, parent)
+            case ".css" | ".csv" | ".html" | ".js" | ".json" | ".svg" | ".txt":
+                input_file = TemplateFile(self, input_path, parent)
+            case _:
+                input_file = StaticFile(self, input_path, parent)
+
+        return input_file
+
+    def _find_config_modified(self, last_render_time):
+        def find_modified_file(start_path, last_render_time):
+            with os.scandir(start_path) as entries:
+                for entry in (x for x in entries if not self._ignored_files_re.match(x.name)):
+                    if entry.is_file():
+                        if entry.stat().st_mtime >= last_render_time:
+                            return True
+                    elif entry.is_dir():
+                        return find_modified_file(entry.path, last_render_time)
+
+        try:
+            if find_modified_file(self.config_dir, last_render_time):
+                return True
+        except FileNotFoundError:
+            self._notice("Config directory not found: {}", self.config_dir)
+
+    def _render(self, force=False):
+        self._notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
+
+        self._load_config_files()
+
+        input_files = self._load_input_files()
+        last_render_time = 0
+
+        if not input_files:
+            return input_files
+
+        if not force and self.output_dir.exists():
+            last_render_time = self.output_dir.stat().st_mtime
+
+            if self._find_config_modified(last_render_time):
+                last_render_time = 0
+
+        self._debug("Processing {:,} input {}", len(input_files), plural("file", len(input_files)))
+
+        input_file_batches = itertools.batched(input_files, math.ceil(len(input_files) / len(self.worker_threads)))
+        modified_file_batches = tuple([] for x in self.worker_threads)
+
+        for thread, files, modified_files in zip(self.worker_threads, input_file_batches, modified_file_batches):
+            thread.commands.put((thread.process_input_files, (files, last_render_time, modified_files)))
+
+        for thread in self.worker_threads:
+            thread.commands.join()
+
+        if self.config.title is None:
+            self.config.title = input_files[0].input_path.name # XXX should be title from page config
+
+        modified_count = sum(len(x) for x in modified_file_batches)
+
+        self._debug("Rendering {:,} output {} to '{}'", modified_count, plural("file", modified_count), self.output_dir)
+
+        for thread, files in zip(self.worker_threads, modified_file_batches):
+            thread.commands.put((thread.render_output_files, (files,)))
+
+        for thread in self.worker_threads:
+            thread.commands.join()
+
+        if not self.worker_errors.empty():
+            raise TransomError("Rendering failed")
+
+        if self.output_dir.exists():
+            self.output_dir.touch()
+
+        unmodified_count = len(input_files) - modified_count
+        unmodified_note = ""
+
+        if unmodified_count > 0:
+            unmodified_note = " ({:,} unchanged)".format(unmodified_count)
+
+        self._notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
+
+        return input_files
+
+    def _serve(self, port=8080):
+        self._notice("Serving the site at http://localhost:{}", port)
+
+        try:
+            with Server(self, port) as server:
+                server.serve_forever()
+        except OSError as e:
+            # OSError: [Errno 98] Address already in use
+            if e.errno == 98:
+                raise TransomError(f"Port {port} is already in use")
+            else: # pragma: nocover
+                raise
+
+    def _log(self, message, *args):
+        if self.verbose:
+            message = f"{colorize(threading.current_thread().name, '90')} {message}"
+
+        print(message.format(*args), file=sys.stderr, flush=True)
+
+    def _debug(self, message, *args):
+        if self.verbose:
+            self._log(colorize(f"debug: {message}", "37"), *args)
+
+    def _notice(self, message, *args):
+        if not self.quiet:
+            message = f"{colorize('notice:', '36')} {message}" if self.verbose else message
+            self._log(message, *args)
+
+    def _error(self, message, *args):
+        if self.verbose:
+            traceback.print_exc()
+
+        self._log(f"{colorize('error:', '31;1')} {message}", *args)
+
+@dataclass
+class SiteConfig:
     # title = ObjectProperty(str, doc="""
     # The site title.  XXX Used in head/title element (so, in bookmarks).
     # """)
@@ -194,251 +402,6 @@ class TransomSite:
     # is loaded from `config/body.html`.
     # """)
 
-    def __init__(self, site_dir, verbose=False, quiet=False, threads=8):
-        self._root_dir = Path(site_dir).resolve()
-        self._config_dir = self._root_dir / "config"
-        self._input_dir = self._root_dir / "input"
-        self._output_dir = self._root_dir / "output"
-
-        self._verbose = verbose
-        self._quiet = quiet
-
-        self.config = SiteConfig()
-
-        self._globals = {
-            "site": self.config,
-            "include": include,
-            "load_template": load_template,
-            "convert_markdown": convert_markdown,
-            "strip": strip,
-            "plural": plural,
-            "lipsum": lipsum,
-            "html_escape": html_escape,
-            "html_list": html_list,
-            "html_list_csv": html_list_csv,
-            "html_table": html_table,
-            "html_table_csv": html_table_csv,
-            "TransomError": TransomError,
-        }
-
-        threading.current_thread().name = "main-thread"
-
-        self._worker_threads = []
-        self._worker_errors = Queue()
-
-        for i in range(threads):
-            self._worker_threads.append(WorkerThread(self, f"worker-thread-{i + 1}", self._worker_errors))
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({repr(str(self._root_dir))})"
-
-    def __enter__(self):
-        self._start()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self._stop()
-
-    def _start(self):
-        self._debug("Starting {} worker {}", len(self._worker_threads), plural("thread", len(self._worker_threads)))
-
-        for thread in self._worker_threads:
-            thread.start()
-
-    def _stop(self):
-        self._debug("Stopping worker threads")
-
-        for thread in self._worker_threads:
-            thread.commands.put((None, None))
-            thread.join()
-
-    def _load_config_files(self):
-        self._debug("Loading config files in '{}'", self._config_dir)
-
-        page_template_path = self._config_dir / "page.html"
-        body_template_path = self._config_dir / "body.html"
-        site_code_path = self._config_dir / "site.py"
-
-        if page_template_path.exists():
-            self._debug("Loading page template from '{}'", page_template_path)
-            self.config.page_template = load_template(page_template_path)
-
-        if body_template_path.exists():
-            self._debug("Loading body template from '{}'", body_template_path)
-            self.config.body_template = load_template(body_template_path)
-
-        if site_code_path.exists():
-            self._debug("Executing site code in '{}'", self._config_dir / "site.py")
-
-            with ErrorHandling([site_code_path]):
-                exec(site_code_path.read_text(), self._globals)
-
-        self._ignored_files_re = re.compile \
-            ("|".join([fnmatch.translate(x) for x in self.config.ignored_files] + ["(?!)"]))
-
-    def _load_input_files(self):
-        self._debug("Loading input files in '{}'", self._input_dir)
-
-        def find_input_files(start_path, input_files, parent_file):
-            def add_input_file(input_path, parent_file):
-                input_file = self._load_input_file(Path(entry.path), parent_file)
-
-                input_files.append(input_file)
-
-                if parent_file is not None:
-                    parent_file._children.append(input_file)
-
-                return input_file
-
-            with os.scandir(start_path) as entries:
-                entries = tuple(x for x in entries if not self._ignored_files_re.match(x.name))
-
-                for entry in entries:
-                    if entry.name in ("index.md", "index.html"):
-                        input_file = add_input_file(Path(entry.path), parent_file)
-                        parent_file = input_file
-                        break
-
-                for entry in entries:
-                    if entry.name in ("index.md", "index.html"):
-                        continue
-
-                    if entry.is_file():
-                        input_file = add_input_file(Path(entry.path), parent_file)
-                    elif entry.is_dir():
-                        find_input_files(entry.path, input_files, parent_file)
-
-        input_files = []
-
-        try:
-            find_input_files(self._input_dir, input_files, None)
-        except FileNotFoundError:
-            self._notice("Input directory not found: {}", self._input_dir)
-
-        return input_files
-
-    def _load_input_file(self, input_path, parent):
-        self._debug("Loading '{}'", input_path)
-
-        match input_path.suffix:
-            case ".md":
-                input_file = MarkdownPage(self, input_path, parent)
-            case ".css" | ".csv" | ".html" | ".js" | ".json" | ".svg" | ".txt":
-                input_file = TemplateFile(self, input_path, parent)
-            case _:
-                input_file = StaticFile(self, input_path, parent)
-
-        return input_file
-
-    def _find_config_modified(self, last_render_time):
-        def find_modified_file(start_path, last_render_time):
-            with os.scandir(start_path) as entries:
-                for entry in (x for x in entries if not self._ignored_files_re.match(x.name)):
-                    if entry.is_file():
-                        if entry.stat().st_mtime >= last_render_time:
-                            return True
-                    elif entry.is_dir():
-                        return find_modified_file(entry.path, last_render_time)
-
-        try:
-            if find_modified_file(self._config_dir, last_render_time):
-                return True
-        except FileNotFoundError:
-            self._notice("Config directory not found: {}", self._config_dir)
-
-    def _render(self, force=False):
-        self._notice("Rendering files from '{}' to '{}'", self._input_dir, self._output_dir)
-
-        self._load_config_files()
-
-        input_files = self._load_input_files()
-        last_render_time = 0
-
-        if not input_files:
-            return input_files
-
-        if not force and self._output_dir.exists():
-            last_render_time = self._output_dir.stat().st_mtime
-
-            if self._find_config_modified(last_render_time):
-                last_render_time = 0
-
-        self._debug("Processing {:,} input {}", len(input_files), plural("file", len(input_files)))
-
-        input_file_batches = itertools.batched(input_files, math.ceil(len(input_files) / len(self._worker_threads)))
-        modified_file_batches = tuple([] for x in self._worker_threads)
-
-        for thread, files, modified_files in zip(self._worker_threads, input_file_batches, modified_file_batches):
-            thread.commands.put((thread.process_input_files, (files, last_render_time, modified_files)))
-
-        for thread in self._worker_threads:
-            thread.commands.join()
-
-        if self.config.title is None:
-            self.config.title = input_files[0].title
-
-        modified_count = sum(len(x) for x in modified_file_batches)
-
-        self._debug("Rendering {:,} output {} to '{}'", modified_count, plural("file", modified_count), self._output_dir)
-
-        for thread, files in zip(self._worker_threads, modified_file_batches):
-            thread.commands.put((thread.render_output_files, (files,)))
-
-        for thread in self._worker_threads:
-            thread.commands.join()
-
-        if not self._worker_errors.empty():
-            raise TransomError("Rendering failed")
-
-        if self._output_dir.exists():
-            self._output_dir.touch()
-
-        unmodified_count = len(input_files) - modified_count
-        unmodified_note = ""
-
-        if unmodified_count > 0:
-            unmodified_note = " ({:,} unchanged)".format(unmodified_count)
-
-        self._notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
-
-        return input_files
-
-    def _serve(self, port=8080):
-        self._notice("Serving the site at http://localhost:{}", port)
-
-        try:
-            with Server(self, port) as server:
-                server.serve_forever()
-        except OSError as e:
-            # OSError: [Errno 98] Address already in use
-            if e.errno == 98:
-                raise TransomError(f"Port {port} is already in use")
-            else: # pragma: nocover
-                raise
-
-    def _log(self, message, *args):
-        if self._verbose:
-            message = f"{colorize(threading.current_thread().name, '90')} {message}"
-
-        print(message.format(*args), file=sys.stderr, flush=True)
-
-    def _debug(self, message, *args):
-        if self._verbose:
-            self._log(colorize(f"debug: {message}", "37"), *args)
-
-    def _notice(self, message, *args):
-        if not self._quiet:
-            message = f"{colorize('notice:', '36')} {message}" if self._verbose else message
-            self._log(message, *args)
-
-    def _error(self, message, *args):
-        if self._verbose:
-            traceback.print_exc()
-
-        self._log(f"{colorize('error:', '31;1')} {message}", *args)
-
-@dataclass
-class SiteConfig:
     title: str = None
     prefix: str = ""
     ignored_files: list[str] = field(default_factory=lambda: [".git", ".#*", "#*"])
@@ -446,52 +409,28 @@ class SiteConfig:
         ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>")
     body_template: TransomTemplate = TransomTemplate("<body>{{page.content}}</body>")
 
-# @dataclass
-# class FileConfig:
-#     url: str # readonly
-#     title: str
-#     parent: InputFile # readonly
-#     children: list[InputFile] # readonly
-
 class InputFile:
-    __slots__ = "_site", "_input_path", "_output_path", "_url", "_parent", "_children", "_title"
-
-    url = ObjectProperty(str, readonly=True, doc="""
-    The website path of this file.  It includes the site prefix, if configured.
-    """)
-
-    title = ObjectProperty(str, doc="""
-    The title of this file.  Default title values are extracted from Markdown or HTML content.
-    """)
-
-    parent = ObjectProperty("InputFile", readonly=True, doc="""
-    The parent index file of this file, or `None` if this is the root file.
-    """)
-
-    children = ObjectProperty(list, readonly=True, doc="""
-    The direct descendant files of this file.
-    """)
+    __slots__ = "site", "input_path", "output_path", "url", "parent", "children"
 
     def __init__(self, site, input_path, parent):
-        self._site = site
-        self._input_path = input_path
+        self.site = site
+        self.input_path = input_path
 
         # Path.relative_to is surprisingly slow in Python 3.12, so we
         # avoid it here
-        output_path = str(self._input_path)[len(str(self._site._input_dir)) + 1:]
+        output_path = str(self.input_path)[len(str(self.site.input_dir)) + 1:]
 
         if output_path.endswith(".md"):
             output_path = output_path[:-3] + ".html"
 
-        self._output_path = self._site._output_dir / output_path
+        self.output_path = self.site.output_dir / output_path
 
-        self._url = f"{self._site.config.prefix}/{output_path}"
-        self._parent = parent
-        self._children = []
-        self._title = self._output_path.name
+        self.url = f"{self.site.config.prefix}/{output_path}"
+        self.parent = parent
+        self.children = []
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({repr(str(self._input_path))})"
+        return f"{self.__class__.__name__}({repr(str(self.input_path))})"
 
     @property
     def parents(self):
@@ -506,21 +445,21 @@ class InputFile:
 
     def _process_input(self, last_render_time=0):
         self._debug("Processing input")
-        return self._input_path.stat().st_mtime >= last_render_time
+        return self.input_path.stat().st_mtime >= last_render_time
 
     def _render_output(self):
         self._debug("Rendering output")
-        self._output_path.parent.mkdir(parents=True, exist_ok=True)
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
     def _debug(self, message, *args):
-        self._site._debug(f"{self._input_path}: {message}", *args)
+        self.site._debug(f"{self.input_path}: {message}", *args)
 
 class StaticFile(InputFile):
     __slots__ = ()
 
     def _render_output(self):
         super()._render_output()
-        shutil.copy(self._input_path, self._output_path)
+        shutil.copy(self.input_path, self.output_path)
 
 class GeneratedFile(InputFile):
     __slots__ = ()
@@ -537,21 +476,21 @@ class GeneratedFile(InputFile):
     def _exec_header_code(self, header_code):
         self._debug("Executing header code")
 
-        with ErrorHandling([self._input_path, "header"]):
-            exec(header_code, self._globals)
+        with ErrorHandling([self.input_path, "header"]):
+            exec(header_code, self.globals)
 
 class TemplateFile(GeneratedFile):
-    __slots__ = "_template", "_globals"
+    __slots__ = "template", "globals"
 
     def _process_input(self, last_render_time=0):
         modified = super()._process_input(last_render_time)
 
         if modified:
-            text = self._input_path.read_text()
+            text = self.input_path.read_text()
             text, header_code = self._extract_header_code(text)
 
-            self._template = TransomTemplate(text, self._input_path)
-            self._globals = self._site._globals | {"file": self}
+            self.template = TransomTemplate(text, self.input_path)
+            self.globals = self.site.globals
 
             if header_code:
                 self._exec_header_code(header_code)
@@ -560,45 +499,32 @@ class TemplateFile(GeneratedFile):
 
     def _render_output(self):
         super()._render_output()
-        self._template.write(self)
+        self.template.write(self)
 
 class MarkdownPage(GeneratedFile):
-    __slots__ = "_page_template", "_body_template", "_content_template", "_globals"
+    __slots__ = "config", "content_template", "globals"
     _MARKDOWN_TITLE_RE = re.compile(r"(?m)^(?:#|##)\s+(.*?)\n")
     _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
-    page_template = ObjectProperty(TransomTemplate, nullable=True, doc="""
-    The top-level template object for the page.  The page
-    template wraps `{{page.body}}`.  The default is the value of
-    `site.page_template`.
-
-    XXX null means
-    """)
-
-    body_template = ObjectProperty(TransomTemplate, nullable=True, doc="""
-    The template object for the body element of the page.
-    The body element wraps `{{page.content}}`.  The default is
-    the value of `site.body_template`.
-
-    XXX null means
-    """)
-
     def _process_input(self, last_render_time=0):
         modified = super()._process_input(last_render_time)
 
         if modified:
-            text = self._input_path.read_text()
+            text = self.input_path.read_text()
             text, header_code = self._extract_header_code(text)
 
-            self._page_template = self._site.config.page_template
-            self._body_template = self._site.config.body_template
-            self._content_template = TransomTemplate(text, self._input_path)
-            self._globals = self._site._globals | {"file": self, "page": self}
+            self.config = PageConfig(self)
+
+            self.config.page_template = self.site.config.page_template
+            self.config.body_template = self.site.config.body_template
+
+            self.content_template = TransomTemplate(text, self.input_path)
+            self.globals = self.site.globals | {"page": self.config}
 
             if match_ := MarkdownPage._MARKDOWN_TITLE_RE.search(text):
-                self.title = match_.group(1)
+                self.config.title = match_.group(1)
             elif match_ := MarkdownPage._HTML_TITLE_RE.search(text):
-                self.title = match_.group(1)
+                self.config.title = match_.group(1)
 
             if header_code:
                 self._exec_header_code(header_code)
@@ -607,18 +533,14 @@ class MarkdownPage(GeneratedFile):
 
     def _render_output(self):
         super()._render_output()
-        self._page_template.write(self)
+        self.config.page_template.write(self)
 
     @property
     def body(self):
-        """
-        The body element of the page.  It is rendered from
-        `page.body_template`.
-        """
-        if self._body_template is None:
+        if self.config.body_template is None:
             return self.content
 
-        return self._body_template.render(self)
+        return self.config.body_template.render(self)
 
     @property
     def content(self):
@@ -626,7 +548,7 @@ class MarkdownPage(GeneratedFile):
         The primary page content.  It is rendered from
         the page input path, `input/<file>.md`.
         """
-        pieces = self._content_template.render(self)
+        pieces = self.content_template.render(self)
         return MarkdownLocal.INSTANCE.value("".join(pieces))
 
     def render_template(self, path) -> Iterator[str]:
@@ -645,7 +567,8 @@ class MarkdownPage(GeneratedFile):
         """
         files = [self] + list(self.parents)
         files.reverse()
-        links = tuple(f"<a href=\"{x.url}\">{x.title}</a>" for x in files[start:end])
+        links = tuple(f"<a href=\"{x.url}\">{x.config.title if hasattr(x, "config") else x.input_path.name}</a>" for x in files[start:end]) # XXX
+
 
         if len(links) < min:
             return ""
@@ -667,6 +590,78 @@ class MarkdownPage(GeneratedFile):
                       if x[0] in ("h1", "h2") and x[1] is not None)
 
         return f"<nav class=\"transom-page-toc\">{''.join(links)}</nav>"
+
+@dataclass
+class PageConfig:
+    # title = ObjectProperty(str, doc="""
+    # The title of this file.  Default title values are extracted from Markdown or HTML content.
+    # """)
+    # page_template = ObjectProperty(TransomTemplate, nullable=True, doc="""
+    # The top-level template object for the page.  The page
+    # template wraps `{{page.body}}`.  The default is the value of
+    # `site.page_template`.
+    # XXX null means
+    # """)
+    # body_template = ObjectProperty(TransomTemplate, nullable=True, doc="""
+    # The template object for the body element of the page.
+    # The body element wraps `{{page.content}}`.  The default is
+    # the value of `site.body_template`.
+    # XXX null means
+    # """)
+
+    _page: MarkdownPage
+    title: str = None
+    page_template: TransomTemplate = None
+    body_template: TransomTemplate = None
+
+    @property
+    def url(self):
+        """
+        The website path of this file.  It includes the site
+        prefix, if configured.
+        """
+        return self._page.url
+
+    @property
+    def parent(self):
+        """
+        The parent index file of this file, or `None` if this is
+        the root file.
+        """
+        return self._page.parent
+
+    @property
+    def children(self):
+        """
+        The direct descendant files of this file.
+        """
+        return tuple(self._page.children)
+
+    @property
+    def body(self):
+        """
+        The body element of the page.  It is rendered from
+        `page.body_template`.
+
+        XXX If body template is none
+        """
+        return self._page.body
+
+    @property
+    def content(self):
+        return self._page.content
+
+    # XXX
+    def path_nav(self, start=0, end=None, min=1) -> str:
+        return self._page.path_nav(start, end, min)
+
+    # XXX
+    def toc_nav(self):
+        return self._page.toc_nav()
+
+    # XXX
+    def render_template(self, path):
+        return self._page.render_template(path)
 
 class WorkerThread(threading.Thread):
     def __init__(self, site, name, errors):
@@ -747,11 +742,11 @@ class Server(httpserver.ThreadingHTTPServer):
         self.render()
 
     def render(self):
-        self.input_files = {x._input_path: x for x in self.site._render()}
+        self.input_files = {x.input_path: x for x in self.site._render()}
 
 class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
-        super().__init__(request, client_address, server, directory=server.site._output_dir)
+        super().__init__(request, client_address, server, directory=server.site.output_dir)
 
     def do_POST(self):
         assert self.path == "/STOP", self.path
@@ -774,7 +769,7 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
         self.path = self.path + "index.html" if self.path.endswith("/") else self.path
         self.path = self.path.removeprefix(prefix).removeprefix("/")
 
-        input_path = self.server.site._input_dir / self.path
+        input_path = self.server.site.input_dir / self.path
 
         try:
             if input_path.is_file():
@@ -857,7 +852,7 @@ class TransomCommand:
                                 threads=self.args.threads)
 
         if self.args.output:
-            self.site._output_dir = Path(self.args.output)
+            self.site.output_dir = Path(self.args.output)
 
     def main(self, args=None):
         try:

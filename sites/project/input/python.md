@@ -3,7 +3,8 @@ import inspect as _inspect
 import re as _re
 import textwrap as _textwrap
 
-from transom.main import TransomSite as _TransomSite, InputFile as _InputFile, MarkdownPage as _MarkdownPage
+#from transom.main import TransomSite as _TransomSite, InputFile as _InputFile, PageConfig as _PageConfig
+from transom.main import SiteConfig as _SiteConfig, PageConfig as _PageConfig
 
 def _format_value(value):
     match value:
@@ -27,7 +28,7 @@ def _render_properties(type_, obj, obj_name):
             continue
 
         # This avoids recursion
-        if obj_name in ("file", "page") and name == "content":
+        if obj_name == "page" and name == "content":
             yield _format_comment(_inspect.getdoc(member))
             yield "page.content = '[...]'\n\n"
             continue
@@ -80,21 +81,21 @@ You can modify site properties in `config/site.py`.  Use
 # The object representing the whole site
 site = {{repr(site)}}
 
-{{strip(_render_properties(_TransomSite, site, "site"))}}
+{{strip(_render_properties(_SiteConfig, site, "site"))}}
 ~~~
 
-## The file object
+<!-- ## The file object -->
 
-All textual files (`.css`, `.csv`, `.html`, `.js`, `.json`, `.md`,
-`.svg`, `.txt`) are processed as templates.  You can access and modify
-file properties by accessing the `file` variable.
+<!-- All textual files (`.css`, `.csv`, `.html`, `.js`, `.json`, `.md`, -->
+<!-- `.svg`, `.txt`) are processed as templates.  You can access and modify -->
+<!-- file properties by accessing the `file` variable. -->
 
-~~~ python
-# The object representing the current file
-file = {{repr(file)}}
+<!-- ~~~ python -->
+<!-- # The object representing the current file -->
+<!-- file = {{{repr(file)}}} -->
 
-{{strip(_render_properties(_InputFile, file, "file"))}}
-~~~
+<!-- {{{strip(_render_properties(_InputFile, file, "file"))}}} -->
+<!-- ~~~ -->
 
 ## The page object
 
@@ -105,9 +106,9 @@ through the `page` variable.
 # The object representing the current page
 page = {{repr(page)}}
 
-{{strip(_render_properties(_MarkdownPage, page, "page"))}}
+{{strip(_render_properties(_PageConfig, page, "page"))}}
 
-{{strip(_render_methods(_MarkdownPage, page, "page"))}}
+{{strip(_render_methods(_PageConfig, page, "page"))}}
 ~~~
 
 ## Global functions and classes
