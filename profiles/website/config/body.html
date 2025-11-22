@@ -1,16 +1,16 @@
 <body class="transom-page">
   <header>
     <div><a href="{{site.prefix}}/index.html">★</a></div>
-    <div>{{page.path_nav()}}</div>
+    <div>{{path_nav()}}</div>
     <div><a href="{{site.prefix}}/index.html">★</a></div>
   </header>
   <main>
-    {{page.content}}
+    @content@
   </main>
-  <aside>{{page.toc_nav()}}</aside>
+  <aside>{{toc_nav()}}</aside>
   <footer>
     <div></div>
-    <div>{{page.path_nav()}}</div>
+    <div>{{path_nav()}}</div>
     <div></div>
   </footer>
 </body>

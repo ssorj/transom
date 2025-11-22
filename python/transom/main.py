@@ -36,6 +36,7 @@ import unicodedata
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from functools import partial
 from html.parser import HTMLParser
 from pathlib import Path
 from queue import Queue
@@ -72,61 +73,6 @@ class ErrorHandling:
 
         if exc_type is not None:
             raise TransomError(exc_value, self.contexts)
-
-class Template:
-    __slots__ = "pieces", "context"
-    _VARIABLE_RE = re.compile(r"({{{.+?}}}|{{.+?}})")
-
-    def __init__(self, text, context=None):
-        self.pieces = []
-        self.context = context
-
-        self._parse(text)
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({repr(str(self.context))})"
-
-    def _parse(self, text):
-        for token in Template._VARIABLE_RE.split(text):
-            if token.startswith("{{{") and token.endswith("}}}"):
-                piece = token[1:-1]
-            elif token.startswith("{{") and token.endswith("}}"):
-                code = token[2:-2]
-
-                try:
-                    piece = compile(code, "<string>", "eval"), repr(code)
-                except Exception as e:
-                    raise TransomError(e, [self.context, repr(code)])
-            else:
-                piece = token
-
-            self.pieces.append(piece)
-
-    def render(self, input_file):
-        for piece in self.pieces:
-            if type(piece) is tuple:
-                code, token = piece
-
-                with ErrorHandling([input_file.input_path, token]):
-                    result = eval(code, input_file.variables)
-
-                if type(result) is types.GeneratorType:
-                    yield from result
-                else:
-                    yield str(result)
-            else:
-                yield piece
-
-    def write(self, input_file):
-        text = "".join(self.render(input_file))
-        input_file.output_path.write_text(text)
-
-def load_template(path) -> Template:
-    """
-    Load the template at 'path'.
-    """
-    path = Path(path) if isinstance(path, str) else path
-    return Template(path.read_text(), path)
 
 class TransomSite:
     def __init__(self, root_dir, verbose=False, quiet=False, threads=8):
@@ -175,25 +121,25 @@ class TransomSite:
         self._stop()
 
     def _start(self):
-        self._debug("Starting {} worker {}", len(self.worker_threads), plural("thread", len(self.worker_threads)))
+        self.debug("Starting {} worker {}", len(self.worker_threads), plural("thread", len(self.worker_threads)))
 
         for thread in self.worker_threads:
             thread.start()
 
     def _stop(self):
-        self._debug("Stopping worker threads")
+        self.debug("Stopping worker threads")
 
         for thread in self.worker_threads:
             thread.commands.put((None, None))
             thread.join()
 
     def _load_config_files(self):
-        self._debug("Loading config files in '{}'", self.config_dir)
+        self.debug("Loading config files in '{}'", self.config_dir)
 
         site_code_path = self.config_dir / "site.py"
 
         if site_code_path.exists():
-            self._debug("Executing site code in '{}'", self.config_dir / "site.py")
+            self.debug("Executing site code in '{}'", self.config_dir / "site.py")
 
             with ErrorHandling([site_code_path]):
                 exec(site_code_path.read_text(), self.variables)
@@ -202,7 +148,7 @@ class TransomSite:
             ("|".join([fnmatch.translate(x) for x in self.config.ignored_files] + ["(?!)"]))
 
     def _load_input_files(self):
-        self._debug("Loading input files in '{}'", self.input_dir)
+        self.debug("Loading input files in '{}'", self.input_dir)
 
         def find_input_files(start_path, input_files, parent_file):
             def add_input_file(input_path, parent_file):
@@ -238,12 +184,12 @@ class TransomSite:
         try:
             find_input_files(self.input_dir, input_files, None)
         except FileNotFoundError:
-            self._notice("Input directory not found: {}", self.input_dir)
+            self.notice("Input directory not found: {}", self.input_dir)
 
         return input_files
 
     def _load_input_file(self, input_path, parent):
-        self._debug("Loading '{}'", input_path)
+        self.debug("Loading '{}'", input_path)
 
         match input_path.suffix:
             case ".md":
@@ -269,10 +215,10 @@ class TransomSite:
             if find_modified_file(self.config_dir, last_render_time):
                 return True
         except FileNotFoundError:
-            self._notice("Config directory not found: {}", self.config_dir)
+            self.notice("Config directory not found: {}", self.config_dir)
 
     def _render(self, force=False):
-        self._notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
+        self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
 
         self._load_config_files()
 
@@ -288,7 +234,7 @@ class TransomSite:
             if self._find_config_modified(last_render_time):
                 last_render_time = 0
 
-        self._debug("Processing {:,} input {}", len(input_files), plural("file", len(input_files)))
+        self.debug("Processing {:,} input {}", len(input_files), plural("file", len(input_files)))
 
         input_file_batches = itertools.batched(input_files, math.ceil(len(input_files) / len(self.worker_threads)))
         modified_file_batches = tuple([] for x in self.worker_threads)
@@ -304,7 +250,7 @@ class TransomSite:
 
         modified_count = sum(len(x) for x in modified_file_batches)
 
-        self._debug("Rendering {:,} output {} to '{}'", modified_count, plural("file", modified_count), self.output_dir)
+        self.debug("Rendering {:,} output {} to '{}'", modified_count, plural("file", modified_count), self.output_dir)
 
         for thread, files in zip(self.worker_threads, modified_file_batches):
             thread.commands.put((thread.render_output_files, (files,)))
@@ -324,12 +270,12 @@ class TransomSite:
         if unmodified_count > 0:
             unmodified_note = " ({:,} unchanged)".format(unmodified_count)
 
-        self._notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
+        self.notice("Rendered {:,} output {}{}", modified_count, plural("file", modified_count), unmodified_note)
 
         return input_files
 
     def _serve(self, port=8080):
-        self._notice("Serving the site at http://localhost:{}", port)
+        self.notice("Serving the site at http://localhost:{}", port)
 
         try:
             with Server(self, port) as server:
@@ -341,26 +287,26 @@ class TransomSite:
             else: # pragma: nocover
                 raise
 
-    def _log(self, message, *args):
+    def log(self, message, *args):
         if self.verbose:
             message = f"{colorize(threading.current_thread().name, '90')} {message}"
 
         print(message.format(*args), file=sys.stderr, flush=True)
 
-    def _debug(self, message, *args):
+    def debug(self, message, *args):
         if self.verbose:
-            self._log(colorize(f"debug: {message}", "37"), *args)
+            self.log(colorize(f"debug: {message}", "37"), *args)
 
-    def _notice(self, message, *args):
+    def notice(self, message, *args):
         if not self.quiet:
             message = f"{colorize('notice:', '36')} {message}" if self.verbose else message
-            self._log(message, *args)
+            self.log(message, *args)
 
-    def _error(self, message, *args):
+    def error(self, message, *args):
         if self.verbose:
             traceback.print_exc()
 
-        self._log(f"{colorize('error:', '31;1')} {message}", *args)
+        self.log(f"{colorize('error:', '31;1')} {message}", *args)
 
 @dataclass
 class SiteConfig:
@@ -423,15 +369,15 @@ class InputFile:
             parent = parent.parent
 
     def process_input(self, last_render_time=0):
-        self._debug("Processing input")
+        self.debug("Processing input")
         return self.input_path.stat().st_mtime >= last_render_time
 
     def render_output(self):
-        self._debug("Rendering output")
+        self.debug("Rendering output")
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def _debug(self, message, *args):
-        self.site._debug(f"{self.input_path}: {message}", *args)
+    def debug(self, message, *args):
+        self.site.debug(f"{self.input_path}: {message}", *args)
 
 class StaticFile(InputFile):
     __slots__ = ()
@@ -450,7 +396,16 @@ class TemplatePage(InputFile):
         super().__init__(site, input_path, parent)
 
         self.config = PageConfig(self)
-        self.variables = self.site.variables | {"page": PageConfig(self)}
+        self.variables = self.site.variables | {
+            "page": PageConfig(self),
+            "path_nav": partial(self.path_nav),
+            "render_template": partial(self.render_template),
+        }
+
+        try:
+            self.variables["toc_nav"] = partial(self.toc_nav)
+        except AttributeError:
+            pass
 
     def process_input(self, last_render_time=0):
         modified = super().process_input(last_render_time)
@@ -467,7 +422,7 @@ class TemplatePage(InputFile):
                     self.config.title = match_.group(1)
 
             if code:
-                self._debug("Executing page code")
+                self.debug("Executing page code")
 
                 with ErrorHandling([self.input_path, "header"]):
                     exec(code, self.variables)
@@ -484,7 +439,6 @@ class TemplatePage(InputFile):
 
     def render_output(self):
         super().render_output()
-
         self.template.write(self)
 
     def render_template(self, path) -> Iterator[str]:
@@ -563,17 +517,60 @@ class PageConfig:
     page_template: str = "config/page.html"
     body_template: str = "config/body.html"
 
-    # XXX
-    def path_nav(self, start=0, end=None, min=1) -> str:
-        return self._page.path_nav(start, end, min)
+class Template:
+    __slots__ = "pieces", "context"
+    _VARIABLE_RE = re.compile(r"({{{.+?}}}|{{.+?}})")
 
-    # XXX
-    def toc_nav(self):
-        return self._page.toc_nav()
+    def __init__(self, text, context=None):
+        self.pieces = []
+        self.context = context
 
-    # XXX
-    def render_template(self, path):
-        return self._page.render_template(path)
+        self._parse(text)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({repr(str(self.context))})"
+
+    def _parse(self, text):
+        for token in Template._VARIABLE_RE.split(text):
+            if token.startswith("{{{") and token.endswith("}}}"):
+                piece = token[1:-1]
+            elif token.startswith("{{") and token.endswith("}}"):
+                code = token[2:-2]
+
+                try:
+                    piece = compile(code, "<string>", "eval"), repr(code)
+                except Exception as e:
+                    raise TransomError(e, [self.context, repr(code)])
+            else:
+                piece = token
+
+            self.pieces.append(piece)
+
+    def render(self, input_file):
+        for piece in self.pieces:
+            if type(piece) is tuple:
+                code, token = piece
+
+                with ErrorHandling([input_file.input_path, token]):
+                    result = eval(code, input_file.variables)
+
+                if type(result) is types.GeneratorType:
+                    yield from result
+                else:
+                    yield str(result)
+            else:
+                yield piece
+
+    def write(self, input_file):
+        text = "".join(self.render(input_file))
+        input_file.output_path.write_text(text)
+
+def load_template(path) -> Template:
+    """
+    Load the template at 'path'.
+    """
+    path = Path(path) if isinstance(path, str) else path
+    return Template(path.read_text(), path)
 
 class WorkerThread(threading.Thread):
     def __init__(self, site, name, errors):
@@ -593,7 +590,7 @@ class WorkerThread(threading.Thread):
             try:
                 fn(*args)
             except TransomError as e:
-                self.site._error(str(e))
+                self.site.error(str(e))
                 self.errors.put(e)
             except Exception as e: # pragma: nocover
                 traceback.print_exc()
@@ -782,10 +779,10 @@ class TransomCommand:
             pass
 
     def notice(self, message, *args):
-        self.site._notice(message, *args)
+        self.site.notice(message, *args)
 
     def fail(self, message, *args):
-        self.site._error(message, *args)
+        self.site.error(message, *args)
         sys.exit(1)
 
     def command_init(self):

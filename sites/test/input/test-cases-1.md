@@ -37,5 +37,5 @@ violet == "{{violet}}"
 ## Generate path navigation with leading and trailing elements stripped
 
 ~~~
-page.path_nav(1, -1) == "{{page.path_nav(1, -1)}}"
+path_nav(1, -1) == "{{path_nav(1, -1)}}"
 ~~~
