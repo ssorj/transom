@@ -73,7 +73,7 @@ class ErrorHandling:
         if exc_type is not None:
             raise TransomError(exc_value, self.contexts)
 
-class TransomTemplate:
+class Template:
     __slots__ = "pieces", "context"
     _VARIABLE_RE = re.compile(r"({{{.+?}}}|{{.+?}})")
 
@@ -87,7 +87,7 @@ class TransomTemplate:
         return f"{self.__class__.__name__}({repr(str(self.context))})"
 
     def _parse(self, text):
-        for token in TransomTemplate._VARIABLE_RE.split(text):
+        for token in Template._VARIABLE_RE.split(text):
             if token.startswith("{{{") and token.endswith("}}}"):
                 piece = token[1:-1]
             elif token.startswith("{{") and token.endswith("}}"):
@@ -108,7 +108,7 @@ class TransomTemplate:
                 code, token = piece
 
                 with ErrorHandling([input_file.input_path, token]):
-                    result = eval(code, input_file.globals)
+                    result = eval(code, input_file.variables)
 
                 if type(result) is types.GeneratorType:
                     yield from result
@@ -121,12 +121,12 @@ class TransomTemplate:
         text = "".join(self.render(input_file))
         input_file.output_path.write_text(text)
 
-def load_template(path) -> TransomTemplate:
+def load_template(path) -> Template:
     """
     Load the template at 'path'.
     """
     path = Path(path) if isinstance(path, str) else path
-    return TransomTemplate(path.read_text(), path)
+    return Template(path.read_text(), path)
 
 class TransomSite:
     def __init__(self, root_dir, verbose=False, quiet=False, threads=8):
@@ -140,7 +140,7 @@ class TransomSite:
 
         self.config = SiteConfig()
 
-        self.globals = {
+        self.variables = {
             "site": self.config,
             "include": include,
             "load_template": load_template,
@@ -190,23 +190,13 @@ class TransomSite:
     def _load_config_files(self):
         self._debug("Loading config files in '{}'", self.config_dir)
 
-        page_template_path = self.config_dir / "page.html"
-        body_template_path = self.config_dir / "body.html"
         site_code_path = self.config_dir / "site.py"
-
-        if page_template_path.exists():
-            self._debug("Loading page template from '{}'", page_template_path)
-            self.config.page_template = load_template(page_template_path)
-
-        if body_template_path.exists():
-            self._debug("Loading body template from '{}'", body_template_path)
-            self.config.body_template = load_template(body_template_path)
 
         if site_code_path.exists():
             self._debug("Executing site code in '{}'", self.config_dir / "site.py")
 
             with ErrorHandling([site_code_path]):
-                exec(site_code_path.read_text(), self.globals)
+                exec(site_code_path.read_text(), self.variables)
 
         self._ignored_files_re = re.compile \
             ("|".join([fnmatch.translate(x) for x in self.config.ignored_files] + ["(?!)"]))
@@ -259,7 +249,7 @@ class TransomSite:
             case ".md":
                 input_file = MarkdownPage(self, input_path, parent)
             case ".css" | ".csv" | ".html" | ".js" | ".json" | ".svg" | ".txt":
-                input_file = TemplateFile(self, input_path, parent)
+                input_file = TemplatePage(self, input_path, parent)
             case _:
                 input_file = StaticFile(self, input_path, parent)
 
@@ -374,40 +364,29 @@ class TransomSite:
 
 @dataclass
 class SiteConfig:
-    # title = ObjectProperty(str, doc="""
     # The site title.  XXX Used in head/title element (so, in bookmarks).
-    # """)
-
-    # prefix = ObjectProperty(str, "", doc="""
+    #
     # A string prefix used in generated links. It is
     # inserted before the file path. This is important when the
     # published site lives under a directory prefix, as is the case for
     # GitHub Pages. The default is the empty string, meaning no prefix.
-    # """)
-
-    # ignored_files = ObjectProperty(list, [".git", ".#*", "#*"], doc="""
+    #
     # A list of shell globs for excluding input and config files from
     # processing. The default is `[".git", ".#*","#*"]`.
-    # """)
-
-    # page_template = ObjectProperty(TransomTemplate, _FALLBACK_PAGE_TEMPLATE, nullable=True, doc="""
+    #
     # The default top-level template object for Markdown pages. The page
     # template wraps `{{page.body}}`. The default is loaded from
     # `config/page.html`.
-    # """)
-
-    # body_template = ObjectProperty(TransomTemplate, _FALLBACK_BODY_TEMPLATE, nullable=True, doc="""
+    #
     # The default template object for the body element of Markdown
     # pages. The body element wraps `{{page.content}}`. The default
     # is loaded from `config/body.html`.
-    # """)
 
     title: str = None
     prefix: str = ""
     ignored_files: list[str] = field(default_factory=lambda: [".git", ".#*", "#*"])
-    page_template: TransomTemplate = TransomTemplate \
-        ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>{{page.title}}</title></head>{{page.body}}</html>")
-    body_template: TransomTemplate = TransomTemplate("<body>{{page.content}}</body>")
+    page_template: str = "config/page.html"
+    body_template: str = "config/body.html"
 
 class InputFile:
     __slots__ = "site", "input_path", "output_path", "url", "parent", "children"
@@ -443,11 +422,11 @@ class InputFile:
             yield parent
             parent = parent.parent
 
-    def _process_input(self, last_render_time=0):
+    def process_input(self, last_render_time=0):
         self._debug("Processing input")
         return self.input_path.stat().st_mtime >= last_render_time
 
-    def _render_output(self):
+    def render_output(self):
         self._debug("Rendering output")
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -457,99 +436,57 @@ class InputFile:
 class StaticFile(InputFile):
     __slots__ = ()
 
-    def _render_output(self):
-        super()._render_output()
+    def render_output(self):
+        super().render_output()
         shutil.copy(self.input_path, self.output_path)
 
-class GeneratedFile(InputFile):
-    __slots__ = ()
+class TemplatePage(InputFile):
+    __slots__ = "config", "variables", "code", "template"
     _HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
-
-    def _extract_header_code(self, text):
-        match_ = GeneratedFile._HEADER_RE.match(text)
-
-        if match_:
-            return text[match_.end():], match_.group(1)
-
-        return text, None
-
-    def _exec_header_code(self, header_code):
-        self._debug("Executing header code")
-
-        with ErrorHandling([self.input_path, "header"]):
-            exec(header_code, self.globals)
-
-class TemplateFile(GeneratedFile):
-    __slots__ = "template", "globals"
-
-    def _process_input(self, last_render_time=0):
-        modified = super()._process_input(last_render_time)
-
-        if modified:
-            text = self.input_path.read_text()
-            text, header_code = self._extract_header_code(text)
-
-            self.template = TransomTemplate(text, self.input_path)
-            self.globals = self.site.globals
-
-            if header_code:
-                self._exec_header_code(header_code)
-
-        return modified
-
-    def _render_output(self):
-        super()._render_output()
-        self.template.write(self)
-
-class MarkdownPage(GeneratedFile):
-    __slots__ = "config", "content_template", "globals"
     _MARKDOWN_TITLE_RE = re.compile(r"(?m)^(?:#|##)\s+(.*?)\n")
     _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
-    def _process_input(self, last_render_time=0):
-        modified = super()._process_input(last_render_time)
+    def __init__(self, site, input_path, parent):
+        super().__init__(site, input_path, parent)
+
+        self.config = PageConfig(self)
+        self.variables = self.site.variables | {"page": PageConfig(self)}
+
+    def process_input(self, last_render_time=0):
+        modified = super().process_input(last_render_time)
 
         if modified:
-            text = self.input_path.read_text()
-            text, header_code = self._extract_header_code(text)
+            code, text = self.process_text()
 
-            self.config = PageConfig(self)
+            self.code = compile(code, "<string>", "exec") if code else None
+            self.template = Template(text, self.input_path)
 
-            self.config.page_template = self.site.config.page_template
-            self.config.body_template = self.site.config.body_template
-
-            self.content_template = TransomTemplate(text, self.input_path)
-            self.globals = self.site.globals | {"page": self.config}
-
-            if match_ := MarkdownPage._MARKDOWN_TITLE_RE.search(text):
-                self.config.title = match_.group(1)
-            elif match_ := MarkdownPage._HTML_TITLE_RE.search(text):
-                self.config.title = match_.group(1)
-
-            if header_code:
-                self._exec_header_code(header_code)
+            if self.input_path.suffix in (".md", ".html"):
+                if match_ := MarkdownPage._MARKDOWN_TITLE_RE.search(text):
+                    self.config.title = match_.group(1)
+                elif match_ := MarkdownPage._HTML_TITLE_RE.search(text):
+                    self.config.title = match_.group(1)
 
         return modified
 
-    def _render_output(self):
-        super()._render_output()
-        self.config.page_template.write(self)
+    def process_text(self):
+        code, text = None, self.input_path.read_text()
 
-    @property
-    def body(self):
-        if self.config.body_template is None:
-            return self.content
+        if match_ := TemplatePage._HEADER_RE.match(text):
+            code, text = match_.group(1), text[match_.end():]
 
-        return self.config.body_template.render(self)
+        return code, text
 
-    @property
-    def content(self):
-        """
-        The primary page content.  It is rendered from
-        the page input path, `input/<file>.md`.
-        """
-        pieces = self.content_template.render(self)
-        return MarkdownLocal.INSTANCE.value("".join(pieces))
+    def render_output(self):
+        super().render_output()
+
+        if self.code:
+            self._debug("Executing page code")
+
+            with ErrorHandling([self.input_path, "header"]):
+                exec(self.code, self.variables)
+
+        self.template.write(self)
 
     def render_template(self, path) -> Iterator[str]:
         """
@@ -569,13 +506,36 @@ class MarkdownPage(GeneratedFile):
         files.reverse()
         links = tuple(f"<a href=\"{x.url}\">{x.config.title if hasattr(x, "config") else x.input_path.name}</a>" for x in files[start:end]) # XXX
 
-
         if len(links) < min:
             return ""
 
         return f"<nav class=\"transom-page-path\">{''.join(links)}</nav>"
 
+class MarkdownPage(TemplatePage):
+    __slots__ = ()
+
+    def process_text(self):
+        page_path = Path(self.config.page_template)
+        body_path = Path(self.config.body_template)
+
+        page = page_path.read_text() if page_path.exists() else "@body@"
+        body = body_path.read_text() if body_path.exists() else "@content@"
+
+        code = None
+        content = self.input_path.read_text()
+
+        if match_ := TemplatePage._HEADER_RE.match(content):
+            code = match_.group(1)
+            content = content[match_.end():]
+
+        content = MarkdownLocal.INSTANCE.value(content)
+        text = page.replace("@body@", body.replace("@content@", content))
+
+        return code, text
+
     def toc_nav(self) -> str:
+        return "XXX"
+
         """
         Generate a table of contents.  It produces a `<nav>`
         element with links to the headings in the content of this
@@ -593,63 +553,22 @@ class MarkdownPage(GeneratedFile):
 
 @dataclass
 class PageConfig:
-    # title = ObjectProperty(str, doc="""
     # The title of this file.  Default title values are extracted from Markdown or HTML content.
-    # """)
-    # page_template = ObjectProperty(TransomTemplate, nullable=True, doc="""
+    #
     # The top-level template object for the page.  The page
     # template wraps `{{page.body}}`.  The default is the value of
     # `site.page_template`.
     # XXX null means
-    # """)
-    # body_template = ObjectProperty(TransomTemplate, nullable=True, doc="""
+    #
     # The template object for the body element of the page.
     # The body element wraps `{{page.content}}`.  The default is
     # the value of `site.body_template`.
     # XXX null means
-    # """)
 
     _page: MarkdownPage
     title: str = None
-    page_template: TransomTemplate = None
-    body_template: TransomTemplate = None
-
-    @property
-    def url(self):
-        """
-        The website path of this file.  It includes the site
-        prefix, if configured.
-        """
-        return self._page.url
-
-    @property
-    def parent(self):
-        """
-        The parent index file of this file, or `None` if this is
-        the root file.
-        """
-        return self._page.parent
-
-    @property
-    def children(self):
-        """
-        The direct descendant files of this file.
-        """
-        return tuple(self._page.children)
-
-    @property
-    def body(self):
-        """
-        The body element of the page.  It is rendered from
-        `page.body_template`.
-
-        XXX If body template is none
-        """
-        return self._page.body
-
-    @property
-    def content(self):
-        return self._page.content
+    page_template: str = "config/page.html"
+    body_template: str = "config/body.html"
 
     # XXX
     def path_nav(self, start=0, end=None, min=1) -> str:
@@ -691,14 +610,14 @@ class WorkerThread(threading.Thread):
 
     def process_input_files(self, input_files, last_render_time, modified_files):
         for input_file in input_files:
-            modified = input_file._process_input(last_render_time)
+            modified = input_file.process_input(last_render_time)
 
             if modified:
                 modified_files.append(input_file)
 
     def render_output_files(self, modified_files):
         for input_file in modified_files:
-            input_file._render_output()
+            input_file.render_output()
 
 class HeadingParser(HTMLParser):
     def __init__(self):
@@ -791,10 +710,10 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
                 return
 
             for parent in input_file.parents:
-                parent._process_input()
+                parent.process_input()
 
-            input_file._process_input()
-            input_file._render_output()
+            input_file.process_input()
+            input_file.render_output()
 
 class TransomCommand:
     def __init__(self, home=None):
