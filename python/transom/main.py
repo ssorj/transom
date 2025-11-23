@@ -114,26 +114,26 @@ class TransomSite:
         return f"{self.__class__.__name__}({repr(str(self.root_dir))})"
 
     def __enter__(self):
-        self._start()
+        self.start()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._stop()
+        self.stop()
 
-    def _start(self):
+    def start(self):
         self.debug("Starting {} worker {}", len(self.worker_threads), plural("thread", len(self.worker_threads)))
 
         for thread in self.worker_threads:
             thread.start()
 
-    def _stop(self):
+    def stop(self):
         self.debug("Stopping worker threads")
 
         for thread in self.worker_threads:
             thread.commands.put((None, None))
             thread.join()
 
-    def _load_config_files(self):
+    def load_config_files(self):
         self.debug("Loading config files in '{}'", self.config_dir)
 
         site_code_path = self.config_dir / "site.py"
@@ -147,12 +147,12 @@ class TransomSite:
         self._ignored_files_re = re.compile \
             ("|".join([fnmatch.translate(x) for x in self.config.ignored_files] + ["(?!)"]))
 
-    def _load_input_files(self):
+    def load_input_files(self):
         self.debug("Loading input files in '{}'", self.input_dir)
 
         def find_input_files(start_path, input_files, parent_file):
             def add_input_file(input_path, parent_file):
-                input_file = self._load_input_file(Path(entry.path), parent_file)
+                input_file = self.load_input_file(Path(entry.path), parent_file)
 
                 input_files.append(input_file)
 
@@ -188,7 +188,7 @@ class TransomSite:
 
         return input_files
 
-    def _load_input_file(self, input_path, parent):
+    def load_input_file(self, input_path, parent):
         self.debug("Loading '{}'", input_path)
 
         match input_path.suffix:
@@ -201,7 +201,7 @@ class TransomSite:
 
         return input_file
 
-    def _find_config_modified(self, last_render_time):
+    def find_config_modified(self, last_render_time):
         def find_modified_file(start_path, last_render_time):
             with os.scandir(start_path) as entries:
                 for entry in (x for x in entries if not self._ignored_files_re.match(x.name)):
@@ -217,12 +217,12 @@ class TransomSite:
         except FileNotFoundError:
             self.notice("Config directory not found: {}", self.config_dir)
 
-    def _render(self, force=False):
+    def render(self, force=False):
         self.notice("Rendering files from '{}' to '{}'", self.input_dir, self.output_dir)
 
-        self._load_config_files()
+        self.load_config_files()
 
-        input_files = self._load_input_files()
+        input_files = self.load_input_files()
         last_render_time = 0
 
         if not input_files:
@@ -231,7 +231,7 @@ class TransomSite:
         if not force and self.output_dir.exists():
             last_render_time = self.output_dir.stat().st_mtime
 
-            if self._find_config_modified(last_render_time):
+            if self.find_config_modified(last_render_time):
                 last_render_time = 0
 
         self.debug("Processing {:,} input {}", len(input_files), plural("file", len(input_files)))
@@ -274,7 +274,7 @@ class TransomSite:
 
         return input_files
 
-    def _serve(self, port=8080):
+    def serve(self, port=8080):
         self.notice("Serving the site at http://localhost:{}", port)
 
         try:
@@ -486,9 +486,7 @@ class MarkdownPage(TemplatePage):
         """
         Generate a table of contents.  It produces a `<nav>`
         element with links to the headings in the content of this
-        page.  To avoid recursion, this must be placed outside the
-        page content, in a separate navigation element, such as an
-        aside.
+        page.
         """
         parser = HeadingParser()
         parser.feed(self.content)
@@ -651,7 +649,7 @@ class Server(httpserver.ThreadingHTTPServer):
         self.render()
 
     def render(self):
-        self.input_files = {x.input_path: x for x in self.site._render()}
+        self.input_files = {x.input_path: x for x in self.site.render()}
 
 class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
@@ -825,11 +823,11 @@ class TransomCommand:
 
     def command_render(self):
         with self.site:
-            self.site._render(force=self.args.force)
+            self.site.render(force=self.args.force)
 
     def command_serve(self):
         with self.site:
-            self.site._serve(port=self.args.port)
+            self.site.serve(port=self.args.port)
 
 class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
     _HTML_ID_RESTRICT_RE = re.compile(r"[^a-z0-9\s-]")

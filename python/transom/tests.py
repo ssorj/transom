@@ -42,14 +42,14 @@ class empty_test_site(empty_test_site_dir):
         super().__enter__()
 
         self.site = TransomSite(".", verbose=True, threads=1)
-        self.site._start()
+        self.site.start()
 
         return self.site
 
     def __exit__(self, exc_type, exc_value, traceback):
         super().__exit__(exc_type, exc_value, traceback)
 
-        self.site._stop()
+        self.site.stop()
 
 class standard_test_site_dir(working_dir):
     def __enter__(self):
@@ -62,19 +62,19 @@ class standard_test_site(standard_test_site_dir):
         super().__enter__()
 
         self.site = TransomSite(".", verbose=True, threads=1)
-        self.site._start()
+        self.site.start()
 
         return self.site
 
     def __exit__(self, exc_type, exc_value, traceback):
         super().__exit__(exc_type, exc_value, traceback)
 
-        self.site._stop()
+        self.site.stop()
 
 class test_server:
     def __init__(self, site):
         def run_():
-            site._serve(port=9191)
+            site.serve(port=9191)
 
         self.server = threading.Thread(target=run_, name="test-server-thread")
 
@@ -93,32 +93,32 @@ class test_server:
 @test
 def site_load_config_files():
     with empty_test_site() as site:
-        site._load_config_files()
+        site.load_config_files()
 
     with standard_test_site() as site:
-        site._load_config_files()
+        site.load_config_files()
 
 @test
 def site_load_input_files():
     with empty_test_site() as site:
-        site._load_config_files()
-        input_files = site._load_input_files()
+        site.load_config_files()
+        input_files = site.load_input_files()
 
         assert len(input_files) == 0, len(input_files)
 
     with standard_test_site() as site:
-        site._load_config_files()
-        input_files = site._load_input_files()
+        site.load_config_files()
+        input_files = site.load_input_files()
 
         assert len(input_files) > 0, len(input_files)
 
 @test
 def site_render():
     with empty_test_site() as site:
-        site._render()
+        site.render()
 
     with standard_test_site() as site:
-        site._render()
+        site.render()
 
         check_dir("output")
         check_file("output/index.html")
@@ -137,7 +137,7 @@ def site_render():
         write("input/index.md", "# Top\n")
         write("input/test.md", "{{path_nav()}}\n")
 
-        site._render()
+        site.render()
 
         result = read("output/test.html")
         assert "href=\"/prefix/index.html\"" in result, result
@@ -148,23 +148,23 @@ def site_render():
 
         make_dir("output")
 
-        site._render()
+        site.render()
 
     # Re-render after config file change
     with standard_test_site() as site:
-        site._render()
+        site.render()
 
         touch("config/outer/inner/nested.html")
 
-        site._render()
+        site.render()
 
     # Re-render after input file change
     with standard_test_site() as site:
-        site._render()
+        site.render()
 
         touch("input/outer/inner/nested.md")
 
-        site._render()
+        site.render()
 
     # # Duplicate index files
     # with empty_test_site() as site:
@@ -217,28 +217,28 @@ def site_code_execution():
         write("config/site.py", "1 / 0")
 
         with expect_exception(TransomError):
-            site._load_config_files()
+            site.load_config_files()
 
     # Transom error handling
     with empty_test_site() as site:
         write("config/site.py", "raise TransomError()")
 
         with expect_exception(TransomError):
-            site._load_config_files()
+            site.load_config_files()
 
     # Syntax error handling
     with empty_test_site() as site:
         write("config/site.py", ")(")
 
         with expect_exception(TransomError):
-            site._load_config_files()
+            site.load_config_files()
 
     # Load a non-existant template
     with empty_test_site() as site:
         write("config/site.py", "site.page_template = load_template(\"/not-there.html\")")
 
         with expect_exception(TransomError):
-            site._load_config_files()
+            site.load_config_files()
 
 @test
 def page_code_execution():
@@ -247,21 +247,21 @@ def page_code_execution():
         write("input/test.md", "---\n1 / 0\n---\n")
 
         with expect_exception(TransomError):
-            site._render()
+            site.render()
 
     # Transom error handling
     with empty_test_site() as site:
         write("input/test.md", "---\nraise TransomError()\n---\n")
 
         with expect_exception(TransomError):
-            site._render()
+            site.render()
 
     # Syntax error handling
     with empty_test_site() as site:
         write("input/test.md", "---\n)(\n---\n")
 
         with expect_exception(TransomError):
-            site._render()
+            site.render()
 
 @test
 def template_code_execution():
@@ -270,21 +270,21 @@ def template_code_execution():
         write("input/test.md", "{{1 / 0}}")
 
         with expect_exception(TransomError):
-            site._render()
+            site.render()
 
     # Transom error handling
     with empty_test_site() as site:
         write("input/test.md", "{{raise TransomError()}}")
 
         with expect_exception(TransomError):
-            site._render()
+            site.render()
 
     # Syntax error handling
     with empty_test_site() as site:
         write("input/test.md", "{{)(}}")
 
         with expect_exception(TransomError):
-            site._render()
+            site.render()
 
 @test
 def command_options():
