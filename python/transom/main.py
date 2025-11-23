@@ -411,14 +411,14 @@ class TemplatePage(InputFile):
         modified = super().process_input(last_render_time)
 
         if modified:
-            code, text = self.process_text()
+            code, text = self.process_input_text()
 
             self.template = Template(text, self.input_path)
 
             if self.input_path.suffix in (".md", ".html"):
-                if match_ := MarkdownPage._MARKDOWN_TITLE_RE.search(text):
+                if match_ := MarkdownPage._HTML_TITLE_RE.search(text):
                     self.config.title = match_.group(1)
-                elif match_ := MarkdownPage._HTML_TITLE_RE.search(text):
+                elif match_ := MarkdownPage._MARKDOWN_TITLE_RE.search(text):
                     self.config.title = match_.group(1)
 
             if code:
@@ -429,7 +429,7 @@ class TemplatePage(InputFile):
 
         return modified
 
-    def process_text(self):
+    def process_input_text(self):
         code, text = None, self.input_path.read_text()
 
         if match_ := TemplatePage._HEADER_RE.match(text):
@@ -440,13 +440,6 @@ class TemplatePage(InputFile):
     def render_output(self):
         super().render_output()
         self.template.write(self)
-
-    def render_template(self, path) -> Iterator[str]:
-        """
-        Load the template at `path` and render it using the Python
-        environment of this page.
-        """
-        return load_template(path).render(self)
 
     def path_nav(self, start=0, end=None, min=1) -> str:
         """
@@ -464,11 +457,18 @@ class TemplatePage(InputFile):
 
         return f"<nav class=\"transom-page-path\">{''.join(links)}</nav>"
 
+    def render_template(self, path) -> Iterator[str]:
+        """
+        Load the template at `path` and render it using the Python
+        environment of this page.
+        """
+        return load_template(path).render(self)
+
 class MarkdownPage(TemplatePage):
     __slots__ = "content",
 
-    def process_text(self):
-        code, text = super().process_text()
+    def process_input_text(self):
+        code, text = super().process_input_text()
 
         self.content = MarkdownLocal.INSTANCE.value(text)
 
@@ -519,7 +519,7 @@ class PageConfig:
 
 class Template:
     __slots__ = "pieces", "context"
-    _VARIABLE_RE = re.compile(r"({{{.+?}}}|{{.+?}})")
+    _VARIABLE_RE = re.compile(r"(\{\{\{.+?\}\}\}|\{\{.+?\}\})")
 
     def __init__(self, text, context=None):
         self.pieces = []
@@ -841,6 +841,10 @@ class HtmlRenderer(mistune.renderers.html.HTMLRenderer):
         text = HtmlRenderer._HTML_ID_RESTRICT_RE.sub("", text.lower())
         text = HtmlRenderer._HTML_ID_HYPHENATE_RE.sub("-", text).strip("-")
 
+        return text
+
+    def text(self, text):
+        # Prevent the default HTML escaping
         return text
 
     def heading(self, text, level, **attrs):

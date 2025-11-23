@@ -1,6 +1,6 @@
 ---
 def link(index, value):
-    return f"<li><a href=\"{value.config.url}\">{value.config.title}</a></li>"
+    return f"<li><a href=\"{value.url}\">{value.config.title}</a></li>"
 ---
 
 # Sample pages

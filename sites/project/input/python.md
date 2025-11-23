@@ -11,7 +11,8 @@ def _format_value(value):
         case str() if len(value) > 50:
             return repr(f"{value[:40]}[...]") + f" ({len(value):,})"
         case x if callable(x):
-            sig = f"{x.__name__}{_inspect.signature(x)}"
+            sig = f"{str(x)}{_inspect.signature(x)}"
+            # sig = f"{x.__name__}{_inspect.signature(x)}"
             return _re.sub(r"([a-zA-Z_][a-zA-Z0-9_]*\.)+(?=[A-Z])", "", sig)
         case _:
             return repr(value)
@@ -84,20 +85,11 @@ site = {{repr(site)}}
 {{strip(_render_properties(_SiteConfig, site, "site"))}}
 ~~~
 
-<!-- ## The file object -->
+## The page object
 
 <!-- All textual files (`.css`, `.csv`, `.html`, `.js`, `.json`, `.md`, -->
 <!-- `.svg`, `.txt`) are processed as templates.  You can access and modify -->
 <!-- file properties by accessing the `file` variable. -->
-
-<!-- ~~~ python -->
-<!-- # The object representing the current file -->
-<!-- file = {{{repr(file)}}} -->
-
-<!-- {{{strip(_render_properties(_InputFile, file, "file"))}}} -->
-<!-- ~~~ -->
-
-## The page object
 
 Markdown files (`.md`) have additional properties and methods accessed
 through the `page` variable.
