@@ -8,8 +8,6 @@ violet = "Petunia"
 
 ~~~
 site == {{site}}
-site.page_template == {{site.page_template}}
-site.body_template == {{site.body_template}}
 
 page == {{page}}
 page.page_template == {{page.page_template}}

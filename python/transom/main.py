@@ -246,7 +246,7 @@ class TransomSite:
             thread.commands.join()
 
         if self.config.title is None:
-            self.config.title = input_files[0].input_path.name # XXX should be title from page config
+            self.config.title = input_files[0].title
 
         modified_count = sum(len(x) for x in modified_file_batches)
 
@@ -310,29 +310,24 @@ class TransomSite:
 
 @dataclass
 class SiteConfig:
-    # The site title.  XXX Used in head/title element (so, in bookmarks).
-    #
-    # A string prefix used in generated links. It is
-    # inserted before the file path. This is important when the
-    # published site lives under a directory prefix, as is the case for
-    # GitHub Pages. The default is the empty string, meaning no prefix.
-    #
-    # A list of shell globs for excluding input and config files from
-    # processing. The default is `[".git", ".#*","#*"]`.
-    #
-    # The default top-level template object for Markdown pages. The page
-    # template wraps `{{page.body}}`. The default is loaded from
-    # `config/page.html`.
-    #
-    # The default template object for the body element of Markdown
-    # pages. The body element wraps `{{page.content}}`. The default
-    # is loaded from `config/body.html`.
-
     title: str = None
+    """
+    The site title.  XXX Used in head/title element (so, in bookmarks).
+    """
+
     prefix: str = ""
+    """
+    A string prefix used in generated links. It is
+    inserted before the file path. This is important when the
+    published site lives under a directory prefix, as is the case for
+    GitHub Pages. The default is the empty string, meaning no prefix.
+    """
+
     ignored_files: list[str] = field(default_factory=lambda: [".git", ".#*", "#*"])
-    page_template: str = "config/page.html"
-    body_template: str = "config/body.html"
+    """
+    A list of shell globs for excluding input and config files from
+    processing. The default is `[".git", ".#*","#*"]`.
+    """
 
 class InputFile:
     __slots__ = "site", "input_path", "output_path", "url", "parent", "children"
@@ -356,6 +351,10 @@ class InputFile:
 
     def __repr__(self):
         return f"{self.__class__.__name__}({repr(str(self.input_path))})"
+
+    @property
+    def title(self):
+        return self.output_path.name
 
     @property
     def parents(self):
@@ -389,8 +388,8 @@ class StaticFile(InputFile):
 class TemplatePage(InputFile):
     __slots__ = "config", "variables", "template"
     _HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
-    _MARKDOWN_TITLE_RE = re.compile(r"(?m)^(?:#|##)\s+(.*?)\n")
     _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
+    _MARKDOWN_TITLE_RE = re.compile(r"(?m)^(?:#|##)\s+(.*?)\n")
 
     def __init__(self, site, input_path, parent):
         super().__init__(site, input_path, parent)
@@ -406,6 +405,10 @@ class TemplatePage(InputFile):
             self.variables["toc_nav"] = partial(self.toc_nav)
         except AttributeError:
             pass
+
+    @property
+    def title(self):
+        return self.config.title
 
     def process_input(self, last_render_time=0):
         modified = super().process_input(last_render_time)
@@ -448,9 +451,8 @@ class TemplatePage(InputFile):
         `end` trim off parts you don't need.  If the resulting number
         of links is less than `min`, it returns empty string.
         """
-        files = [self] + list(self.parents)
-        files.reverse()
-        links = tuple(f"<a href=\"{x.url}\">{x.config.title if hasattr(x, "config") else x.input_path.name}</a>" for x in files[start:end]) # XXX
+        files = list(reversed([self] + list(self.parents)))
+        links = tuple(f"<a href=\"{x.url}\">{x.title}</a>" for x in files[start:end])
 
         if len(links) < min:
             return ""
@@ -498,22 +500,27 @@ class MarkdownPage(TemplatePage):
 
 @dataclass
 class PageConfig:
-    # The title of this file.  Default title values are extracted from Markdown or HTML content.
-    #
-    # The top-level template object for the page.  The page
-    # template wraps `{{page.body}}`.  The default is the value of
-    # `site.page_template`.
-    # XXX null means
-    #
-    # The template object for the body element of the page.
-    # The body element wraps `{{page.content}}`.  The default is
-    # the value of `site.body_template`.
-    # XXX null means
-
     _page: MarkdownPage
+
     title: str = None
+    """
+    # The title of this file.  Default title values are extracted from
+    # Markdown or HTML content.
+    """
+
     page_template: str = "config/page.html"
+    """
+    # The top-level template object for the page.  The page template
+    # wraps `@body@`, the body template.  The default is
+    # `config/page.html`.  XXX null means.
+    """
+
     body_template: str = "config/body.html"
+    """
+    # The template object for the body element of the page.  The body
+    # element wraps `@content@`, the page content.  The default is
+    # `config/body.html`.  XXX null means.
+    """
 
 class Template:
     __slots__ = "pieces", "context"

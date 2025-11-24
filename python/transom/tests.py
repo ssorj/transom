@@ -233,13 +233,6 @@ def site_code_execution():
         with expect_exception(TransomError):
             site.load_config_files()
 
-    # Load a non-existant template
-    with empty_test_site() as site:
-        write("config/site.py", "site.page_template = load_template(\"/not-there.html\")")
-
-        with expect_exception(TransomError):
-            site.load_config_files()
-
 @test
 def page_code_execution():
     # Broken code
