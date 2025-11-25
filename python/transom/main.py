@@ -482,7 +482,7 @@ class MarkdownPage(TemplatePage):
 
         if self.config.body_template is not None:
             body_path = Path(self.config.body_template)
-            body = body.read_text() if body_path.exists() else body
+            body = body_path.read_text() if body_path.exists() else body
 
         text = page.replace("@body@", body.replace("@content@", self.content))
 
