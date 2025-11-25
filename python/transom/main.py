@@ -473,11 +473,16 @@ class MarkdownPage(TemplatePage):
 
         self.content = MarkdownLocal.INSTANCE.value(text)
 
-        page_path = Path(self.config.page_template)
-        body_path = Path(self.config.body_template)
+        page = "@body@"
+        body = "@content@"
 
-        page = page_path.read_text() if page_path.exists() else "@body@"
-        body = body_path.read_text() if body_path.exists() else "@content@"
+        if self.config.page_template is not None:
+            page_path = Path(self.config.page_template)
+            page = page_path.read_text() if page_path.exists() else page
+
+        if self.config.body_template is None:
+            body_path = Path(self.config.body_template)
+            body = body.read_text() if body_path.exists() else body
 
         text = page.replace("@body@", body.replace("@content@", self.content))
 
