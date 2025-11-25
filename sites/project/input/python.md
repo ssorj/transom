@@ -24,26 +24,11 @@ def _format_comment(text):
     return _textwrap.indent(_textwrap.fill(text, 77), "# ") + "\n"
 
 def _render_properties(type_, obj, obj_name):
-    for name, member in _inspect.getmembers(type_, lambda x: isinstance(x, property)):
+    for name, member in _inspect.getmembers(type_):
         if name.startswith("_"):
             continue
 
-        # This avoids recursion
-        if obj_name == "page" and name == "content":
-            yield _format_comment(_inspect.getdoc(member))
-            yield "page.content = '[...]'\n\n"
-            continue
-
-        yield _format_comment(_inspect.getdoc(member))
-        yield f"{obj_name}.{name} = {_format_value(getattr(obj, name))}\n\n"
-
-def _render_methods(type_, obj, obj_name):
-    for name, member in _inspect.getmembers(type_, lambda x: not isinstance(x, property)):
-        if name.startswith("_"):
-            continue
-
-        yield _format_comment(_inspect.getdoc(member))
-        yield f"{obj_name}.{_format_value(getattr(obj, name))}\n\n"
+        yield f"{obj_name}.{name} = {_format_value(getattr(obj, name))}\n"
 
 def _render_callables():
     for name, member in globals().items():
@@ -56,7 +41,7 @@ def _render_callables():
         if _inspect.getdoc(member) is not None:
             yield _format_comment(_inspect.getdoc(member))
 
-        yield _format_value(member) + "\n\n"
+        yield f"{name}{_inspect.signature(member)}\n\n"
 ---
 
 # Transom Python
@@ -75,32 +60,20 @@ Python code appears in the following locations:
 
 ## The site object
 
-You can modify site properties in `config/site.py`.  Use
-`load_template(path)` to set template properties.
+You can modify site properties in `config/site.py`.
 
 ~~~ python
-# The object representing the whole site
-site = {{repr(site)}}
-
 {{strip(_render_properties(_SiteConfig, site, "site"))}}
 ~~~
 
 ## The page object
 
-<!-- All textual files (`.css`, `.csv`, `.html`, `.js`, `.json`, `.md`, -->
-<!-- `.svg`, `.txt`) are processed as templates.  You can access and modify -->
-<!-- file properties by accessing the `file` variable. -->
-
-Markdown files (`.md`) have additional properties and methods accessed
-through the `page` variable.
+All textual files (`.css`, `.csv`, `.html`, `.js`, `.json`, `.md`,
+`.svg`, `.txt`) are processed as templates.  You can access and modify
+their properties by accessing the `page` variable.
 
 ~~~ python
-# The object representing the current page
-page = {{repr(page)}}
-
 {{strip(_render_properties(_PageConfig, page, "page"))}}
-
-{{strip(_render_methods(_PageConfig, page, "page"))}}
 ~~~
 
 ## Global functions and classes

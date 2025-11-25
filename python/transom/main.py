@@ -87,6 +87,7 @@ class TransomSite:
         self.config = SiteConfig()
 
         self.variables = {
+            "_site": self,
             "site": self.config,
             "include": include,
             "load_template": load_template,
@@ -388,15 +389,15 @@ class StaticFile(InputFile):
 class TemplatePage(InputFile):
     __slots__ = "config", "variables", "template"
     _HEADER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n")
-    _HTML_TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
-    _MARKDOWN_TITLE_RE = re.compile(r"(?m)^(?:#|##)\s+(.*?)\n")
+    _TITLE_RE = re.compile(r"(?si)<(?:h1|h2)\b[^>]*>(.*?)</(?:h1|h2)>")
 
     def __init__(self, site, input_path, parent):
         super().__init__(site, input_path, parent)
 
-        self.config = PageConfig(self)
+        self.config = PageConfig()
         self.variables = self.site.variables | {
-            "page": PageConfig(self),
+            "_page": self,
+            "page": self.config,
             "path_nav": partial(self.path_nav),
             "render_template": partial(self.render_template),
         }
@@ -418,10 +419,8 @@ class TemplatePage(InputFile):
 
             self.template = Template(text, self.input_path)
 
-            if self.input_path.suffix in (".md", ".html"):
-                if match_ := MarkdownPage._HTML_TITLE_RE.search(text):
-                    self.config.title = match_.group(1)
-                elif match_ := MarkdownPage._MARKDOWN_TITLE_RE.search(text):
+            if self.output_path.suffix == ".html":
+                if match_ := TemplatePage._TITLE_RE.search(text):
                     self.config.title = match_.group(1)
 
             if code:
@@ -500,8 +499,6 @@ class MarkdownPage(TemplatePage):
 
 @dataclass
 class PageConfig:
-    _page: MarkdownPage
-
     title: str = None
     """
     # The title of this file.  Default title values are extracted from
