@@ -394,7 +394,7 @@ class TemplatePage(InputFile):
     def __init__(self, site, input_path, parent):
         super().__init__(site, input_path, parent)
 
-        self.config = PageConfig()
+        self.config = PageConfig(self)
         self.variables = self.site.variables | {
             "_page": self,
             "page": self.config,
@@ -504,25 +504,39 @@ class MarkdownPage(TemplatePage):
 
 @dataclass
 class PageConfig:
+    _file: InputFile
+
     title: str = None
     """
-    # The title of this file.  Default title values are extracted from
-    # Markdown or HTML content.
+    The title of this file.  Default title values are extracted from
+    Markdown or HTML content.
     """
 
     page_template: str = "config/page.html"
     """
-    # The top-level template object for the page.  The page template
-    # wraps `@body@`, the body template.  The default is
-    # `config/page.html`.  XXX null means.
+    The top-level template object for the page.  The page template
+    wraps `@body@`, the body template.  The default is
+    `config/page.html`.  XXX null means.
     """
 
     body_template: str = "config/body.html"
     """
-    # The template object for the body element of the page.  The body
-    # element wraps `@content@`, the page content.  The default is
-    # `config/body.html`.  XXX null means.
+    The template object for the body element of the page.  The body
+    element wraps `@content@`, the page content.  The default is
+    `config/body.html`.  XXX null means.
     """
+
+    @property
+    def input_path(self):
+        return self._file.input_path
+
+    @property
+    def output_path(self):
+        return self._file.output_path
+
+    @property
+    def url(self):
+        return self._file.url
 
 class Template:
     __slots__ = "pieces", "context"
