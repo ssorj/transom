@@ -480,7 +480,7 @@ class MarkdownPage(TemplatePage):
             page_path = Path(self.config.page_template)
             page = page_path.read_text() if page_path.exists() else page
 
-        if self.config.body_template is None:
+        if self.config.body_template is not None:
             body_path = Path(self.config.body_template)
             body = body.read_text() if body_path.exists() else body
 
