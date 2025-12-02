@@ -84,7 +84,7 @@ class TransomSite:
         self.verbose = verbose
         self.quiet = quiet
 
-        self.config = SiteConfig()
+        self.config = SiteConfig(self)
 
         self.variables = {
             "_site": self,
@@ -311,6 +311,8 @@ class TransomSite:
 
 @dataclass
 class SiteConfig:
+    _site: TransomSite
+
     title: str = None
     """
     The site title.  XXX Used in head/title element (so, in bookmarks).
@@ -329,6 +331,18 @@ class SiteConfig:
     A list of shell globs for excluding input and config files from
     processing. The default is `[".git", ".#*","#*"]`.
     """
+
+    @property
+    def config_dir(self):
+        return self._site.config_dir
+
+    @property
+    def input_dir(self):
+        return self._site.input_dir
+
+    @property
+    def output_dir(self):
+        return self._site.output_dir
 
 class InputFile:
     __slots__ = "site", "input_path", "output_path", "url", "parent", "children"
@@ -504,7 +518,7 @@ class MarkdownPage(TemplatePage):
 
 @dataclass
 class PageConfig:
-    _file: InputFile
+    _page: TemplatePage
 
     title: str = None
     """
@@ -528,15 +542,15 @@ class PageConfig:
 
     @property
     def input_path(self):
-        return self._file.input_path
+        return self._page.input_path
 
     @property
     def output_path(self):
-        return self._file.output_path
+        return self._page.output_path
 
     @property
     def url(self):
-        return self._file.url
+        return self._page.url
 
 class Template:
     __slots__ = "pieces", "context"
