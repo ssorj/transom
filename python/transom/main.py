@@ -692,6 +692,12 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server, directory=None):
         super().__init__(request, client_address, server, directory=server.site.output_dir)
 
+    def end_headers(self):
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+        self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
+
+        super().end_headers()
+
     def do_POST(self):
         assert self.path == "/STOP", self.path
 
@@ -707,8 +713,6 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
         if not self.path.startswith(prefix):
             self.send_response(httpserver.HTTPStatus.TEMPORARY_REDIRECT)
             self.send_header("Location", prefix + self.path)
-            self.send_header("Cross-Origin-Opener-Policy", "same-origin")
-            self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
             self.end_headers()
             return
 
