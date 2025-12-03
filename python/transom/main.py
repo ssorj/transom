@@ -707,6 +707,8 @@ class ServerRequestHandler(httpserver.SimpleHTTPRequestHandler):
         if not self.path.startswith(prefix):
             self.send_response(httpserver.HTTPStatus.TEMPORARY_REDIRECT)
             self.send_header("Location", prefix + self.path)
+            self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+            self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
             self.end_headers()
             return
 
